@@ -1,0 +1,168 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Upload, Download, FileText, CheckCircle, AlertCircle, Clock, History, Trash2, Eye } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { DealerDocument } from '@/api/entities';
+
+export default function DocumentLocker({ documents = [], dealer, userRole, onDocumentUpdate, documentTypes = [] }) {
+  const [uploading, setUploading] = useState(null);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (file, docType) => {
+    if (!file || !dealer?.id) {
+      toast({ title: "Error", description: "Please select a valid file.", variant: "destructive" });
+      return;
+    }
+    
+    setUploading(docType);
+
+    try {
+      // Mock upload process
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      
+      const newDoc = {
+        dealer_id: dealer.id,
+        document_type: docType,
+        file_url: URL.createObjectURL(file), // Mock URL
+        file_name: file.name,
+        file_size: file.size || 0, // Add fallback for size
+        version: 1,
+        status: 'pending'
+      };
+
+      // Check if a doc of this type exists and update it or create new
+      const existingDoc = documents.find(d => d.document_type === docType);
+      if (existingDoc) {
+        await DealerDocument.update(existingDoc.id, newDoc);
+      } else {
+        await DealerDocument.create(newDoc);
+      }
+
+      toast({ title: "Success", description: `${file.name} uploaded successfully.` });
+      if (onDocumentUpdate) {
+        onDocumentUpdate(dealer.id); // Refresh documents
+      }
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      toast({ title: "Error", description: "Failed to upload document.", variant: "destructive" });
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const getStatusConfig = (status) => {
+    const configs = {
+      verified: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", text: "Verified" },
+      pending: { icon: Clock, color: "text-yellow-600", bg: "bg-yellow-50", text: "Pending" },
+      rejected: { icon: AlertCircle, color: "text-red-600", bg: "bg-red-50", text: "Rejected" }
+    };
+    return configs[status] || configs.pending;
+  };
+
+  const canEdit = userRole === 'owner' || userRole === 'admin';
+  const showUploadSlot = (docType) => {
+    const doc = documents.find(d => d.document_type === docType);
+    if (!doc) return true; // Always show if not uploaded
+    // PF-08: Show if rejected or provisional
+    return doc.status === 'rejected' || dealer?.verification_status === 'provisional';
+  };
+
+  if (!dealer) {
+    return (
+      <div className="flex justify-center p-8">
+        <p className="text-slate-500">Loading dealer information...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Document Locker
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {documentTypes.map(docTypeInfo => {
+            const doc = documents.find(d => d.document_type === docTypeInfo.value);
+            const statusConfig = doc ? getStatusConfig(doc.status) : null;
+            const StatusIcon = statusConfig?.icon || Clock;
+
+            return (
+              <div key={docTypeInfo.value} className="p-4 border rounded-lg space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{docTypeInfo.label}</h3>
+                    <p className="text-sm text-slate-500">
+                      {docTypeInfo.required ? "Required for KYB verification" : "Optional document"}
+                    </p>
+                  </div>
+                  {doc && (
+                    <Badge className={`${statusConfig.bg} ${statusConfig.color} gap-1`}>
+                      <StatusIcon className="w-3 h-3" />
+                      {statusConfig.text}
+                    </Badge>
+                  )}
+                </div>
+
+                {doc && (
+                  <div className="bg-slate-50 p-3 rounded-md flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-slate-500"/>
+                      <div className="truncate">
+                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                        <p className="text-xs text-slate-500">
+                          V{doc.version || 1} • {((doc.file_size || 0) / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" asChild>
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><Eye className="w-4 h-4" /></a>
+                      </Button>
+                      <Button variant="ghost" size="icon" asChild>
+                        <a href={doc.file_url} download><Download className="w-4 h-4" /></a>
+                      </Button>
+                      {canEdit && <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>}
+                    </div>
+                  </div>
+                )}
+
+                {showUploadSlot(docTypeInfo.value) && canEdit && (
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center">
+                    <label className="cursor-pointer">
+                      <Upload className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                      <p className="text-sm text-slate-600">
+                        {uploading === docTypeInfo.value ? 'Uploading...' : `Click to upload ${doc ? 'new version' : ''}`}
+                      </p>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileUpload(file, docTypeInfo.value);
+                          }
+                        }}
+                        disabled={!!uploading}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      />
+                    </label>
+                  </div>
+                )}
+                
+                {doc?.status === 'rejected' && doc.rejection_reason && (
+                    <p className="text-xs text-red-600 bg-red-50 p-2 rounded-md">Reason: {doc.rejection_reason}</p>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
