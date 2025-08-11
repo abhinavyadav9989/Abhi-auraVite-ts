@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
+import { DealerDocument } from '@/api/entities';
 import { createPageUrl } from '@/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -161,6 +163,7 @@ export default function OnboardingWizard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { refreshAuth } = useAuth();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -213,7 +216,6 @@ export default function OnboardingWizard() {
   }, []);
 
   const initializeOnboarding = async () => {
-    // ... same as previous correct implementation ...
     try {
       setIsLoading(true);
       let currentUser = null;
@@ -221,8 +223,18 @@ export default function OnboardingWizard() {
         currentUser = await User.me();
         setUser(currentUser);
         setIsReturningUser(true);
-        setOnboardingData(prev => ({ ...prev, email: currentUser.email, fullName: currentUser.full_name, emailVerified: currentUser.email_verified || false }));
-      } catch (error) { console.log('Starting fresh onboarding'); }
+        setOnboardingData(prev => ({ 
+          ...prev, 
+          email: currentUser.email, 
+          fullName: (currentUser as any).full_name || currentUser.email, 
+          emailVerified: (currentUser as any).email_verified || false 
+        }));
+      } catch (error) { 
+        console.log('Starting fresh onboarding'); 
+        // If no user, redirect to authentication
+        navigate(createPageUrl('Authentication'));
+        return;
+      }
       if (inviteToken) await handleInviteToken(inviteToken);
       if (currentUser) await loadExistingDraft(currentUser.email);
     } catch (error) {
@@ -241,19 +253,22 @@ export default function OnboardingWizard() {
   };
 
   const loadExistingDraft = async (email) => {
-    // ... same as previous correct implementation ...
     try {
-      const existingDrafts = await Dealer.filter({ created_by: email, verification_status: 'onboarding_draft' });
+      // First try to find any dealer profile for this user
+      const existingDrafts = await Dealer.filter({ created_by: email });
       if (existingDrafts.length > 0) {
         const draft = existingDrafts[0];
-        if (draft.onboarding_data) {
+        // Check if it has onboarding data and is not completed
+        if (draft.onboarding_data && !draft.onboarding_completed) {
           setOnboardingData(prev => ({ ...prev, ...draft.onboarding_data, isDraft: true }));
           setCurrentStep(draft.onboarding_data.currentStep || 0);
-          setLastSaved(new Date(draft.updated_date));
+          setLastSaved(new Date(draft.updated_at || draft.updated_date));
           toast({ title: "Draft Loaded", description: "We've restored your previous progress." });
         }
       }
-    } catch (error) { console.error('Error loading draft:', error); }
+    } catch (error) { 
+      console.error('Error loading draft:', error); 
+    }
   };
 
   const updateOnboardingData = (updates) => {
@@ -321,36 +336,121 @@ export default function OnboardingWizard() {
       setIsLoading(true);
       const draftData = { ...onboardingData, currentStep };
       const userEmail = user?.email || onboardingData.email;
-      const existingDrafts = await Dealer.filter({ created_by: userEmail, verification_status: 'onboarding_draft' });
+      const existingDrafts = await Dealer.filter({ created_by: userEmail });
       if (existingDrafts.length > 0) {
-        await Dealer.update(existingDrafts[0].id, { onboarding_data: draftData, business_name: onboardingData.organizationName || 'Onboarding Draft' });
-      } else {
-        await Dealer.create({
-          business_name: onboardingData.organizationName || 'Onboarding Draft',
-          owner_name: onboardingData.fullName || user?.full_name || 'Unknown',
-          phone: onboardingData.contactNumber || '',
-          city: onboardingData.city || '',
-          state: onboardingData.state || '',
-          created_by: userEmail,
-          verification_status: 'onboarding_draft',
+        await Dealer.update(existingDrafts[0].id, { 
           onboarding_data: draftData
+        });
+      } else {
+        // Create with essential fields and default values for required columns
+        await Dealer.create({
+          email: userEmail,
+          created_by: userEmail,
+          name: userEmail.split('@')[0], // Use email prefix as default name
+          business_name: 'Pending Setup',
+          business_type: 'individual',
+          client_type: 'individual',
+          contact_number: '0000000000',
+          address: 'Address to be updated'
         });
       }
       setIsDirty(false);
       setLastSaved(new Date());
-      toast({ title: "Progress Saved", description: "Your progress has been saved as a draft.", duration: 2000 });
+      toast({ title: "Draft Saved", description: "Your progress has been saved." });
     } catch (error) {
       console.error('Error saving draft:', error);
-      toast({ title: "Save Failed", description: "Could not save your progress.", variant: "destructive" });
+      toast({ title: "Save Failed", description: "Failed to save your progress. Please try again.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCompleteOnboarding = async () => {
-    // ... This function will be expanded to handle the final creation of all related entities
-    toast({title: "Onboarding Complete!", description: "Redirecting to your dashboard."});
-    navigate(createPageUrl('Dashboard'));
+    try {
+      setIsLoading(true);
+      
+      console.log('OnboardingWizard - Starting onboarding completion...');
+      
+      // Check if dealer profile already exists
+      const existingDealers = await Dealer.filter({ created_by: onboardingData.email });
+      
+             let dealerId;
+       if (existingDealers.length > 0) {
+         // Update existing profile
+         console.log('OnboardingWizard - Updating existing dealer profile');
+         const updatedDealer = await Dealer.update(existingDealers[0].id, {
+           onboarding_completed: true,
+           onboarding_data: onboardingData
+         });
+         console.log('OnboardingWizard - Dealer profile updated:', updatedDealer);
+         dealerId = existingDealers[0].id;
+       } else {
+         // Create new profile if none exists
+         console.log('OnboardingWizard - Creating new dealer profile');
+         const dealerData = {
+           email: onboardingData.email,
+           created_by: onboardingData.email,
+           onboarding_completed: true,
+           onboarding_data: onboardingData
+         };
+         const newDealer = await Dealer.create(dealerData);
+         console.log('OnboardingWizard - Dealer profile created:', newDealer);
+         dealerId = newDealer.id;
+       }
+
+       // Save uploaded documents to dealer_documents table
+       if (dealerId && onboardingData.kybDocuments) {
+         console.log('OnboardingWizard - Saving documents to dealer_documents table...');
+         for (const [docType, docData] of Object.entries(onboardingData.kybDocuments)) {
+           if (docData && typeof docData === 'object' && 'url' in docData) {
+             const document = docData as { url: string; name: string };
+             console.log(`OnboardingWizard - Saving document: ${docType}`);
+             await DealerDocument.create({
+               dealer_id: dealerId,
+               document_type: docType,
+               file_url: document.url,
+               file_name: document.name,
+               status: 'pending_review'
+             });
+           }
+         }
+         console.log('OnboardingWizard - Documents saved successfully');
+       }
+      
+      // Update user profile with onboarding completion
+      console.log('OnboardingWizard - Updating user metadata...');
+      await User.updateMyUserData({
+        onboarding_completed: true,
+        dealer_profile_created: true
+      });
+      console.log('OnboardingWizard - User metadata updated');
+
+      // Force refresh the auth state to ensure metadata is updated
+      console.log('OnboardingWizard - Refreshing auth state...');
+      await refreshAuth();
+      console.log('OnboardingWizard - Auth state refreshed');
+
+      toast({
+        title: "Onboarding Complete!", 
+        description: "Your profile has been created successfully. Redirecting to dashboard."
+      });
+      
+      // Redirect to dashboard
+      setTimeout(() => {
+        console.log('OnboardingWizard - Redirecting to dashboard...');
+        navigate(createPageUrl('Dashboard'));
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to complete onboarding. Please try again.", 
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateRemainingTime = () => {

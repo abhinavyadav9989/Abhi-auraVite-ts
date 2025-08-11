@@ -60,7 +60,9 @@ import OnboardingWizard from "./OnboardingWizard";
 
 import DataMigrationPanel from "./DataMigrationPanel";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import Authentication from "./Authentication";
+
+import { Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
     
@@ -124,6 +126,8 @@ const PAGES = {
     
     DataMigrationPanel: DataMigrationPanel,
     
+    Authentication: Authentication,
+    
 }
 
 function _getCurrentPage(url) {
@@ -148,7 +152,7 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<Authentication />} />
                 
                 
                 <Route path="/Dashboard" element={<Dashboard />} />
@@ -211,15 +215,16 @@ function PagesContent() {
                 
                 <Route path="/DataMigrationPanel" element={<DataMigrationPanel />} />
                 
+                <Route path="/Authentication" element={<Authentication />} />
+                
+                {/* Catch-all route - redirect to Authentication */}
+                <Route path="*" element={<Authentication />} />
+                
             </Routes>
         </Layout>
     );
 }
 
 export default function Pages() {
-    return (
-        <Router>
-            <PagesContent />
-        </Router>
-    );
+    return <PagesContent />;
 }

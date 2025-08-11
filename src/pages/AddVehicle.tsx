@@ -223,13 +223,37 @@ export default function AddVehicle() {
   const handleSubmit = async (status: 'draft' | 'live') => {
     setIsSubmitting(true);
     try {
+      // Clean the data before sending to database
+      const cleanData = { ...vehicleData };
+      
+      // Convert empty strings to null for integer fields
+      if (cleanData.kilometers === '') cleanData.kilometers = null;
+      if (cleanData.mileage === '') cleanData.mileage = null;
+      if (cleanData.year === '') cleanData.year = null;
+      if (cleanData.seating_capacity === '') cleanData.seating_capacity = null;
+      if (cleanData.condition_rating === '') cleanData.condition_rating = null;
+      
+      // Convert empty strings to null for decimal fields
+      if (cleanData.price === '') cleanData.price = null;
+      if (cleanData.asking_price === '') cleanData.asking_price = null;
+      if (cleanData.market_price_min === '') cleanData.market_price_min = null;
+      if (cleanData.market_price_max === '') cleanData.market_price_max = null;
+      if (cleanData.listing_fee_value === '') cleanData.listing_fee_value = null;
+      
+      // Convert empty strings to null for date fields
+      if (cleanData.insurance_valid_until === '') cleanData.insurance_valid_until = null;
+      if (cleanData.publish_at === '') cleanData.publish_at = null;
+      if (cleanData.publish_schedule === '') cleanData.publish_schedule = null;
+      
       const finalPayload = { 
-        ...vehicleData, 
+        ...cleanData, 
         status, 
         dealer_id: dealer.id,
         location_city: dealer.city,
         location_state: dealer.state
       };
+      
+      console.log('AddVehicle - Final payload being sent to database:', finalPayload);
       
       await Vehicle.create(finalPayload);
       

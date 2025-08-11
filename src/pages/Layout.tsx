@@ -53,6 +53,9 @@ export default function Layout({ children, currentPageName }) {
       setUser(currentUser);
     } catch (error) {
       console.error("Error loading user data:", error);
+      // Don't throw error here - AuthGuard will handle authentication
+      // Just set user to null and let AuthGuard redirect if needed
+      setUser(null);
     }
     setIsLoading(false);
   };

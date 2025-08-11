@@ -38,7 +38,7 @@ export default function EmailVerification() {
       setUser(currentUser);
       
       // If user is already verified, redirect to onboarding
-      if (currentUser.email_verified) {
+      if ((currentUser as any).email_verified) {
         navigate(createPageUrl('OnboardingPath'));
         return;
       }
@@ -47,8 +47,8 @@ export default function EmailVerification() {
       startResendTimer();
     } catch (error) {
       console.error('Error loading user:', error);
-      // User not authenticated, redirect to login
-      await User.loginWithRedirect(window.location.href);
+      // User not authenticated, redirect to authentication
+      navigate(createPageUrl('Authentication'));
     }
   };
 

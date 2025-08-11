@@ -1,19 +1,22 @@
-import { base44 } from './base44Client';
+// Import from Supabase integration adapters instead of Base44
+import {
+  Core,
+  InvokeLLM,
+  SendEmail,
+  UploadFile,
+  GenerateImage,
+  ExtractDataFromUploadedFile
+} from './integrationAdapters';
 
-
-
-
-export const Core = base44.integrations.Core;
-
-export const InvokeLLM = base44.integrations.Core.InvokeLLM;
-
-export const SendEmail = base44.integrations.Core.SendEmail;
-
-export const UploadFile = base44.integrations.Core.UploadFile;
-
-export const GenerateImage = base44.integrations.Core.GenerateImage;
-
-export const ExtractDataFromUploadedFile = base44.integrations.Core.ExtractDataFromUploadedFile;
+// Re-export all integrations to maintain the same interface
+export {
+  Core,
+  InvokeLLM,
+  SendEmail,
+  UploadFile,
+  GenerateImage,
+  ExtractDataFromUploadedFile
+};
 
 
 

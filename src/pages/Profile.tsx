@@ -189,7 +189,7 @@ export default function Profile() {
 
   const loadDocuments = async (dealerId) => {
     try {
-      const docs = await DealerDocument.filter({ dealer_id: dealerId }, '-created_date');
+      const docs = await DealerDocument.filter({ dealer_id: dealerId });
       setDocuments(docs || []);
     } catch (error) {
       console.error("Error loading documents:", error);
@@ -226,7 +226,7 @@ export default function Profile() {
 
   const loadReviews = async (dealerId) => {
     try {
-      const reviewData = await DealerReview.filter({ dealer_id: dealerId }, '-created_date');
+      const reviewData = await DealerReview.filter({ dealer_id: dealerId });
       setReviews(reviewData || []);
     } catch (error) {
       console.error("Error loading reviews:", error);

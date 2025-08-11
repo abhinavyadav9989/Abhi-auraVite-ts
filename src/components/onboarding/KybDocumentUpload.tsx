@@ -22,11 +22,33 @@ export default function KybDocumentUpload({ data, updateData }) {
   const [uploadingId, setUploadingId] = useState(null);
 
   const handleFileChange = async (docId, file) => {
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    // Validate file
+    if (!file.name || !file.size) {
+      toast({
+        title: "Invalid File",
+        description: "Please select a valid file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('KybDocumentUpload - Starting upload for:', {
+      docId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
 
     setUploadingId(docId);
     try {
       const response = await UploadFile({ file });
+      console.log('KybDocumentUpload - Upload response:', response);
+      
       if (response.file_url) {
         updateData({
           kybDocuments: {
@@ -38,7 +60,7 @@ export default function KybDocumentUpload({ data, updateData }) {
             },
           },
         });
-        toast({ title: "Success", description: `${file.name} uploaded.` });
+        toast({ title: "Success", description: `${file.name} uploaded successfully.` });
       } else {
         throw new Error("Upload failed to return a URL.");
       }

@@ -37,6 +37,7 @@ import GlobalSearch from "../components/dashboard/GlobalSearch";
 import NotificationsCenter from "../components/dashboard/NotificationsCenter";
 import FirstTimeIntro from "../components/dashboard/FirstTimeIntro";
 import OfflineBanner from '../components/dashboard/OfflineBanner';
+import VerificationStatus from '../components/dashboard/VerificationStatus';
 
 export default function Dashboard() {
   const [dealer, setDealer] = useState(null);
@@ -87,9 +88,10 @@ export default function Dashboard() {
         setDealer(dealerProfile[0]);
         await loadDashboardData(dealerProfile[0]);
       } else {
-        // No dealer profile found, redirect to onboarding path selection
-        navigate(createPageUrl('OnboardingPath'));
-        return; // Stop execution here as we're navigating away
+        // This should not happen as AuthGuard should handle this
+        console.error("No dealer profile found - this should be handled by AuthGuard");
+        setIsLoading(false);
+        return;
       }
     } catch (error) {
       console.error("Error initializing dashboard:", error);
@@ -113,10 +115,13 @@ export default function Dashboard() {
         draft: vehicles.filter((v) => v.status === 'draft').length
       };
 
-      // Load deals data using Transaction entity
-      const transactions = await Transaction.filter({
-        $or: [{ seller_id: dealerProfile.id }, { buyer_id: dealerProfile.id }]
-      });
+      // Load deals data using Transaction entity - use separate queries instead of $or
+      const [sellerTransactions, buyerTransactions] = await Promise.all([
+        Transaction.filter({ seller_id: dealerProfile.id }),
+        Transaction.filter({ buyer_id: dealerProfile.id })
+      ]);
+      
+      const transactions = [...sellerTransactions, ...buyerTransactions];
 
       const dealsStatus = {
         negotiating: transactions.filter((t) => ['offer_made', 'negotiating'].includes(t.status)).length,
@@ -308,13 +313,20 @@ export default function Dashboard() {
 
                 </div>
 
-                {/* Row 2: Analytics and AI Tips */}
-                <div className="grid lg:grid-cols-3 gap-6">
+                {/* Row 2: Verification Status */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
-                    <PerformanceChart dealer={dealer} />
+                    <VerificationStatus dealer={dealer} user={user} />
                   </div>
                   <div>
                     <AITipsCarousel dealer={dealer} />
+                  </div>
+                </div>
+
+                {/* Row 3: Analytics */}
+                <div className="grid lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-3">
+                    <PerformanceChart dealer={dealer} />
                   </div>
                 </div>
               </>
