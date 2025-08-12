@@ -80,6 +80,7 @@ import {
   FileDown,
   History
 } from 'lucide-react';
+import { UploadFile } from '@/api/integrations';
 import MfaSettings from '../components/settings/MfaSettings';
 import BankingSettings from '../components/settings/BankingSettings';
 
@@ -321,11 +322,9 @@ export default function Settings() {
     
     try {
       setIsSaving(true);
-      // Mock file upload
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const mockUrl = URL.createObjectURL(file);
-      
-      const updateData = type === 'logo' ? { logo_url: mockUrl } : { banner_url: mockUrl };
+      const { file_url, url } = await UploadFile({ file });
+      const permanentUrl = file_url || url;
+      const updateData = type === 'logo' ? { logo_url: permanentUrl } : { banner_url: permanentUrl };
       await Dealer.update(dealer.id, updateData);
       
       setDealer({ ...dealer, ...updateData });

@@ -5,7 +5,7 @@ class CoreAdapter {
   // File upload using Supabase Storage
   async UploadFile({ file, path, options = {} }) {
     try {
-      // Ensure storage bucket exists
+      // Do not attempt to create/list buckets from client (RLS will block). Assume bucket exists.
       await this.ensureStorageBucket();
       
       // Generate default path if not provided
@@ -24,6 +24,7 @@ class CoreAdapter {
       
       return {
         url: urlData.publicUrl,
+        file_url: urlData.publicUrl, // many callers expect file_url
         path: filePath,
         size: file.size,
         name: file.name
@@ -142,24 +143,9 @@ class CoreAdapter {
 
   // Ensure storage bucket exists
   async ensureStorageBucket() {
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const uploadsBucket = buckets?.find(bucket => bucket.name === 'uploads');
-      
-      if (!uploadsBucket) {
-        const { error } = await supabase.storage.createBucket('uploads', {
-          public: true,
-          allowedMimeTypes: ['image/*', 'application/pdf', 'text/*'],
-          fileSizeLimit: 52428800 // 50MB
-        });
-        
-        if (error) {
-          console.warn('Could not create uploads bucket:', error);
-        }
-      }
-    } catch (error) {
-      console.warn('Could not check/create storage bucket:', error);
-    }
+    // No-op on client: listing/creating buckets requires service role. Make sure
+    // an 'uploads' bucket exists via Supabase Dashboard or SQL migration.
+    return;
   }
 
   // Image generation using Supabase Edge Functions

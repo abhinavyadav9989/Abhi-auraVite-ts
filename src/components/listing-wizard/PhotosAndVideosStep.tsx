@@ -3,6 +3,7 @@ import { Upload, Camera, Star, Trash2, Video, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { UploadFile } from '@/api/integrations';
 
 // LST-009: AI Photo Suggestions
 const AI_SUGGESTIONS = [
@@ -12,18 +13,25 @@ const AI_SUGGESTIONS = [
 export default function PhotosAndVideosStep({ data, updateData }) {
     const [uploading, setUploading] = useState(false);
 
-    const handleFileUpload = (files) => {
+    const handleFileUpload = async (files) => {
         setUploading(true);
-        // Mocking file upload and adding to state
-        const uploadedUrls = Array.from(files).map(file => URL.createObjectURL(file));
-        const newImages = [...data.images, ...uploadedUrls];
-        updateData({ images: newImages });
+        try {
+            const fileArray = Array.from(files || []);
+            const uploads = await Promise.all(
+                fileArray.map(async (file) => {
+                    const result = await UploadFile({ file });
+                    return result.file_url || result.url;
+                })
+            );
+            const newImages = [...(data.images || []), ...uploads.filter(Boolean)];
+            updateData({ images: newImages });
 
-        // If no hero image is set, set the first one
-        if (!data.hero_image_url && newImages.length > 0) {
-            updateData({ hero_image_url: newImages[0] });
+            if (!data.hero_image_url && newImages.length > 0) {
+                updateData({ hero_image_url: newImages[0] });
+            }
+        } finally {
+            setUploading(false);
         }
-        setUploading(false);
     };
     
     const setAsHero = (url) => {

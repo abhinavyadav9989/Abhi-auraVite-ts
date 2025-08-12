@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, Clock, History, Trash2, Eye } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { DealerDocument } from '@/api/entities';
+import { UploadFile } from '@/api/integrations';
 
 export default function DocumentLocker({ documents = [], dealer, userRole, onDocumentUpdate, documentTypes = [] }) {
   const [uploading, setUploading] = useState(null);
@@ -19,13 +20,12 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
     setUploading(docType);
 
     try {
-      // Mock upload process
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
-      
+      // Upload to storage and persist permanent URL
+      const { file_url, url } = await UploadFile({ file });
       const newDoc = {
         dealer_id: dealer.id,
         document_type: docType,
-        file_url: URL.createObjectURL(file), // Mock URL
+        file_url: file_url || url,
         file_name: file.name,
         file_size: file.size || 0, // Add fallback for size
         version: 1,
