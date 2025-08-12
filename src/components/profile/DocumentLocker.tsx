@@ -22,15 +22,23 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
     try {
       // Upload to storage and persist permanent URL
       const { file_url, url } = await UploadFile({ file });
-      const newDoc = {
-        dealer_id: dealer.id,
-        document_type: docType,
-        file_url: file_url || url,
-        file_name: file.name,
-        file_size: file.size || 0, // Add fallback for size
-        version: 1,
-        status: 'pending'
-      };
+      
+      // Debug: Log the uploaded file details
+      console.log('File upload details:', {
+        originalName: file.name,
+        uploadedUrl: file_url || url,
+        fileType: file.type,
+        fileSize: file.size
+      });
+      
+             const newDoc = {
+         dealer_id: dealer.id,
+         document_type: docType,
+         file_url: file_url || url,
+         file_name: file.name,
+         file_size: file.size || 0, // Add fallback for size
+         status: 'pending'
+       };
 
       // Check if a doc of this type exists and update it or create new
       const existingDoc = documents.find(d => d.document_type === docType);
@@ -77,14 +85,58 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
     );
   }
 
+  // Debug: Log document URLs
+  documents.forEach(doc => {
+    console.log('Document file URL:', doc.file_url, 'for document:', doc.document_type);
+  });
+
+  // Function to clear old Base44 documents and re-upload
+  const clearOldDocuments = async () => {
+    try {
+      // Delete all existing documents for this dealer
+      for (const doc of documents) {
+        await DealerDocument.delete(doc.id);
+      }
+      
+      toast({ 
+        title: "Success", 
+        description: "Old documents cleared. Please re-upload your documents." 
+      });
+      
+      // Refresh documents list
+      if (onDocumentUpdate) {
+        onDocumentUpdate(dealer.id);
+      }
+    } catch (error) {
+      console.error("Error clearing documents:", error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to clear old documents.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Document Locker
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Document Locker
+            </CardTitle>
+            {documents.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearOldDocuments}
+                className="text-red-600 hover:text-red-700"
+              >
+                Clear Old Documents
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {documentTypes.map(docTypeInfo => {
@@ -115,9 +167,9 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                       <FileText className="w-5 h-5 text-slate-500"/>
                       <div className="truncate">
                         <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                        <p className="text-xs text-slate-500">
-                          V{doc.version || 1} • {((doc.file_size || 0) / 1024).toFixed(1)} KB
-                        </p>
+                                                 <p className="text-xs text-slate-500">
+                           {((doc.file_size || 0) / 1024).toFixed(1)} KB
+                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

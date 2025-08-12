@@ -122,8 +122,8 @@ export default function Deals() {
     try {
       // Load transactions where user is buyer OR seller - using separate queries instead of $or
       const [buyerTransactions, sellerTransactions] = await Promise.all([
-        Transaction.filter({ buyer_id: dealer.id, archived: false }, '-created_date'),
-        Transaction.filter({ seller_id: dealer.id, archived: false }, '-created_date')
+        Transaction.filter({ buyer_id: dealer.id }),
+        Transaction.filter({ seller_id: dealer.id })
       ]);
 
       const allTransactions = [
@@ -136,7 +136,8 @@ export default function Deals() {
         (t, index, self) => index === self.findIndex(tx => tx.id === t.id)
       );
 
-      setTransactions(uniqueTransactions);
+      const nonArchived = uniqueTransactions.filter(t => t.status !== 'archived');
+      setTransactions(nonArchived);
 
       // Load related vehicle and dealer data safely
       const vehicleIds = [...new Set(uniqueTransactions.map((t: any) => t.vehicle_id))].filter(Boolean);
@@ -249,7 +250,7 @@ export default function Deals() {
   const handleBulkArchive = async () => {
     try {
       const updates = Array.from(selectedDeals).map(dealId => 
-        Transaction.update(dealId as string, { archived: true })
+        Transaction.update(dealId as string, { status: 'archived' })
       );
       await Promise.all(updates);
       setSelectedDeals(new Set());

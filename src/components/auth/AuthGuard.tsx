@@ -132,7 +132,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     };
 
     checkAuthAndOnboarding();
-  }, [isAuthenticated, user, loading, navigate, location.pathname, isPublicRoute]);
+  }, [isAuthenticated, user?.email, loading, isPublicRoute]); // Removed navigate and location.pathname to prevent loops
 
   // Show loading while checking authentication or onboarding
   if (loading || isCheckingOnboarding) {

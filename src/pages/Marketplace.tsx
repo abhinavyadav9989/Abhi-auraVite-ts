@@ -70,8 +70,11 @@ export default function Marketplace() {
         }
       }
 
-      const vehicles = await Vehicle.filter({ status: 'live' }, '-created_date', 100);
-      setAllVehicles(vehicles || []);
+      // Load only public, live vehicles from all dealers
+      const vehicles = await Vehicle.filter({ status: 'live', inventory_type: 'public' });
+      // Sort newest first client-side and keep as-is (can paginate later)
+      const sorted = (vehicles || []).sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      setAllVehicles(sorted);
 
       const dealerIds = [...new Set(vehicles.map(v => v.dealer_id).filter(Boolean))];
       const dealersData = await Promise.all(dealerIds.map(id => Dealer.get(id).catch(() => null)));

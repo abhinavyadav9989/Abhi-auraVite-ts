@@ -191,6 +191,12 @@ export default function Profile() {
     try {
       const docs = await DealerDocument.filter({ dealer_id: dealerId });
       setDocuments(docs || []);
+      
+      // Debug logs to check document types
+      console.log('Documents fetched:', docs);
+      console.log('Document types in database:', docs?.map(d => d.document_type) || []);
+      console.log('Expected document types:', DOCUMENT_TYPES.map(d => d.value));
+      console.log('Matching documents:', docs?.filter(d => DOCUMENT_TYPES.some(dt => dt.value === d.document_type)) || []);
     } catch (error) {
       console.error("Error loading documents:", error);
       setDocuments([]);

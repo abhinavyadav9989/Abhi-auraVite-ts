@@ -8,7 +8,7 @@ class CoreAdapter {
       // Do not attempt to create/list buckets from client (RLS will block). Assume bucket exists.
       await this.ensureStorageBucket();
       
-      // Generate default path if not provided
+      // Generate default path if not provided, preserving original file extension
       const filePath = path || `uploads/${Date.now()}_${file.name}`;
       
       const { data, error } = await supabase.storage

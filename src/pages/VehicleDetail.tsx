@@ -173,15 +173,19 @@ export default function VehicleDetail() {
 
   const loadRelatedVehicles = async (vehicleData) => {
     try {
-      const related = await Vehicle.filter({ make: vehicleData.make, status: 'live' }, '-created_date', 4);
-      setRelatedVehicles(related.filter(v => v.id !== vehicleData.id));
+      const related = await Vehicle.filter({ make: vehicleData.make, status: 'live' });
+      const pruned = (related || []).filter(v => v.id !== vehicleData.id);
+      // Optional: sort newest first and limit 4
+      const sorted = pruned.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      setRelatedVehicles(sorted.slice(0, 4));
     } catch (error) { console.error('Error loading related vehicles:', error); }
   };
 
   const loadDealHistory = async (vehicleData) => {
     try {
-      const deals = await Transaction.filter({ vehicle_id: vehicleData.id }, '-created_date');
-      setDealHistory(deals || []);
+      const deals = await Transaction.filter({ vehicle_id: vehicleData.id });
+      const sortedDeals = (deals || []).sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      setDealHistory(sortedDeals);
     } catch (error) { console.error('Error loading deal history:', error); }
   };
 
@@ -211,8 +215,9 @@ export default function VehicleDetail() {
 
   const loadInspections = async (vehicleId) => {
     try {
-      const inspectionData = await VehicleInspection.filter({ vehicle_id: vehicleId }, '-inspection_date');
-      setInspections(inspectionData || []);
+      const inspectionData = await VehicleInspection.filter({ vehicle_id: vehicleId });
+      const sortedInspections = (inspectionData || []).sort((a, b) => new Date(b.inspection_date || 0).getTime() - new Date(a.inspection_date || 0).getTime());
+      setInspections(sortedInspections);
     } catch (error) {
       console.error('Error loading inspections:', error);
       setInspections([]);

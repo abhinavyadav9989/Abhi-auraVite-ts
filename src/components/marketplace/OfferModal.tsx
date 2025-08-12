@@ -58,6 +58,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
         seller_id: vehicle.dealer_id,
         buyer_id: currentDealer.id,
         status: 'offer_made',
+        amount: offerAmount,
         initial_offer: offerAmount,
         current_offer: offerAmount,
         timeline: [{

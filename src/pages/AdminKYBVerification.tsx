@@ -35,6 +35,7 @@ export default function AdminKYBVerification() {
 
   const [dealer, setDealer] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [kybQueue, setKybQueue] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDocument, setSelectedDocument] = useState(null);
 
@@ -108,10 +109,11 @@ export default function AdminKYBVerification() {
         }
 
         if (!dealerId) {
-          navigate(createPageUrl('AdminDashboard'));
-          return;
+          // Show KYB queue list instead of redirecting
+          await loadKYBQueue();
+        } else {
+          await loadData();
         }
-        await loadData();
 
       } catch (error) {
         console.error('Authentication or data loading error:', error);
@@ -151,6 +153,18 @@ export default function AdminKYBVerification() {
     };
   }, [handleApprove, handleOpenRejectModal]); // Dependencies for useEffect
 
+  const loadKYBQueue = async () => {
+    try {
+      const pendingDealers = await Dealer.filter({
+        verification_status: ['documents_submitted', 'pending']
+      });
+      setKybQueue(pendingDealers);
+    } catch (error) {
+      console.error('Error loading KYB queue:', error);
+      toast({ title: 'Error', description: 'Failed to load KYB queue', variant: 'destructive' });
+    }
+  };
+
   const loadData = async () => {
     try {
       const [dealerData, docData] = await Promise.all([
@@ -172,6 +186,71 @@ export default function AdminKYBVerification() {
     return (
       <div className="p-8 flex justify-center items-center h-screen">
         <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // Show KYB queue if no dealerId is provided
+  if (!dealerId) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-100 min-h-screen">
+        <div className="max-w-7xl mx-auto space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="icon" onClick={() => navigate(createPageUrl('AdminDashboard'))}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">KYB Queue</h1>
+                <p className="text-slate-600">Pending dealer verifications</p>
+              </div>
+            </div>
+          </div>
+
+          {/* KYB Queue List */}
+          <div className="grid gap-4">
+            {kybQueue.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <ShieldCheck className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Pending KYBs</h3>
+                  <p className="text-slate-600">All dealer verifications are up to date.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              kybQueue.map((dealer) => (
+                <Card key={dealer.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Building2 className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{dealer.business_name || dealer.name}</h3>
+                          <p className="text-slate-600">{dealer.email}</p>
+                          <p className="text-sm text-slate-500">
+                            Status: <Badge variant="outline">{dealer.verification_status}</Badge>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => navigate(`${createPageUrl('AdminKYBVerification')}?dealerId=${dealer.id}`)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Review
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     );
   }

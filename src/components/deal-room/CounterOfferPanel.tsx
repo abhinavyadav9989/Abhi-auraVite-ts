@@ -14,8 +14,8 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-export default function CounterOfferPanel({ lastOffer, onSubmitCounterOffer }) {
-  const [counterAmount, setCounterAmount] = useState(lastOffer);
+export default function CounterOfferPanel({ currentOffer, userRole, onCounter, onCancel }) {
+  const [counterAmount, setCounterAmount] = useState(currentOffer);
   
   const handleAmountChange = (e) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
@@ -28,7 +28,7 @@ export default function CounterOfferPanel({ lastOffer, onSubmitCounterOffer }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmitCounterOffer(counterAmount);
+    onCounter(counterAmount);
   };
   
   return (
@@ -57,7 +57,12 @@ export default function CounterOfferPanel({ lastOffer, onSubmitCounterOffer }) {
               </Button>
             </div>
           </div>
-          <Button type="submit" className="w-full">Submit Counter Offer</Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1">Submit Counter Offer</Button>
+          </div>
         </form>
       </CardContent>
     </Card>

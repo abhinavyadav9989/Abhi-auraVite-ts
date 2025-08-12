@@ -66,9 +66,8 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true);
       
-      // Load core statistics
-      const [users, dealers, vehicles, transactions] = await Promise.all([
-        User.list(),
+      // Load core statistics (skip users list due to auth permissions)
+      const [dealers, vehicles, transactions] = await Promise.all([
         Dealer.list(),
         Vehicle.list(),
         Transaction.list()
@@ -90,7 +89,7 @@ export default function AdminDashboard() {
       const gmvThisMonth = completedThisMonth.reduce((sum, t) => sum + (t.final_price || 0), 0);
 
       setStats({
-        totalUsers: users.length,
+        totalUsers: dealers.length, // Use dealers count as proxy for users
         totalDealers: dealers.length,
         totalVehicles: vehicles.length,
         totalTransactions: transactions.length,

@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarContent, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Eye, 
   IndianRupee, 
@@ -29,6 +29,18 @@ export default function DealRow({
   statusColors 
 }) {
   const formatPrice = (price) => price ? `₹${(price / 100000).toFixed(1)}L` : 'N/A';
+
+  // Safe date formatting function
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return format(date, 'MMM d');
+    } catch (error) {
+      return 'N/A';
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -131,7 +143,7 @@ export default function DealRow({
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <span className="capitalize">{userRole}</span>
                   <span>•</span>
-                  <span>{format(new Date(transaction.created_date), 'MMM d')}</span>
+                  <span>{formatDate(transaction.created_at)}</span>
                 </div>
               </div>
             </div>
