@@ -84,6 +84,48 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <Label htmlFor="vehicle_type">Vehicle Type</Label>
+          <Select value={data.vehicle_type || 'personal'} onValueChange={value => handleUpdate('vehicle_type', value)}>
+            <SelectTrigger id="vehicle_type"><SelectValue placeholder="Select Vehicle Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="personal">Personal Vehicle</SelectItem>
+              <SelectItem value="commercial">Commercial Vehicle</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="kilometers">Kilometers Driven</Label>
+          <Input 
+            id="kilometers" 
+            type="number" 
+            placeholder="Enter kilometers driven"
+            value={data.kilometers || ''} 
+            onChange={e => handleUpdate('kilometers', e.target.value)} 
+          />
+        </div>
+        <div>
+          <Label htmlFor="color">Color</Label>
+          <Input 
+            id="color" 
+            placeholder="Enter vehicle color"
+            value={data.color || ''} 
+            onChange={e => handleUpdate('color', e.target.value)} 
+          />
+        </div>
+        <div>
+          <Label htmlFor="ownership">Number of Owners</Label>
+          <Select value={data.ownership || 'first'} onValueChange={value => handleUpdate('ownership', value)}>
+            <SelectTrigger id="ownership"><SelectValue placeholder="Select Number of Owners" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="first">1st Owner</SelectItem>
+              <SelectItem value="second">2nd Owner</SelectItem>
+              <SelectItem value="third">3rd Owner</SelectItem>
+              <SelectItem value="fourth">4th Owner</SelectItem>
+              <SelectItem value="fifth">5th Owner</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-3 pt-4 border-t">

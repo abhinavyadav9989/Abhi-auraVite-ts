@@ -27,6 +27,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/api/supabaseClient'; // Added supabase import
 
 export default function AdminKYBVerification() {
   const [searchParams] = useSearchParams();
@@ -69,12 +70,27 @@ export default function AdminKYBVerification() {
       
       const currentUser = await User.me();
 
-      await Dealer.update(dealerId, { 
-        verification_status: status,
-        verification_notes: notes,
-        verified_by: currentUser.email,
-        verified_at: new Date().toISOString()
-      });
+      // Use SECURITY DEFINER function instead of regular update
+      const { data: success, error } = await supabase
+        .rpc('update_dealer_verification', {
+          dealer_id: dealerId,
+          new_status: status,
+          notes: notes,
+          verified_by_email: currentUser.email
+        });
+
+      if (error) {
+        console.error('Error calling update_dealer_verification:', error);
+        // Fallback to regular update if function doesn't exist
+        await Dealer.update(dealerId, { 
+          verification_status: status,
+          verification_notes: notes,
+          verified_by: currentUser.email,
+          verified_at: new Date().toISOString()
+        });
+      } else if (!success) {
+        throw new Error('Failed to update dealer verification status');
+      }
 
       toast({ title: toastTitle, description: notes });
       navigate(createPageUrl('AdminDashboard'));
@@ -155,10 +171,34 @@ export default function AdminKYBVerification() {
 
   const loadKYBQueue = async () => {
     try {
-      const pendingDealers = await Dealer.filter({
-        verification_status: ['documents_submitted', 'pending']
-      });
-      setKybQueue(pendingDealers);
+      // Debug: Check JWT token information
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log('=== JWT DEBUG INFO ===');
+      console.log('Current user:', user);
+      console.log('User email:', user?.email);
+      console.log('User metadata:', user?.user_metadata);
+      console.log('App metadata:', user?.app_metadata);
+      console.log('Session:', session);
+      console.log('Access token exists:', !!session?.access_token);
+      console.log('=== END JWT DEBUG ===');
+
+      // Use direct SQL query with SECURITY DEFINER function
+      const { data: pendingDealers, error } = await supabase
+        .rpc('get_pending_kyb_dealers');
+
+      if (error) {
+        console.error('Error calling get_pending_kyb_dealers:', error);
+        // Fallback to regular filter if function doesn't exist
+        const fallbackDealers = await Dealer.filter({
+          verification_status: ['documents_submitted', 'pending']
+        });
+        setKybQueue(fallbackDealers);
+      } else {
+        console.log('Pending dealers from function:', pendingDealers);
+        setKybQueue(pendingDealers || []);
+      }
     } catch (error) {
       console.error('Error loading KYB queue:', error);
       toast({ title: 'Error', description: 'Failed to load KYB queue', variant: 'destructive' });
@@ -229,10 +269,10 @@ export default function AdminKYBVerification() {
                         </div>
                         <div>
                           <h3 className="font-semibold text-lg">{dealer.business_name || dealer.name}</h3>
-                          <p className="text-slate-600">{dealer.email}</p>
-                          <p className="text-sm text-slate-500">
-                            Status: <Badge variant="outline">{dealer.verification_status}</Badge>
-                          </p>
+                                                     <p className="text-slate-600">{dealer.email}</p>
+                           <div className="text-sm text-slate-500">
+                             Status: <Badge variant="outline">{dealer.verification_status}</Badge>
+                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Vehicle } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Loader2, Save, Send } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { InvokeLLM } from '@/api/integrations';
+import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
 
 // Import step components
 import RegistrationInputStep from '@/components/listing-wizard/RegistrationInputStep';
@@ -48,6 +49,7 @@ const STEPS = [
 
 export default function AddVehicle() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -55,6 +57,10 @@ export default function AddVehicle() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dealer, setDealer] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<'draft' | 'live' | null>(null);
   const [vehicleData, setVehicleData] = useState<any>({
     registration_number: '',
     make: '',
@@ -66,6 +72,7 @@ export default function AddVehicle() {
     kilometers: '',
     ownership: 'first',
     color: '',
+    vehicle_type: 'personal',
     description: '',
     service_history: [],
     inspection_report_url: '',
@@ -83,9 +90,34 @@ export default function AddVehicle() {
     custom_attributes: {}, // New field
   });
 
+  // Check for edit mode parameters
+  useEffect(() => {
+    const id = searchParams.get('id');
+    const mode = searchParams.get('mode');
+    
+    if (id && mode === 'edit') {
+      setIsEditMode(true);
+      setVehicleId(id);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     loadDealer();
   }, []);
+
+  // Load existing vehicle data if in edit mode
+  useEffect(() => {
+    if (isEditMode && vehicleId && dealer) {
+      loadExistingVehicle();
+    }
+  }, [isEditMode, vehicleId, dealer]);
+
+  // Set initial step based on edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      setCurrentStep(1); // Start from vehicle details step (skip registration input)
+    }
+  }, [isEditMode]);
 
   const loadDealer = async () => {
     try {
@@ -137,6 +169,30 @@ export default function AddVehicle() {
       navigate(createPageUrl('Dashboard'));
     } finally {
       setIsInitializing(false);
+    }
+  };
+
+  const loadExistingVehicle = async () => {
+    if (!vehicleId) return;
+    setIsLoading(true);
+    try {
+      const vehicle = await Vehicle.get(vehicleId);
+      setVehicleData(vehicle);
+      setIsEditMode(true);
+      toast({
+        title: "Editing Existing Vehicle",
+        description: `You are editing vehicle: ${vehicle.registration_number}`,
+      });
+    } catch (error) {
+      console.error('Error loading existing vehicle:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load vehicle details for editing.",
+        variant: "destructive",
+      });
+      navigate(createPageUrl('Inventory'));
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -221,6 +277,12 @@ export default function AddVehicle() {
   };
   
   const handleSubmit = async (status: 'draft' | 'live') => {
+    // Show password confirmation modal first
+    setShowPasswordModal(true);
+    setPendingStatus(status);
+  };
+
+  const handlePasswordConfirm = async () => {
     setIsSubmitting(true);
     try {
       // Clean the data before sending to database
@@ -247,7 +309,7 @@ export default function AddVehicle() {
       
       const finalPayload = { 
         ...cleanData, 
-        status, 
+        status: pendingStatus, 
         dealer_id: dealer.id,
         location_city: dealer.city,
         location_state: dealer.state
@@ -255,12 +317,19 @@ export default function AddVehicle() {
       
       console.log('AddVehicle - Final payload being sent to database:', finalPayload);
       
-      await Vehicle.create(finalPayload);
-      
-      toast({
-        title: `Listing ${status === 'draft' ? 'Saved' : 'Published'}!`,
-        description: `Your vehicle has been successfully ${status === 'draft' ? 'saved as a draft' : 'added to the marketplace'}.`,
-      });
+      if (isEditMode && vehicleId) {
+        await Vehicle.update(vehicleId, finalPayload);
+        toast({
+          title: `Listing ${pendingStatus === 'draft' ? 'Saved' : 'Published'}!`,
+          description: `Your vehicle has been successfully ${pendingStatus === 'draft' ? 'saved as a draft' : 'updated'}.`,
+        });
+      } else {
+        await Vehicle.create(finalPayload);
+        toast({
+          title: `Listing ${pendingStatus === 'draft' ? 'Saved' : 'Published'}!`,
+          description: `Your vehicle has been successfully ${pendingStatus === 'draft' ? 'saved as a draft' : 'added to the marketplace'}.`,
+        });
+      }
       
       navigate(createPageUrl('Inventory'));
     } catch (error) {
@@ -272,6 +341,11 @@ export default function AddVehicle() {
       });
     }
     setIsSubmitting(false);
+  };
+
+  const handlePasswordModalClose = () => {
+    setShowPasswordModal(false);
+    setPendingStatus(null);
   };
 
   // Show loading while initializing
@@ -306,8 +380,15 @@ export default function AddVehicle() {
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Inventory
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">Add New Vehicle</h1>
-          <p className="text-slate-600">Follow the steps to create a new listing.</p>
+          <h1 className="text-3xl font-bold text-slate-900">
+            {isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
+          </h1>
+          <p className="text-slate-600">
+            {isEditMode 
+              ? `Editing vehicle: ${vehicleData.registration_number || 'Loading...'}`
+              : 'Follow the steps to create a new listing.'
+            }
+          </p>
         </div>
 
         {/* Progress Bar */}
@@ -341,7 +422,7 @@ export default function AddVehicle() {
           <Button
             variant="outline"
             onClick={handleBack}
-            disabled={currentStep === 0 || isSubmitting}
+            disabled={(currentStep === 0 && !isEditMode) || (currentStep === 1 && isEditMode) || isSubmitting}
           >
             Back
           </Button>
@@ -368,7 +449,7 @@ export default function AddVehicle() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : currentStep === STEPS.length - 1 ? (
                 <span className="flex items-center gap-2">
-                  <Send className="w-4 h-4" /> Publish Now
+                  <Send className="w-4 h-4" /> {isEditMode ? 'Update Vehicle' : 'Publish Now'}
                 </span>
               ) : (
                 'Next Step'
@@ -377,6 +458,20 @@ export default function AddVehicle() {
           </div>
         </div>
       </div>
+
+      <PasswordConfirmationModal
+        isOpen={showPasswordModal}
+        onClose={handlePasswordModalClose}
+        onConfirm={handlePasswordConfirm}
+        title={isEditMode ? 'Update Vehicle Listing' : 'Publish Vehicle Listing'}
+        description={
+          isEditMode 
+            ? 'Please enter your password to update this vehicle listing.'
+            : 'Please enter your password to publish this vehicle listing.'
+        }
+        confirmText={isEditMode ? 'Update Vehicle' : 'Publish Listing'}
+        actionType="edit"
+      />
     </div>
   );
 }

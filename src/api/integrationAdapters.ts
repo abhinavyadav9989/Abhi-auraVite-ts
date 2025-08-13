@@ -8,12 +8,33 @@ class CoreAdapter {
       // Do not attempt to create/list buckets from client (RLS will block). Assume bucket exists.
       await this.ensureStorageBucket();
       
+      // Validate file type and prevent PDF conversion of images
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedDocumentTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes];
+      
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`File type ${file.type} is not supported. Please upload images (JPEG, PNG, GIF, WebP) or documents (PDF, DOC, DOCX).`);
+      }
+      
       // Generate default path if not provided, preserving original file extension
       const filePath = path || `uploads/${Date.now()}_${file.name}`;
       
+      // Ensure the file extension matches the actual file type
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      const mimeExtension = file.type.split('/')[1];
+      
+      // If file extension doesn't match MIME type, log a warning but proceed
+      if (fileExtension && mimeExtension && !fileExtension.includes(mimeExtension)) {
+        console.warn(`File extension (${fileExtension}) doesn't match MIME type (${file.type}) for file: ${file.name}`);
+      }
+      
       const { data, error } = await supabase.storage
         .from('uploads')
-        .upload(filePath, file, options);
+        .upload(filePath, file, {
+          ...options,
+          contentType: file.type // Explicitly set the content type
+        });
       
       if (error) throw error;
       
@@ -22,12 +43,22 @@ class CoreAdapter {
         .from('uploads')
         .getPublicUrl(filePath);
       
+      // Log the upload details for debugging
+      console.log('File upload successful:', {
+        originalName: file.name,
+        originalType: file.type,
+        uploadedPath: filePath,
+        publicUrl: urlData.publicUrl,
+        fileSize: file.size
+      });
+      
       return {
         url: urlData.publicUrl,
         file_url: urlData.publicUrl, // many callers expect file_url
         path: filePath,
         size: file.size,
-        name: file.name
+        name: file.name,
+        type: file.type // Include the original file type
       };
     } catch (error) {
       console.error('Upload error:', error);

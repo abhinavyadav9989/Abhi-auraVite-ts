@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, X, Clock, TrendingUp } from 'lucide-react';
 import { Vehicle } from '@/api/entities';
 import { Dealer } from '@/api/entities';
@@ -66,8 +64,8 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
     try {
       // Fetch vehicles and dealers for suggestions
       const [vehicles, dealers] = await Promise.all([
-        Vehicle.filter({ status: 'live' }, '-created_date', 20),
-        Dealer.list('-created_date', 10)
+        Vehicle.filter({ status: 'live' }),
+        Dealer.list()
       ]);
 
       const vehicleSuggestions = vehicles
@@ -124,6 +122,20 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
     return () => clearTimeout(timer);
   }, [query, fetchSuggestions]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && !event.target.closest('.fuzzy-search-container')) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const handleSearch = (searchTerm) => {
     if (!searchTerm.trim()) return;
     
@@ -152,85 +164,97 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
   };
 
   return (
-    <div className="relative w-full">
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch(query);
-                }
-              }}
-              placeholder={placeholder}
-              className="pl-10 pr-4"
-            />
-          </div>
-        </PopoverTrigger>
-        
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <CommandList>
-              {/* Search History */}
-              {searchHistory.length > 0 && query.length === 0 && (
-                <CommandGroup heading="Recent Searches">
-                  {searchHistory.slice(0, 5).map((term, index) => (
-                    <CommandItem
-                      key={index}
-                      onSelect={() => handleSuggestionClick({ text: term })}
-                      className="flex items-center gap-2"
-                    >
-                      <Clock className="w-4 h-4 text-slate-400" />
-                      <span>{term}</span>
-                    </CommandItem>
-                  ))}
-                  <CommandItem onSelect={clearSearchHistory} className="text-slate-500">
-                    <X className="w-4 h-4 mr-2" />
-                    Clear history
-                  </CommandItem>
-                </CommandGroup>
-              )}
+    <div className="relative w-full fuzzy-search-container">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSearch(query);
+            }
+          }}
+          placeholder={placeholder}
+          className="pl-10 pr-4"
+        />
+      </div>
+      
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
+          {/* Search History */}
+          {searchHistory.length > 0 && query.length === 0 && (
+            <div className="p-2">
+              <h3 className="text-sm font-semibold mb-2">Recent Searches</h3>
+              <div className="flex flex-col gap-1">
+                {searchHistory.slice(0, 5).map((term, index) => (
+                  <Button
+                    key={index}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSuggestionClick({ text: term })}
+                    className="justify-start text-sm"
+                  >
+                    <Clock className="w-4 h-4 text-slate-400 mr-2" />
+                    <span>{term}</span>
+                  </Button>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSearchHistory}
+                  className="justify-start text-sm text-red-500"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear history
+                </Button>
+              </div>
+            </div>
+          )}
 
-              {/* Live Suggestions */}
-              {suggestions.length > 0 && query.length > 0 && (
-                <CommandGroup heading="Suggestions">
-                  {suggestions.map((suggestion, index) => (
-                    <CommandItem
-                      key={index}
-                      onSelect={() => handleSuggestionClick(suggestion)}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-slate-400" />
-                        <div>
-                          <div className="font-medium">{suggestion.text}</div>
-                          <div className="text-xs text-slate-500">{suggestion.subtext}</div>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {suggestion.type}
-                      </Badge>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
+          {/* Live Suggestions */}
+          {suggestions.length > 0 && query.length > 0 && (
+            <div className="p-2">
+              <h3 className="text-sm font-semibold mb-2">Suggestions</h3>
+              <div className="flex flex-col gap-1">
+                {suggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="justify-start text-sm"
+                  >
+                    <TrendingUp className="w-4 h-4 text-slate-400 mr-2" />
+                    <div>
+                      <div className="font-medium">{suggestion.text}</div>
+                      <div className="text-xs text-slate-500">{suggestion.subtext}</div>
+                    </div>
+                    <Badge variant="outline" className="text-xs ml-auto">
+                      {suggestion.type}
+                    </Badge>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
-              {/* Empty State */}
-              {query.length > 0 && suggestions.length === 0 && !isLoading && (
-                <CommandEmpty>No results found for &quot;{query}&quot;</CommandEmpty>
-              )}
+          {/* Empty State */}
+          {query.length > 0 && suggestions.length === 0 && !isLoading && (
+            <div className="p-2 text-center text-sm text-slate-500">
+              No results found for &quot;{query}&quot;
+            </div>
+          )}
 
-              {isLoading && (
-                <CommandEmpty>Searching...</CommandEmpty>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          {isLoading && (
+            <div className="p-2 text-center text-sm text-slate-500">
+              Searching...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

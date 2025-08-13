@@ -37,6 +37,32 @@ export default function KybDocumentUpload({ data, updateData }) {
       return;
     }
 
+    // Validate file type
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload images (JPEG, PNG, GIF, WebP) or documents (PDF, DOC, DOCX).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "File size must be less than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('KybDocumentUpload - Starting upload for:', {
       docId,
       fileName: file.name,
@@ -56,6 +82,7 @@ export default function KybDocumentUpload({ data, updateData }) {
             [docId]: {
               url: response.file_url,
               name: file.name,
+              type: file.type, // Store the original file type
               status: 'uploaded',
             },
           },
@@ -68,7 +95,7 @@ export default function KybDocumentUpload({ data, updateData }) {
       console.error("Upload error:", error);
       toast({
         title: "Upload Failed",
-        description: `Could not upload ${file.name}. Please try again.`,
+        description: error.message || `Could not upload ${file.name}. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -124,7 +151,8 @@ export default function KybDocumentUpload({ data, updateData }) {
                         type="file"
                         className="hidden"
                         onChange={(e) => handleFileChange(doc.id, e.target.files[0])}
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+                        title="Accepted formats: PDF, JPEG, PNG, GIF, WebP, DOC, DOCX (Max 10MB)"
                       />
                     </label>
                   </Button>

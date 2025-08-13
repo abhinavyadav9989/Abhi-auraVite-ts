@@ -34,6 +34,11 @@ const OWNERSHIP_OPTIONS = [
   { value: 'fourth_plus', label: 'Fourth+ Owner' }
 ];
 
+const VEHICLE_TYPE_OPTIONS = [
+  { value: 'personal', label: 'Personal Vehicle' },
+  { value: 'commercial', label: 'Commercial Vehicle' }
+];
+
 export default function VehicleSpecs({ data, onChange }) {
   const handleChange = (field, value) => {
     onChange({ [field]: value });
@@ -52,16 +57,6 @@ export default function VehicleSpecs({ data, onChange }) {
                 value={data.engine_cc || ''}
                 onChange={(e) => handleChange('engine_cc', parseInt(e.target.value))}
                 placeholder="e.g., 150"
-              />
-            </div>
-            <div>
-              <Label htmlFor="kilometers">Kilometers</Label>
-              <Input
-                id="kilometers"
-                type="number"
-                value={data.kilometers || ''}
-                onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-                placeholder="e.g., 25000"
               />
             </div>
           </div>
@@ -86,16 +81,6 @@ export default function VehicleSpecs({ data, onChange }) {
                   <SelectItem value="8">8 Seater</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label htmlFor="kilometers">Kilometers</Label>
-              <Input
-                id="kilometers"
-                type="number"
-                value={data.kilometers || ''}
-                onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-                placeholder="e.g., 45000"
-              />
             </div>
           </div>
         );
@@ -126,16 +111,6 @@ export default function VehicleSpecs({ data, onChange }) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="kilometers">Kilometers</Label>
-              <Input
-                id="kilometers"
-                type="number"
-                value={data.kilometers || ''}
-                onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-                placeholder="e.g., 35000"
-              />
-            </div>
           </div>
         );
 
@@ -152,16 +127,6 @@ export default function VehicleSpecs({ data, onChange }) {
                 value={data.load_capacity_tonnes || ''}
                 onChange={(e) => handleChange('load_capacity_tonnes', parseFloat(e.target.value))}
                 placeholder="e.g., 3.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="kilometers">Kilometers</Label>
-              <Input
-                id="kilometers"
-                type="number"
-                value={data.kilometers || ''}
-                onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-                placeholder="e.g., 125000"
               />
             </div>
           </div>
@@ -181,32 +146,11 @@ export default function VehicleSpecs({ data, onChange }) {
                 placeholder="e.g., 2500"
               />
             </div>
-            <div>
-              <Label htmlFor="kilometers">Kilometers (if applicable)</Label>
-              <Input
-                id="kilometers"
-                type="number"
-                value={data.kilometers || ''}
-                onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-                placeholder="Optional"
-              />
-            </div>
           </div>
         );
 
       default:
-        return (
-          <div>
-            <Label htmlFor="kilometers">Kilometers</Label>
-            <Input
-              id="kilometers"
-              type="number"
-              value={data.kilometers || ''}
-              onChange={(e) => handleChange('kilometers', parseInt(e.target.value))}
-              placeholder="e.g., 25000"
-            />
-          </div>
-        );
+        return null;
     }
   };
 
@@ -250,38 +194,28 @@ export default function VehicleSpecs({ data, onChange }) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Category-specific fields */}
-          {renderCategorySpecificFields()}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="ownership">Ownership</Label>
-              <Select value={data.ownership || ''} onValueChange={(value) => handleChange('ownership', value)}>
+              <Label htmlFor="vehicle_type">Vehicle Type</Label>
+              <Select value={data.vehicle_type || ''} onValueChange={(value) => handleChange('vehicle_type', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select ownership" />
+                  <SelectValue placeholder="Select vehicle type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {OWNERSHIP_OPTIONS.map(owner => (
-                    <SelectItem key={owner.value} value={owner.value}>
-                      {owner.label}
+                  {VEHICLE_TYPE_OPTIONS.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <Label htmlFor="color">Color</Label>
-              <Input
-                id="color"
-                value={data.color || ''}
-                onChange={(e) => handleChange('color', e.target.value)}
-                placeholder="e.g., White, Red, Blue"
-              />
-            </div>
           </div>
+
+          {/* Category-specific fields */}
+          {renderCategorySpecificFields()}
+
+
 
           {/* Service-specific fields */}
           {data.inventory_type === 'service' && (

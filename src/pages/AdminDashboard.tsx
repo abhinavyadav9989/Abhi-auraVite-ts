@@ -4,6 +4,7 @@ import { Dealer } from '@/api/entities';
 import { Vehicle } from '@/api/entities';
 import { Transaction } from '@/api/entities';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/api/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,19 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true);
       
+      // Debug: Check JWT token information
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log('=== ADMIN DASHBOARD JWT DEBUG ===');
+      console.log('Current user:', user);
+      console.log('User email:', user?.email);
+      console.log('User metadata:', user?.user_metadata);
+      console.log('App metadata:', user?.app_metadata);
+      console.log('Session:', session);
+      console.log('Access token exists:', !!session?.access_token);
+      console.log('=== END ADMIN DASHBOARD JWT DEBUG ===');
+
       // Load core statistics (skip users list due to auth permissions)
       const [dealers, vehicles, transactions] = await Promise.all([
         Dealer.list(),

@@ -14,7 +14,8 @@ import {
   Star,
   Phone,
   MessageCircle,
-  Share2
+  Share2,
+  Car
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -46,7 +47,8 @@ export default function OverviewTab({ vehicle, dealer }) {
     { icon: Fuel, label: 'Fuel Type', value: vehicle.fuel_type },
     { icon: Settings, label: 'Transmission', value: vehicle.transmission },
     { icon: Users, label: 'Ownership', value: `${vehicle.ownership} owner` },
-    { icon: Palette, label: 'Color', value: vehicle.color || 'Not specified' }
+    { icon: Palette, label: 'Color', value: vehicle.color || 'Not specified' },
+    { icon: Car, label: 'Vehicle Type', value: vehicle.vehicle_type ? vehicle.vehicle_type.charAt(0).toUpperCase() + vehicle.vehicle_type.slice(1) : 'Not specified' }
   ];
 
   return (

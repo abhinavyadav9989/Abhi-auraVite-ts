@@ -54,6 +54,7 @@ export default function VehicleCard({
     transmission: vehicle?.transmission || 'N/A',
     location_city: vehicle?.location_city || 'N/A',
     images: Array.isArray(vehicle?.images) ? vehicle.images : [],
+    hero_image_url: vehicle?.hero_image_url || '',
     created_date: vehicle?.created_date || new Date().toISOString(),
     status: vehicle?.status || 'draft',
     dealer_id: vehicle?.dealer_id || '',
@@ -146,10 +147,11 @@ export default function VehicleCard({
   };
   
   const daysAgo = vehicleData.created_date 
-    ? Math.floor((new Date() - new Date(vehicleData.created_date)) / (1000 * 60 * 60 * 24))
+    ? Math.floor((new Date().getTime() - new Date(vehicleData.created_date).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
   const isNew = daysAgo <= 7;
-  const heroImage = vehicleData.images.length > 0 ? vehicleData.images[0] : null;
+  // Use hero_image_url if available, otherwise fall back to first image
+  const heroImage = vehicleData.hero_image_url || (vehicleData.images.length > 0 ? vehicleData.images[0] : null);
 
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200 hover:border-blue-400 flex flex-col">
@@ -162,8 +164,12 @@ export default function VehicleCard({
                 alt={`${vehicleData.make} ${vehicleData.model}`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const nextSibling = target.nextSibling as HTMLElement;
+                  if (nextSibling) {
+                    nextSibling.style.display = 'flex';
+                  }
                 }}
               />
             ) : null}
@@ -235,7 +241,7 @@ export default function VehicleCard({
               </div>
               <div className="flex items-center gap-1">
                 <Settings2 className="w-4 h-4" />
-                <span>{Math.floor(vehicleData.kilometers / 1000)}k km</span>
+                <span>{vehicleData.kilometers > 0 ? `${Math.floor(vehicleData.kilometers / 1000)}k km` : '0k km'}</span>
               </div>
             </div>
 

@@ -17,6 +17,7 @@ import EmptyState from "../components/inventory/EmptyState";
 import ShareLinkModal from '../components/inventory/ShareLinkModal';
 import InventoryTypeSwitcher from '../components/inventory/InventoryTypeSwitcher';
 import { useToast } from "@/components/ui/use-toast";
+import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
 
 const INVENTORY_TYPE_FILTERS = [
   { value: 'all', label: 'All', icon: Globe },
@@ -42,6 +43,8 @@ export default function Inventory() {
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [sharingVehicle, setSharingVehicle] = useState(null);
+  const [deletingVehicle, setDeletingVehicle] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   
   // Filter states for InventoryFilters component
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
@@ -58,7 +61,7 @@ export default function Inventory() {
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
       if (dealerProfile.length > 0) {
         setDealer(dealerProfile[0]);
-        const vehicleData = await Vehicle.filter({ dealer_id: dealerProfile[0].id }, '-created_date');
+        const vehicleData = await Vehicle.filter({ dealer_id: dealerProfile[0].id });
         setVehicles(vehicleData);
       }
     } catch (error) { console.error("Error loading inventory:", error); }
@@ -109,10 +112,54 @@ export default function Inventory() {
 
   const handleArchiveSelected = async () => { /* ... existing logic ... */ };
   
-  const handleVehicleSelect = (vehicleId, selected) => {
+  const handleVehicleSelect = (vehicleId: string, selected: boolean) => {
     const newSelected = new Set(selectedVehicles);
-    if (selected) newSelected.add(vehicleId); else newSelected.delete(vehicleId);
+    if (selected) {
+      newSelected.add(vehicleId);
+    } else {
+      newSelected.delete(vehicleId);
+    }
     setSelectedVehicles(newSelected);
+  };
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    setDeletingVehicle(vehicleId);
+    setShowPasswordModal(true);
+  };
+
+  const confirmDeleteVehicleWithPassword = async () => {
+    if (!deletingVehicle) return;
+
+    try {
+      await Vehicle.delete(deletingVehicle);
+      toast({
+        title: "Vehicle Deleted",
+        description: "The vehicle has been successfully deleted.",
+      });
+      // Remove from local state
+      setVehicles(prev => prev.filter(v => v.id !== deletingVehicle));
+      // Remove from selected if it was selected
+      setSelectedVehicles(prev => {
+        const newSelected = new Set(prev);
+        newSelected.delete(deletingVehicle);
+        return newSelected;
+      });
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete the vehicle. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingVehicle(null);
+      setShowPasswordModal(false);
+    }
+  };
+
+  const handlePasswordModalClose = () => {
+    setShowPasswordModal(false);
+    setDeletingVehicle(null);
   };
 
   const handleSelectAll = (e) => {
@@ -212,7 +259,7 @@ export default function Inventory() {
                 <div className="flex items-center gap-2 mb-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedVehicles.size === filteredVehicles.length && filteredVehicles.length > 0} className="w-4 h-4 rounded" /> Select all</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredVehicles.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} isSelected={selectedVehicles.has(vehicle.id)} onSelect={handleVehicleSelect} onShare={() => setSharingVehicle(vehicle)} />
+                    <VehicleCard key={vehicle.id} vehicle={vehicle} isSelected={selectedVehicles.has(vehicle.id)} onSelect={handleVehicleSelect} onShare={() => setSharingVehicle(vehicle)} onDelete={handleDeleteVehicle} />
                 ))}
                 </div>
             </div>
@@ -229,6 +276,44 @@ export default function Inventory() {
             onSuccess={() => { loadInventory(); setSelectedVehicles(new Set()); }}
           />
         )}
+
+        {/* Delete Confirmation Dialog */}
+        {deletingVehicle && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-96">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Delete Vehicle</h3>
+                <p className="text-slate-600 mb-6">
+                  Are you sure you want to delete this vehicle? This action cannot be undone.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setDeletingVehicle(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={confirmDeleteVehicleWithPassword}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <PasswordConfirmationModal
+          isOpen={showPasswordModal}
+          onClose={handlePasswordModalClose}
+          onConfirm={confirmDeleteVehicleWithPassword}
+          title="Delete Vehicle Listing"
+          description="This action cannot be undone. Please enter your password to permanently delete this vehicle listing."
+          confirmText="Delete Listing"
+          actionType="delete"
+        />
       </div>
     </div>
   );

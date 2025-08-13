@@ -17,28 +17,61 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
       return;
     }
     
+    // Validate file type before upload
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({ 
+        title: "Invalid File Type", 
+        description: "Please upload images (JPEG, PNG, GIF, WebP) or documents (PDF, DOC, DOCX).", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({ 
+        title: "File Too Large", 
+        description: "File size must be less than 10MB.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
     setUploading(docType);
 
     try {
       // Upload to storage and persist permanent URL
-      const { file_url, url } = await UploadFile({ file });
+      const { file_url, url, type } = await UploadFile({ file });
       
       // Debug: Log the uploaded file details
       console.log('File upload details:', {
         originalName: file.name,
+        originalType: file.type,
         uploadedUrl: file_url || url,
-        fileType: file.type,
+        returnedType: type,
         fileSize: file.size
       });
       
-             const newDoc = {
-         dealer_id: dealer.id,
-         document_type: docType,
-         file_url: file_url || url,
-         file_name: file.name,
-         file_size: file.size || 0, // Add fallback for size
-         status: 'pending'
-       };
+      // Verify the uploaded file type matches the original
+      if (type && type !== file.type) {
+        console.warn(`File type mismatch: Original ${file.type}, Uploaded ${type}`);
+      }
+      
+      const newDoc = {
+        dealer_id: dealer.id,
+        document_type: docType,
+        file_url: file_url || url,
+        file_name: file.name,
+        file_size: file.size || 0, // Add fallback for size
+        file_type: file.type, // Store the original file type
+        status: 'pending'
+      };
 
       // Check if a doc of this type exists and update it or create new
       const existingDoc = documents.find(d => d.document_type === docType);
@@ -54,7 +87,11 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
       }
     } catch (error) {
       console.error("Error uploading document:", error);
-      toast({ title: "Error", description: "Failed to upload document.", variant: "destructive" });
+      toast({ 
+        title: "Upload Failed", 
+        description: error.message || "Failed to upload document. Please try again.", 
+        variant: "destructive" 
+      });
     } finally {
       setUploading(null);
     }
@@ -164,20 +201,47 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                 {doc && (
                   <div className="bg-slate-50 p-3 rounded-md flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-slate-500"/>
+                      {doc.file_type?.startsWith('image/') ? (
+                        <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
+                          <span className="text-xs text-blue-600">IMG</span>
+                        </div>
+                      ) : (
+                        <FileText className="w-5 h-5 text-slate-500"/>
+                      )}
                       <div className="truncate">
                         <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                                 <p className="text-xs text-slate-500">
-                           {((doc.file_size || 0) / 1024).toFixed(1)} KB
-                         </p>
+                        <p className="text-xs text-slate-500">
+                          {((doc.file_size || 0) / 1024).toFixed(1)} KB
+                          {doc.file_type && (
+                            <span className="ml-2 text-xs text-blue-600">
+                              ({doc.file_type.split('/')[1]?.toUpperCase() || 'Unknown'})
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" asChild>
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><Eye className="w-4 h-4" /></a>
+                        <a 
+                          href={doc.file_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            // For images, we can show them directly
+                            if (doc.file_type?.startsWith('image/')) {
+                              // Open in new tab for images
+                              return;
+                            }
+                            // For PDFs and other documents, let the browser handle it
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </a>
                       </Button>
                       <Button variant="ghost" size="icon" asChild>
-                        <a href={doc.file_url} download><Download className="w-4 h-4" /></a>
+                        <a href={doc.file_url} download={doc.file_name}>
+                          <Download className="w-4 h-4" />
+                        </a>
                       </Button>
                       {canEdit && <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>}
                     </div>
@@ -201,7 +265,8 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                           }
                         }}
                         disabled={!!uploading}
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+                        title="Accepted formats: PDF, JPEG, PNG, GIF, WebP, DOC, DOCX (Max 10MB)"
                       />
                     </label>
                   </div>
