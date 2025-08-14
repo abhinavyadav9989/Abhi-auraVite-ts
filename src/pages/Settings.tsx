@@ -6,6 +6,7 @@ import { BankAccount } from '@/api/entities';
 import { DealerPreferences } from '@/api/entities';
 import { UserSession } from '@/api/entities';
 import { TeamMember } from '@/api/entities';
+import { supabase } from '@/api/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -236,8 +237,24 @@ export default function Settings() {
 
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
       if (dealerProfile.length > 0) {
-        setDealer(dealerProfile[0]);
-        setProfileForm(dealerProfile[0]);
+        const dealerData = dealerProfile[0];
+        setDealer(dealerData);
+        
+        // Load data from both dealer table fields and onboarding progress
+        const onboardingData = dealerData.onboarding_progress || {};
+        const organizationData = onboardingData.organization_details || {};
+        
+        setProfileForm({
+          phone: dealerData.phone || organizationData.phone || organizationData.contactNumber || "",
+          whatsapp: dealerData.whatsapp || organizationData.whatsapp || organizationData.whatsappNumber || "",
+          business_name: dealerData.business_name || organizationData.businessName || organizationData.organizationName || "",
+          owner_name: dealerData.owner_name || organizationData.ownerName || organizationData.contactPerson || "",
+          gstin: dealerData.gstin || organizationData.gstin || "",
+          pan_number: dealerData.pan_number || organizationData.panNumber || "",
+          address: dealerData.address || organizationData.address || organizationData.businessAddress || "",
+          city: dealerData.city || organizationData.city || "",
+          state: dealerData.state || organizationData.state || ""
+        });
 
         // Load preferences
         const prefs = await DealerPreferences.filter({ dealer_id: dealerProfile[0].id });
@@ -247,6 +264,29 @@ export default function Settings() {
           // Create default preferences
           const defaultPrefs = await DealerPreferences.create({ dealer_id: dealerProfile[0].id });
           setPreferences(defaultPrefs);
+        }
+        
+        // Load bank details
+        try {
+          const bankDetails = await supabase
+            .from('bank_details')
+            .select('*')
+            .eq('dealer_id', dealerProfile[0].id)
+            .single();
+          
+          if (bankDetails.data) {
+            // Update the profile form with bank details
+            setProfileForm(prev => ({
+              ...prev,
+              account_holder_name: bankDetails.data.account_holder_name || "",
+              account_number: bankDetails.data.account_number || "",
+              ifsc_code: bankDetails.data.ifsc_code || "",
+              bank_name: bankDetails.data.bank_name || "",
+              cheque_image_url: bankDetails.data.cheque_image_url || ""
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading bank details:', error);
         }
       }
     } catch (error) {

@@ -210,6 +210,45 @@ export default function Dashboard() {
     user?.role !== 'admin';
   };
 
+  // Helper function to determine actual verification status
+  const getActualVerificationStatus = (dealer) => {
+    if (!dealer) return 'unknown';
+    
+    // Check both verification status fields
+    const status1 = dealer.verification_status;
+    const status2 = dealer.verification_status_new;
+    
+    // If either is verified, consider as verified
+    if (status1 === 'verified' || status2 === 'verified') {
+      return 'verified';
+    }
+    
+    // If either is pending, consider as pending
+    if (status1 === 'pending' || status2 === 'pending') {
+      return 'pending';
+    }
+    
+    // If either is rejected, consider as rejected
+    if (status1 === 'rejected' || status2 === 'rejected') {
+      return 'rejected';
+    }
+    
+    // Default to pending if no clear status
+    return 'pending';
+  };
+
+  // Check if verification banner should be shown
+  const shouldShowVerificationBanner = (dealer) => {
+    if (!dealer) return false;
+    
+    // Show if onboarding not completed
+    if (!dealer.onboarding_completed) return true;
+    
+    // Show if verification is pending
+    const actualStatus = getActualVerificationStatus(dealer);
+    return actualStatus === 'pending';
+  };
+
   // If dealer profile is not loaded and it's still loading, show nothing or a loading spinner
   if (!dealer && isLoading) {
     return (
@@ -222,6 +261,38 @@ export default function Dashboard() {
   return (
     <>
       <OfflineBanner isOnline={isOnline} />
+      
+      {/* Verification Banner - Show for users who haven't completed onboarding or have pending verification */}
+      {dealer && shouldShowVerificationBanner(dealer) && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-yellow-800">
+                  {!dealer.onboarding_completed ? 'Complete Onboarding' : 'Verification Under Review'}
+                </h3>
+                <p className="text-sm text-yellow-700">
+                  {!dealer.onboarding_completed 
+                    ? 'Complete your onboarding process to unlock full platform features.'
+                    : 'Your business verification is being reviewed. You can still add vehicles to your inventory.'
+                  }
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(!dealer.onboarding_completed ? '/onboarding' : '/profile')}
+              className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
+            >
+              {!dealer.onboarding_completed ? 'Continue Onboarding' : 'View Details'}
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className={`min-h-screen bg-slate-50 ${!isOnline ? 'opacity-75' : ''}`}>
         {/* Top Bar */}

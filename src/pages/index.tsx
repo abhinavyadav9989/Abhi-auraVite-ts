@@ -56,7 +56,7 @@ import Shortlists from "./Shortlists";
 
 import VehicleView from "./VehicleView";
 
-import OnboardingWizard from "./OnboardingWizard";
+import OnboardingWizard from "../components/onboarding/OnboardingWizard";
 
 import DataMigrationPanel from "./DataMigrationPanel";
 
@@ -152,7 +152,7 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 
-                    <Route path="/" element={<Authentication />} />
+                    <Route path="/" element={<Dashboard />} />
                 
                 
                 <Route path="/Dashboard" element={<Dashboard />} />

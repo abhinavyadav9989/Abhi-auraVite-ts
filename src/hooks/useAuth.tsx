@@ -81,13 +81,18 @@ export function useAuth() {
   };
 
   // Sign up method
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName?: string) => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          data: {
+            full_name: fullName || email.split('@')[0], // Use email prefix if no full name provided
+          }
+        }
       });
       
       if (error) throw error;

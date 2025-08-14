@@ -5,6 +5,7 @@ import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { createPageUrl } from '@/utils';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/api/supabaseClient';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -32,11 +33,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     const checkAuthAndOnboarding = async () => {
-      // If it's a public route, don't redirect
-      if (isPublicRoute) {
-        return;
-      }
-
       // If still loading auth state, wait
       if (loading) {
         return;
@@ -44,13 +40,91 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
       // If not authenticated, redirect to authentication
       if (!isAuthenticated || !user) {
-        setTimeout(() => {
-          navigate(createPageUrl('Authentication'), { replace: true });
-        }, 100);
+        // Only redirect to authentication if not already on a public route
+        if (!isPublicRoute) {
+          setTimeout(() => {
+            navigate(createPageUrl('Authentication'), { replace: true });
+          }, 100);
+        }
         return;
       }
 
-      // If authenticated, check onboarding and dealer profile status
+      // If authenticated and on a public route, redirect to dashboard
+      if (isAuthenticated && user && isPublicRoute) {
+        console.log('AuthGuard - User authenticated on public route, checking onboarding status...');
+        // Check onboarding status before redirecting
+        setIsCheckingOnboarding(true);
+        try {
+          // Check user metadata first
+          const userMetadata = user.user_metadata || {};
+          const hasOnboardingCompleted = userMetadata.onboarding_completed === true;
+          const hasDealerProfileCreated = userMetadata.dealer_profile_created === true;
+          
+          console.log('AuthGuard - Authenticated user on public route, metadata check:', {
+            hasOnboardingCompleted,
+            hasDealerProfileCreated,
+            userMetadata
+          });
+          
+          // For OnboardingWizard route, don't redirect away unless onboarding is truly completed
+          if (location.pathname === '/OnboardingWizard') {
+            console.log('AuthGuard - User on OnboardingWizard, checking if they should stay here...');
+            
+            // If user metadata shows completed but they're on OnboardingWizard, clear the metadata
+            if (hasOnboardingCompleted || hasDealerProfileCreated) {
+              console.log('AuthGuard - User metadata shows completed but on OnboardingWizard, clearing metadata...');
+              try {
+                await supabase.auth.updateUser({
+                  data: {
+                    onboarding_completed: false,
+                    dealer_profile_created: false,
+                    dealer_id: null
+                  }
+                });
+                console.log('AuthGuard - User metadata cleared successfully');
+                // Let them stay on OnboardingWizard
+                setOnboardingStatus('incomplete');
+                return;
+              } catch (clearError) {
+                console.error('AuthGuard - Error clearing user metadata:', clearError);
+              }
+            }
+            
+            // If onboarding is not completed, let them stay on OnboardingWizard
+            console.log('AuthGuard - Onboarding not completed, allowing user to stay on OnboardingWizard');
+            setOnboardingStatus('incomplete');
+            return;
+          }
+          
+          // For other public routes (like /Authentication), redirect based on onboarding status
+          if (hasOnboardingCompleted && hasDealerProfileCreated) {
+            // User has completed onboarding, redirect to dashboard
+            console.log('AuthGuard - Onboarding completed, redirecting to dashboard');
+            setTimeout(() => {
+              navigate(createPageUrl('Dashboard'), { replace: true });
+            }, 100);
+            return;
+          } else {
+            // User needs to complete onboarding
+            console.log('AuthGuard - Onboarding incomplete, redirecting to onboarding');
+            setTimeout(() => {
+              navigate(createPageUrl('OnboardingWizard'), { replace: true });
+            }, 100);
+            return;
+          }
+        } catch (error) {
+          console.error('AuthGuard - Error checking onboarding status:', error);
+          // Default to onboarding if there's an error
+          setTimeout(() => {
+            navigate(createPageUrl('OnboardingWizard'), { replace: true });
+          }, 100);
+          return;
+        } finally {
+          setIsCheckingOnboarding(false);
+        }
+      }
+
+      // If authenticated and not on public route, check onboarding and dealer profile status
       setIsCheckingOnboarding(true);
       try {
         // First, check user metadata from auth state (faster and more reliable)
@@ -100,6 +174,25 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             onboarding_completed: dealerProfile.onboarding_completed,
             dealerProfile
           });
+          
+          // If dealer profile shows onboarding is completed but user metadata doesn't,
+          // update the user metadata to match
+          if (hasCompletedOnboarding && !hasOnboardingCompleted) {
+            console.log('AuthGuard - Updating user metadata to match dealer profile');
+            try {
+              await supabase.auth.updateUser({
+                data: {
+                  onboarding_completed: true,
+                  dealer_profile_created: true,
+                  dealer_id: dealerProfile.id
+                }
+              });
+              console.log('AuthGuard - User metadata updated successfully');
+            } catch (updateError) {
+              console.error('AuthGuard - Error updating user metadata:', updateError);
+              // Continue anyway - the dealer profile is the source of truth
+            }
+          }
         }
         
         console.log('AuthGuard - Thorough check results:', {
@@ -116,7 +209,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           setOnboardingStatus('incomplete');
           // Redirect to onboarding if not completed
           setTimeout(() => {
-            navigate(createPageUrl('OnboardingPath'), { replace: true });
+            navigate(createPageUrl('OnboardingWizard'), { replace: true });
           }, 100);
         }
       } catch (error) {
@@ -124,7 +217,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         // If there's an error, assume onboarding is incomplete
         setOnboardingStatus('incomplete');
         setTimeout(() => {
-          navigate(createPageUrl('OnboardingPath'), { replace: true });
+          navigate(createPageUrl('OnboardingWizard'), { replace: true });
         }, 100);
       } finally {
         setIsCheckingOnboarding(false);
@@ -148,9 +241,26 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // If it's a public route, render children directly
-  if (isPublicRoute) {
+  // If it's a public route, render children directly (but only if not authenticated)
+  if (isPublicRoute && (!isAuthenticated || !user)) {
     return <>{children}</>;
+  }
+
+  // If authenticated user is on a public route, show loading (navigation will happen in useEffect)
+  if (isAuthenticated && user && isPublicRoute) {
+    // Special case: if user is on OnboardingWizard and onboarding is not completed, let them stay
+    if (location.pathname === '/OnboardingWizard') {
+      return <>{children}</>;
+    }
+    
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   // If not authenticated, show loading (navigation will happen in useEffect)

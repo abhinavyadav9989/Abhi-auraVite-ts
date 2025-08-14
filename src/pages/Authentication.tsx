@@ -34,8 +34,8 @@ export default function Authentication() {
     
     try {
       await signIn(loginEmail, loginPassword);
-      // On successful login, redirect to onboarding
-      navigate(createPageUrl('OnboardingPath'));
+      // On successful login, let AuthGuard handle the routing
+      // AuthGuard will check if user needs onboarding or can go to dashboard
     } catch (error) {
       console.error('Login failed:', error);
     }
@@ -52,7 +52,7 @@ export default function Authentication() {
     }
     
     try {
-      const result = await signUp(regEmail, regPassword);
+      const result = await signUp(regEmail, regPassword, regFullName);
       console.log('Registration successful:', result);
       
       // Show success message
@@ -65,9 +65,11 @@ export default function Authentication() {
       setRegConfirmPassword('');
       setRegFullName('');
       
-      // After successful registration, redirect directly to onboarding
+      // After successful registration, stay on login page and show success message
+      // User should login with their new credentials
       setTimeout(() => {
-        navigate(createPageUrl('OnboardingPath'));
+        setActiveTab('login');
+        setLoginEmail(regEmail);
       }, 2000);
       
     } catch (error) {

@@ -127,6 +127,9 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
     console.log('Document file URL:', doc.file_url, 'for document:', doc.document_type);
   });
 
+  console.log('DocumentLocker - Total documents:', documents.length);
+  console.log('DocumentLocker - Document types:', documents.map(d => d.document_type));
+
   // Function to clear old Base44 documents and re-upload
   const clearOldDocuments = async () => {
     try {

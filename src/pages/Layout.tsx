@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import ErrorBoundary from "@/components/ErrorBoundary"; // Updated import path
+import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Car, Search, Handshake, Heart, User, Bell, Menu, X, BarChart2,
   Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft
@@ -38,16 +39,30 @@ export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
+  const { user: authUser, loading: authLoading, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState) {
       setIsCollapsed(JSON.parse(savedState));
     }
-    loadUserData();
   }, []);
 
+  // Wait for authentication state to be established before loading user data
+  useEffect(() => {
+    if (!authLoading) {
+      loadUserData();
+    }
+  }, [authLoading, isAuthenticated, authUser]);
+
   const loadUserData = async () => {
+    // Don't try to load user data if not authenticated
+    if (!isAuthenticated || !authUser) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const currentUser = await UserEntity.me();
       setUser(currentUser);
@@ -75,7 +90,7 @@ export default function Layout({ children, currentPageName }) {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

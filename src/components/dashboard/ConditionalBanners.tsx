@@ -52,7 +52,8 @@ export default function ConditionalBanners({ dealer }) {
   const banners = [];
 
   // ONB-17: Suspended dealer banner - HIGHEST PRIORITY
-  if (dealer?.verification_status === 'suspended') {
+  const isSuspended = dealer?.verification_status === 'suspended' || dealer?.verification_status_new === 'suspended';
+  if (isSuspended) {
     banners.push({
       id: 'account_suspended',
       type: 'error',
@@ -70,7 +71,8 @@ export default function ConditionalBanners({ dealer }) {
     });
   }
   // ONB-10: Provisional status banner - Fixed logic
-  else if (dealer?.verification_status === 'provisional' && dealer?.provisional_until) {
+  const isProvisional = (dealer?.verification_status === 'provisional' || dealer?.verification_status_new === 'provisional') && dealer?.provisional_until;
+  if (isProvisional) {
     const expiryDate = new Date(dealer.provisional_until);
     const now = new Date();
     const daysLeft = Math.max(0, Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -110,7 +112,8 @@ export default function ConditionalBanners({ dealer }) {
     });
   }
   // ONB-11: Verification rejected banner
-  else if (dealer?.verification_status === 'rejected') {
+  const isRejected = dealer?.verification_status === 'rejected' || dealer?.verification_status_new === 'rejected';
+  if (isRejected) {
     banners.push({
       id: 'verification_rejected',
       type: 'error',
@@ -126,7 +129,8 @@ export default function ConditionalBanners({ dealer }) {
     });
   }
   // Documents submitted - waiting for review
-  else if (dealer?.verification_status === 'documents_submitted') {
+  const isDocumentsSubmitted = dealer?.verification_status === 'documents_submitted' || dealer?.verification_status_new === 'documents_submitted';
+  if (isDocumentsSubmitted) {
     banners.push({
       id: 'documents_submitted',
       type: 'info',
@@ -142,19 +146,8 @@ export default function ConditionalBanners({ dealer }) {
       color: 'border-blue-200 bg-blue-50'
     });
   }
-  // KYB Verification Banner - only show if not provisional, rejected, submitted, or verified
-  else if (!dealer?.verification_status || dealer?.verification_status === 'pending') {
-    banners.push({
-      id: 'kyb_verification',
-      type: 'warning',
-      icon: AlertTriangle,
-      title: 'Complete KYB Verification',
-      message: 'Finish verification to unlock full trading capabilities and build trust with other dealers',
-      cta: 'Complete Verification',
-      link: createPageUrl("KYBWizard"),
-      color: 'border-orange-200 bg-orange-50'
-    });
-  }
+  // KYB Verification Banner - REMOVED: This should be handled during onboarding, not after adding vehicles
+  // The verification banner is now shown at the top of the dashboard for users who haven't completed onboarding
 
   // Mock Bank Account Banner
   const hasBankAccount = true; // This would come from actual dealer data
@@ -172,7 +165,8 @@ export default function ConditionalBanners({ dealer }) {
   }
 
   // Success Banner for verified dealers
-  if (dealer?.verification_status === 'verified' && banners.length === 0) {
+  const isVerified = dealer?.verification_status === 'verified' || dealer?.verification_status_new === 'verified';
+  if (isVerified && banners.length === 0) {
     banners.push({
       id: 'success',
       type: 'success',

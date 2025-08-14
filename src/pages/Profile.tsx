@@ -71,6 +71,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { format, isWithinInterval, parse } from "date-fns";
 import { createPageUrl } from "@/utils";
 import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
+import { supabase } from "@/api/supabaseClient";
 import {
   TooltipProvider,
   Tooltip,
@@ -96,6 +97,7 @@ const DOCUMENT_TYPES = [
   { value: 'pan_card', label: 'PAN Card', required: true },
   { value: 'address_proof', label: 'Address Proof', required: true },
   { value: 'bank_statement', label: 'Bank Statement', required: false },
+  { value: 'cancelled_cheque', label: 'Cancelled Cheque', required: false },
   { value: 'other', label: 'Other Documents', required: false }
 ];
 
@@ -125,6 +127,15 @@ export default function Profile() {
     website: "",
     description: ""
   });
+  
+  // Separate state for bank data
+  const [bankData, setBankData] = useState({
+    account_holder_name: "",
+    account_number: "",
+    ifsc_code: "",
+    bank_name: ""
+  });
+  
   const [documents, setDocuments] = useState([]);
   const [businessHours, setBusinessHours] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -152,20 +163,23 @@ export default function Profile() {
         const dealerData = dealerProfile[0];
         setDealer(dealerData);
         
-        // Set form data
+        // Set form data - try to get from dealer table fields first, then from onboarding progress
+        const onboardingData = dealerData.onboarding_progress || {};
+        const organizationData = onboardingData.organization_details || {};
+        
         setProfileForm({
-          business_name: dealerData.business_name || "",
-          owner_name: dealerData.owner_name || "",
-          gstin: dealerData.gstin || "",
-          pan_number: dealerData.pan_number || "",
-          phone: dealerData.phone || "",
-          whatsapp: dealerData.whatsapp || "",
-          address: dealerData.address || "",
-          city: dealerData.city || "",
-          state: dealerData.state || "",
+          business_name: dealerData.business_name || organizationData.businessName || organizationData.organizationName || "",
+          owner_name: dealerData.owner_name || organizationData.ownerName || organizationData.contactPerson || "",
+          gstin: dealerData.gstin || organizationData.gstin || "",
+          pan_number: dealerData.pan_number || organizationData.panNumber || "",
+          phone: dealerData.phone || organizationData.phone || organizationData.contactNumber || "",
+          whatsapp: dealerData.whatsapp || organizationData.whatsapp || organizationData.whatsappNumber || "",
+          address: dealerData.address || organizationData.address || organizationData.businessAddress || "",
+          city: dealerData.city || organizationData.city || "",
+          state: dealerData.state || organizationData.state || "",
           tagline: dealerData.tagline || "",
-          website: dealerData.website || "",
-          description: dealerData.description || ""
+          website: dealerData.website || organizationData.website || "",
+          description: dealerData.description || organizationData.description || organizationData.aboutBusiness || ""
         });
 
         // Load related data
@@ -173,7 +187,8 @@ export default function Profile() {
           loadDocuments(dealerData.id),
           loadBusinessHours(dealerData.id),
           loadReviews(dealerData.id),
-          loadVehicles(dealerData.id)
+          loadVehicles(dealerData.id),
+          loadBankDetails(dealerData.id)
         ]);
       } else {
         // No dealer profile found, redirect to onboarding
@@ -189,14 +204,97 @@ export default function Profile() {
 
   const loadDocuments = async (dealerId) => {
     try {
+      console.log('Profile - Loading documents for dealer:', dealerId);
       const docs = await DealerDocument.filter({ dealer_id: dealerId });
+      console.log('Profile - Raw documents from database:', docs);
       setDocuments(docs || []);
       
       // Debug logs to check document types
-      console.log('Documents fetched:', docs);
+      console.log('Documents fetched from dealer_documents table:', docs);
       console.log('Document types in database:', docs?.map(d => d.document_type) || []);
       console.log('Expected document types:', DOCUMENT_TYPES.map(d => d.value));
       console.log('Matching documents:', docs?.filter(d => DOCUMENT_TYPES.some(dt => dt.value === d.document_type)) || []);
+      
+      // If no documents found in dealer_documents table, check onboarding progress
+      if (!docs || docs.length === 0) {
+        console.log('No documents found in dealer_documents table, checking onboarding progress...');
+        
+        // Get dealer data to check onboarding progress
+        const dealerData = await Dealer.get(dealerId);
+        const onboardingData = dealerData.onboarding_progress || {};
+        
+        console.log('Onboarding progress data:', onboardingData);
+        
+        if (onboardingData.kybDocuments || onboardingData.bankDetails) {
+          console.log('Found documents in onboarding progress, attempting migration...');
+          
+          // Try to migrate documents from onboarding progress
+          try {
+            const { DealerDocument } = await import('@/api/entities');
+            
+            // Type definition for document data
+            interface DocumentData {
+              url: string;
+              fileName?: string;
+              fileSize?: number;
+              fileType?: string;
+              uploadedAt?: string;
+            }
+            
+            // Type guard function
+            const isValidDocumentData = (obj: any): obj is DocumentData => {
+              return obj && typeof obj === 'object' && typeof obj.url === 'string';
+            };
+            
+            // Migrate KYB documents
+            if (onboardingData.kybDocuments) {
+              for (const [docType, docData] of Object.entries(onboardingData.kybDocuments)) {
+                if (isValidDocumentData(docData)) {
+                  console.log(`Migrating ${docType} from onboarding progress:`, docData);
+                  
+                  await DealerDocument.create({
+                    dealer_id: dealerId,
+                    document_type: docType,
+                    file_url: docData.url,
+                    file_name: docData.fileName || 'Uploaded Document',
+                    file_size: docData.fileSize || 0,
+                    file_type: docData.fileType || 'application/octet-stream',
+                    status: 'pending',
+                    uploaded_at: docData.uploadedAt || new Date().toISOString()
+                  });
+                }
+              }
+            }
+            
+            // Migrate bank details document
+            if (onboardingData.bankDetails?.cancelledCheque && isValidDocumentData(onboardingData.bankDetails.cancelledCheque)) {
+              const docData = onboardingData.bankDetails.cancelledCheque;
+              console.log('Migrating cancelled cheque from onboarding progress:', docData);
+              
+              await DealerDocument.create({
+                dealer_id: dealerId,
+                document_type: 'cancelled_cheque',
+                file_url: docData.url,
+                file_name: docData.fileName || 'Cancelled Cheque',
+                file_size: docData.fileSize || 0,
+                file_type: docData.fileType || 'application/octet-stream',
+                status: 'pending',
+                uploaded_at: docData.uploadedAt || new Date().toISOString()
+              });
+            }
+            
+            // Reload documents after migration
+            const migratedDocs = await DealerDocument.filter({ dealer_id: dealerId });
+            setDocuments(migratedDocs || []);
+            console.log('Documents after migration:', migratedDocs);
+            
+          } catch (migrationError) {
+            console.error('Error migrating documents from onboarding progress:', migrationError);
+          }
+        }
+      } else {
+        console.log('Profile - Documents found, setting state:', docs);
+      }
     } catch (error) {
       console.error("Error loading documents:", error);
       setDocuments([]);
@@ -250,6 +348,41 @@ export default function Profile() {
     }
   };
 
+  const loadBankDetails = async (dealerId) => {
+    try {
+      // Load from bank_accounts table (preferred) or bank_details table (fallback)
+      const { BankAccount } = await import('@/api/entities');
+      
+      let bankData = null;
+      
+      // Try bank_accounts first
+      const bankAccounts = await BankAccount.filter({ dealer_id: dealerId });
+      if (bankAccounts.length > 0) {
+        bankData = bankAccounts[0];
+      } else {
+        // Fallback to bank_details table
+        const { data } = await supabase
+          .from('bank_details')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .single();
+        bankData = data;
+      }
+      
+      if (bankData) {
+        // Update bank data state
+        setBankData({
+          account_holder_name: bankData.account_holder_name || "",
+          account_number: bankData.account_number || "",
+          ifsc_code: bankData.ifsc_code || "",
+          bank_name: bankData.bank_name || ""
+        });
+      }
+    } catch (error) {
+      console.error("Error loading bank details:", error);
+    }
+  };
+
   // PF-01: Edit business details
   const handleProfileUpdate = async () => {
     if (!dealer?.id) {
@@ -261,8 +394,24 @@ export default function Profile() {
     setMessage(null);
 
     try {
-      await Dealer.update(dealer.id, profileForm);
-      setDealer({ ...dealer, ...profileForm });
+      // Only save profile-related fields to dealers table (exclude bank data)
+      const profileDataToSave = {
+        business_name: profileForm.business_name,
+        owner_name: profileForm.owner_name,
+        gstin: profileForm.gstin,
+        pan_number: profileForm.pan_number,
+        phone: profileForm.phone,
+        whatsapp: profileForm.whatsapp,
+        address: profileForm.address,
+        city: profileForm.city,
+        state: profileForm.state,
+        tagline: profileForm.tagline,
+        website: profileForm.website,
+        description: profileForm.description
+      };
+      
+      await Dealer.update(dealer.id, profileDataToSave);
+      setDealer({ ...dealer, ...profileDataToSave });
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setIsEditing(false);
     } catch (error) {
@@ -270,6 +419,46 @@ export default function Profile() {
       setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
     }
     setIsSaving(false);
+  };
+
+  // PF-01.1: Update bank details
+  const handleBankDataUpdate = async () => {
+    if (!dealer?.id) {
+      toast({ title: "Error", description: "Dealer information not available.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Save bank data to bank_accounts table
+      const { BankAccount } = await import('@/api/entities');
+      
+      // Check if bank account already exists
+      const existingBankAccounts = await BankAccount.filter({ dealer_id: dealer.id });
+      
+      if (existingBankAccounts.length > 0) {
+        // Update existing bank account
+        await BankAccount.update(existingBankAccounts[0].id, {
+          account_holder_name: bankData.account_holder_name,
+          account_number: bankData.account_number,
+          ifsc_code: bankData.ifsc_code,
+          bank_name: bankData.bank_name
+        });
+      } else {
+        // Create new bank account
+        await BankAccount.create({
+          dealer_id: dealer.id,
+          account_holder_name: bankData.account_holder_name,
+          account_number: bankData.account_number,
+          ifsc_code: bankData.ifsc_code,
+          bank_name: bankData.bank_name
+        });
+      }
+      
+      toast({ title: "Success", description: 'Bank details updated successfully!' });
+    } catch (error) {
+      console.error("Error updating bank details:", error);
+      toast({ title: "Error", description: 'Failed to update bank details. Please try again.', variant: "destructive" });
+    }
   };
 
   // PF-02: Upload logo/banner
@@ -553,10 +742,13 @@ export default function Profile() {
               dealer={dealer}
               profileForm={profileForm}
               setProfileForm={setProfileForm}
+              bankData={bankData}
+              setBankData={setBankData}
               vehicles={vehicles}
               isEditing={isEditing}
               canEdit={canEdit()}
               onFileUpload={handleFileUpload}
+              onBankDataUpdate={handleBankDataUpdate}
               uploadingDoc={uploadingDoc}
               inspectionCoverage={getInspectionCoverage()}
             />

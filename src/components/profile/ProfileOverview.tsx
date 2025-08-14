@@ -16,22 +16,34 @@ import {
   Camera,
   Car,
   Shield,
-  Award
+  Award,
+  CreditCard,
+  Save
 } from 'lucide-react';
 
 export default function ProfileOverview({ 
   dealer, 
   profileForm, 
   setProfileForm, 
+  bankData,
+  setBankData,
   vehicles = [], 
   isEditing, 
   canEdit, 
   onFileUpload,
+  onBankDataUpdate,
   uploadingDoc,
   inspectionCoverage = 0 
 }) {
   const handleInputChange = (field, value) => {
     setProfileForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleBankDataChange = (field, value) => {
+    setBankData(prev => ({
       ...prev,
       [field]: value
     }));
@@ -216,6 +228,79 @@ export default function ProfileOverview({
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Bank Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Bank Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="account_holder_name">Account Holder Name</Label>
+                {isEditing ? (
+                  <Input
+                    id="account_holder_name"
+                    value={bankData?.account_holder_name || ''}
+                    onChange={(e) => handleBankDataChange('account_holder_name', e.target.value)}
+                  />
+                ) : (
+                  <p className="text-slate-900">{bankData?.account_holder_name || 'Not set'}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="account_number">Account Number</Label>
+                {isEditing ? (
+                  <Input
+                    id="account_number"
+                    value={bankData?.account_number || ''}
+                    onChange={(e) => handleBankDataChange('account_number', e.target.value)}
+                  />
+                ) : (
+                  <p className="text-slate-900">{bankData?.account_number || 'Not set'}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ifsc_code">IFSC Code</Label>
+                {isEditing ? (
+                  <Input
+                    id="ifsc_code"
+                    value={bankData?.ifsc_code || ''}
+                    onChange={(e) => handleBankDataChange('ifsc_code', e.target.value)}
+                  />
+                ) : (
+                  <p className="text-slate-900">{bankData?.ifsc_code || 'Not set'}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bank_name">Bank Name</Label>
+                {isEditing ? (
+                  <Input
+                    id="bank_name"
+                    value={bankData?.bank_name || ''}
+                    onChange={(e) => handleBankDataChange('bank_name', e.target.value)}
+                  />
+                ) : (
+                  <p className="text-slate-900">{bankData?.bank_name || 'Not set'}</p>
+                )}
+              </div>
+            </div>
+            {isEditing && onBankDataUpdate && (
+              <Button 
+                onClick={onBankDataUpdate}
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Bank Details
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
