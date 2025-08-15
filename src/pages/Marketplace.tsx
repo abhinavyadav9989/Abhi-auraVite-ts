@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Lightbulb, Plus, SlidersHorizontal, Loader2, ArrowUp, Ghost, WifiOff, Heart, Eye } from "lucide-react";
+import { Lightbulb, Plus, SlidersHorizontal, Loader2, ArrowUp, Ghost, WifiOff, Heart, Eye, ShieldCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -52,6 +52,8 @@ export default function Marketplace() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [filters, setFilters] = useState(INITIAL_FILTERS_STATE);
+  const [isUserVerified, setIsUserVerified] = useState(false);
+  const [isUnderReview, setIsUnderReview] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,7 +68,24 @@ export default function Marketplace() {
       if (currentUser) {
         const dealerProfiles = await Dealer.filter({ created_by: currentUser.email });
         if (dealerProfiles.length > 0) {
-          setCurrentDealer(dealerProfiles[0]);
+          const dealer = dealerProfiles[0];
+          setCurrentDealer(dealer);
+          
+          // Check if user is verified (either verification_status or verification_status_new)
+          const isVerified = dealer.verification_status === 'verified' || dealer.verification_status_new === 'verified';
+          const isUnderReview = dealer.verification_status === 'documents_submitted' || dealer.verification_status_new === 'documents_submitted';
+          const isUnverified = !isVerified && !isUnderReview;
+          
+          setIsUserVerified(isVerified);
+          setIsUnderReview(isUnderReview);
+          
+          console.log('User verification status:', {
+            verification_status: dealer.verification_status,
+            verification_status_new: dealer.verification_status_new,
+            isVerified: isVerified,
+            isUnderReview: isUnderReview,
+            isUnverified: isUnverified
+          });
         }
       }
 
@@ -184,6 +203,44 @@ export default function Marketplace() {
   return (
     <div className="p-4 md:p-8 bg-slate-50">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* KYB Verification Banner for Unverified Users */}
+        {!isUserVerified && currentDealer && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-amber-900">
+                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
+                      ? 'Verification Under Review' 
+                      : 'Complete KYB Verification'
+                    }
+                  </h3>
+                  <p className="text-sm text-amber-700">
+                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
+                      ? 'Your business verification is being reviewed. You can still browse vehicles but pricing is hidden.'
+                      : 'Vehicle prices and dealer details are hidden until you complete KYB verification'
+                    }
+                  </p>
+                </div>
+              </div>
+              <Link to={currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
+                ? createPageUrl("Profile") 
+                : createPageUrl("OnboardingWizard")
+              }>
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                  {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
+                    ? 'View Profile'
+                    : 'Complete KYB'
+                  }
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Marketplace</h1>
@@ -256,13 +313,15 @@ export default function Marketplace() {
                 isInCompare={compareList.includes(vehicle.id)}
                 onCompareToggle={() => handleCompareToggle(vehicle.id)}
                 onMakeOffer={() => handleMakeOffer(vehicle)}
+                isUserVerified={isUserVerified}
+                isUnderReview={isUnderReview}
               />
             ))}
           </div>
         )}
       </div>
 
-      {showOfferModal && selectedVehicle && (
+      {showOfferModal && selectedVehicle && isUserVerified && (
         <OfferModal
           vehicle={selectedVehicle}
           dealer={dealers[selectedVehicle.dealer_id]}

@@ -137,33 +137,326 @@ const OnboardingWizard = () => {
     try {
       const progressData = await onboardingAPI.getProgress(dealerId);
       setProgress(progressData);
-      setOnboardingData(progressData.data);
+      
+      // Refresh dealer data to ensure we have the latest information
+      const freshDealerData = await Dealer.get(dealerId);
+      console.log('Fresh dealer data loaded:', freshDealerData);
+      console.log('Fresh plan_selection:', freshDealerData?.plan_selection);
+      console.log('Fresh business_mode:', freshDealerData?.business_mode);
+      console.log('Fresh consent_receipt:', freshDealerData?.consent_receipt);
+      
+      // Update the dealer state with fresh data
+      setDealer(freshDealerData);
+      
+      // Load existing data from dealer table JSONB fields
+      const existingData: OnboardingData = { ...progressData.data };
+      
+      // Load business mode data from dealer.business_mode
+      if (freshDealerData?.business_mode) {
+        existingData.businessMode = freshDealerData.business_mode;
+        console.log('Loaded business mode data:', freshDealerData.business_mode);
+      }
+      
+      // Load plan selection data from dealer.plan_selection
+      if (freshDealerData?.plan_selection) {
+        existingData.planSelection = freshDealerData.plan_selection;
+        console.log('Loaded plan selection data:', freshDealerData.plan_selection);
+      }
+      
+      // Load consent data from dealer.consent_receipt
+      if (freshDealerData?.consent_receipt) {
+        existingData.consent = freshDealerData.consent_receipt;
+        console.log('Loaded consent data:', freshDealerData.consent_receipt);
+      }
+      
+      // Load branches data from branches table
+      try {
+        const { data: branchesData, error: branchesError } = await supabase
+          .from('branches')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .order('created_at', { ascending: true });
+        
+        if (branchesError) {
+          console.error('Error loading branches:', branchesError);
+        } else if (branchesData && branchesData.length > 0) {
+          existingData.branches = branchesData.map(branch => ({
+            name: branch.name,
+            address: branch.address,
+            city: branch.city,
+            state: branch.state,
+            contactNumber: branch.contact_number,
+            workingHours: branch.working_hours
+          }));
+          console.log('Loaded branches data:', existingData.branches);
+        }
+      } catch (error) {
+        console.error('Error loading branches:', error);
+      }
+      
+      // Load team members data from team_members table
+      try {
+        const { data: teamData, error: teamError } = await supabase
+          .from('team_members')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .order('created_at', { ascending: true });
+        
+        if (teamError) {
+          console.error('Error loading team members:', teamError);
+        } else if (teamData && teamData.length > 0) {
+          existingData.team = teamData.map(member => ({
+            userId: member.user_id,
+            role: member.role,
+            permissions: member.permissions
+          }));
+          console.log('Loaded team data:', existingData.team);
+        }
+      } catch (error) {
+        console.error('Error loading team members:', error);
+      }
+      
+      // Load bank details from bank_details table
+      try {
+        const { data: bankData, error: bankError } = await supabase
+          .from('bank_details')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .single();
+        
+        if (bankError && bankError.code !== 'PGRST116') { // PGRST116 is "not found"
+          console.error('Error loading bank details:', bankError);
+        } else if (bankData) {
+          existingData.bankDetails = {
+            accountHolderName: bankData.account_holder_name,
+            accountNumber: bankData.account_number,
+            ifscCode: bankData.ifsc_code,
+            bankName: bankData.bank_name,
+            cancelledCheque: bankData.cancelled_cheque_url ? {
+              url: bankData.cancelled_cheque_url,
+              fileName: 'Cancelled Cheque',
+              uploadedAt: bankData.created_at
+            } : null
+          };
+          console.log('Loaded bank details:', existingData.bankDetails);
+        }
+      } catch (error) {
+        console.error('Error loading bank details:', error);
+      }
+      
+      // Load KYB documents from dealer_documents table
+      try {
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('dealer_documents')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .order('created_at', { ascending: true });
+        
+        if (documentsError) {
+          console.error('Error loading documents:', documentsError);
+        } else if (documentsData && documentsData.length > 0) {
+          const kybDocuments: any = {};
+          documentsData.forEach(doc => {
+            if (doc.document_type !== 'cancelled_cheque') { // Skip cancelled cheque as it's in bank details
+              kybDocuments[doc.document_type] = {
+                fileName: doc.file_name,
+                fileSize: doc.file_size,
+                fileType: doc.file_type,
+                uploadedAt: doc.created_at,
+                url: doc.file_url,
+                status: doc.status
+              };
+            }
+          });
+          existingData.kybDocuments = kybDocuments;
+          console.log('Loaded KYB documents:', existingData.kybDocuments);
+        }
+      } catch (error) {
+        console.error('Error loading documents:', error);
+      }
+      
+      setOnboardingData(existingData);
       
       // Set current step to next incomplete step
       if (progressData.currentStep <= steps.length) {
         setCurrentStep(progressData.currentStep);
       }
+      
+      console.log('Complete loaded data:', existingData);
     } catch (error) {
       console.error('Error loading progress:', error);
       toast.error('Failed to load onboarding progress');
     }
   };
 
-  const saveStep = async (stepData: any, stepName: string) => {
-    if (!dealer?.id) return;
+  // Map onboarding data to dealer table fields
+  const mapOnboardingDataToDealerFields = (data: OnboardingData) => {
+    const mappedData: any = {
+      onboarding_completed: true,
+      verification_status_new: 'pending'
+    };
 
+    // Map organization data
+    if (data.organization) {
+      mappedData.business_name = data.organization.businessName || data.organization.organizationName;
+      mappedData.owner_name = data.organization.ownerName || data.organization.contactPerson;
+      mappedData.gstin = data.organization.gstin;
+      mappedData.pan_number = data.organization.panNumber;
+      mappedData.phone = data.organization.phone || data.organization.contactNumber;
+      mappedData.whatsapp = data.organization.whatsapp || data.organization.whatsappNumber;
+      mappedData.address = data.organization.address || data.organization.businessAddress;
+      mappedData.city = data.organization.city;
+      mappedData.state = data.organization.state;
+      mappedData.pincode = data.organization.pincode;
+      mappedData.website = data.organization.website;
+      mappedData.description = data.organization.description || data.organization.aboutBusiness;
+    }
+
+    // Map business mode data (what type of business, what you trade)
+    if (data.businessMode) {
+      mappedData.business_mode = {
+        mode: data.businessMode.mode,
+        segments: data.businessMode.segments,
+        businessType: data.businessMode.businessType,
+        vehicleSegments: data.businessMode.vehicleSegments,
+        tradingPreferences: data.businessMode.tradingPreferences,
+        businessModel: data.businessMode.businessModel,
+        specialization: data.businessMode.specialization,
+        targetMarket: data.businessMode.targetMarket,
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    // Map plan selection data
+    if (data.planSelection) {
+      mappedData.plan_selection = {
+        plan: data.planSelection.plan || data.planSelection.selectedPlan,
+        features: data.planSelection.features || data.planSelection.planFeatures,
+        selectedPlanDetails: data.planSelection.selectedPlanDetails,
+        selectedFeaturesDetails: data.planSelection.selectedFeaturesDetails,
+        additionalFeatures: data.planSelection.additionalFeatures,
+        pricing: data.planSelection.pricing,
+        billingCycle: data.planSelection.billingCycle,
+        selectedAt: new Date().toISOString()
+      };
+    }
+
+    // Map terms and consents data
+    if (data.consent) {
+      mappedData.consent_receipt = {
+        termsAccepted: data.consent.termsAccepted,
+        privacyPolicyAccepted: data.consent.privacyPolicyAccepted,
+        marketingConsent: data.consent.marketingConsent,
+        dataProcessingConsent: data.consent.dataProcessingConsent,
+        kycConsent: data.consent.kycConsent,
+        acceptedAt: new Date().toISOString(),
+        ipAddress: data.consent.ipAddress,
+        userAgent: data.consent.userAgent
+      };
+    }
+
+    // Map user type and access level
+    if (data.clientType) {
+      mappedData.user_type = data.clientType;
+    }
+
+    console.log('Mapping onboarding data to dealer fields:', { data, mappedData });
+    return mappedData;
+  };
+
+  const saveStep = async (stepData: any, stepName: string) => {
+    if (!dealer?.id) {
+      console.error('No dealer found for saving step');
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      await onboardingAPI.saveStep(dealer.id, stepName, stepData, currentStep);
+      console.log('saveStep called with stepName:', stepName, 'and stepData:', stepData);
       
-      // Update local state
-      setOnboardingData(prev => ({ ...prev, [stepName]: stepData }));
+      // Save to onboarding progress
+      await onboardingAPI.saveStep(dealer.id, stepName, stepData, currentStep);
+
+      // Special handling for certain steps
+      console.log('Checking step conditions for:', stepName);
       
       // If this is organization step, also update dealer table fields immediately
       if (stepName === 'organization_details' && stepData) {
+        console.log('✅ Processing organization_details step');
         const dealerUpdateData = mapOnboardingDataToDealerFields({ organization: stepData });
         console.log('Updating dealer table with organization data:', dealerUpdateData);
         await Dealer.update(dealer.id, dealerUpdateData);
+      } else {
+        console.log('❌ organization_details condition not met. stepName:', stepName, 'stepData exists:', !!stepData);
+      }
+
+      // If this is trading preferences step, save business mode data
+      if (stepName === 'trading_preferences' && stepData) {
+        console.log('✅ Processing trading_preferences step');
+        console.log('Raw stepData:', stepData);
+        
+        // The stepData contains business mode data directly, not nested under businessMode
+        const businessModeData = {
+          mode: stepData.mode,
+          segments: stepData.segments,
+          businessType: stepData.businessType,
+          vehicleSegments: stepData.vehicleSegments,
+          tradingPreferences: stepData.tradingPreferences,
+          businessModel: stepData.businessModel,
+          specialization: stepData.specialization,
+          targetMarket: stepData.targetMarket
+        };
+        
+        const dealerUpdateData = mapOnboardingDataToDealerFields({ businessMode: businessModeData });
+        console.log('Updating dealer table with business mode data:', dealerUpdateData);
+        console.log('Full dealer update data:', JSON.stringify(dealerUpdateData, null, 2));
+        await Dealer.update(dealer.id, dealerUpdateData);
+        
+        // Verify the update by reloading the dealer data
+        const updatedDealer = await Dealer.get(dealer.id);
+        console.log('Updated dealer data:', updatedDealer);
+        console.log('Updated dealer business_mode:', updatedDealer?.business_mode);
+      } else {
+        console.log('❌ trading_preferences condition not met. stepName:', stepName, 'stepData exists:', !!stepData);
+      }
+      
+      // If this is access & plans step, save plan selection data
+      if (stepName === 'access_&_plans' && stepData) {
+        console.log('✅ Processing access_&_plans step');
+        console.log('Raw stepData:', stepData);
+        
+        // The stepData contains plan data directly, not nested under planSelection
+        const planSelectionData = {
+          plan: stepData.plan,
+          features: stepData.features,
+          selectedPlanDetails: stepData.selectedPlanDetails,
+          selectedFeaturesDetails: stepData.selectedFeaturesDetails,
+          additionalFeatures: stepData.additionalFeatures,
+          pricing: stepData.pricing,
+          billingCycle: stepData.billingCycle
+        };
+        
+        const dealerUpdateData = mapOnboardingDataToDealerFields({ planSelection: planSelectionData });
+        console.log('Updating dealer table with plan selection data:', dealerUpdateData);
+        console.log('Full dealer update data:', JSON.stringify(dealerUpdateData, null, 2));
+        await Dealer.update(dealer.id, dealerUpdateData);
+        
+        // Verify the update by reloading the dealer data
+        const updatedDealer = await Dealer.get(dealer.id);
+        console.log('Updated dealer data:', updatedDealer);
+        console.log('Updated dealer plan_selection:', updatedDealer?.plan_selection);
+      } else {
+        console.log('❌ access_&_plans condition not met. stepName:', stepName, 'stepData exists:', !!stepData);
+      }
+
+      // If this is terms & consent step, save consent data
+      if (stepName === 'terms_&_consent' && stepData) {
+        console.log('✅ Processing terms_&_consent step');
+        const dealerUpdateData = mapOnboardingDataToDealerFields({ consent: stepData });
+        console.log('Updating dealer table with consent data:', dealerUpdateData);
+        await Dealer.update(dealer.id, dealerUpdateData);
+      } else {
+        console.log('❌ terms_&_consent condition not met. stepName:', stepName, 'stepData exists:', !!stepData);
       }
       
       // If this is bank details step, save to bank_details table
@@ -204,6 +497,95 @@ const OnboardingWizard = () => {
           console.error('Error saving bank details:', error);
         }
       }
+
+      // If this is branches step, save branches data
+      if (stepName === 'branches' && stepData) {
+        console.log('Processing branches step');
+        console.log('Branches data to save:', stepData);
+        
+        try {
+          // Delete existing branches for this dealer
+          await supabase
+            .from('branches')
+            .delete()
+            .eq('dealer_id', dealer.id);
+          
+          // Insert new branches with working hours
+          if (Array.isArray(stepData) && stepData.length > 0) {
+            const branchesToInsert = stepData.map((branch, index) => ({
+              dealer_id: dealer.id,
+              name: branch.name,
+              address: branch.address,
+              city: branch.city,
+              state: branch.state,
+              contact_number: branch.contactNumber,
+              working_hours: branch.workingHours || {},
+              is_default: index === 0, // First branch is default
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            console.log('Inserting branches:', branchesToInsert);
+            const { data: insertedBranches, error: branchesError } = await supabase
+              .from('branches')
+              .insert(branchesToInsert)
+              .select();
+            
+            if (branchesError) {
+              console.error('Error saving branches:', branchesError);
+            } else {
+              console.log('Branches saved successfully:', insertedBranches);
+            }
+          }
+        } catch (error) {
+          console.error('Error processing branches:', error);
+        }
+      }
+
+      // If this is team step, save team members data
+      if (stepName === 'team' && stepData) {
+        console.log('Processing team step');
+        console.log('Team data to save:', stepData);
+        
+        try {
+          // Delete existing team members for this dealer
+          await supabase
+            .from('team_members')
+            .delete()
+            .eq('dealer_id', dealer.id);
+          
+          // Insert new team members with enhanced details
+          if (Array.isArray(stepData) && stepData.length > 0) {
+            const teamMembersToInsert = stepData.map((member) => ({
+              dealer_id: dealer.id,
+              user_id: null, // Will be set when user registers
+              full_name: member.fullName,
+              email: member.email,
+              mobile_number: member.mobileNumber,
+              aadhar_number: member.aadharNumber,
+              role: member.role,
+              permissions: {}, // Default permissions based on role
+              status: member.status || 'pending',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            console.log('Inserting team members:', teamMembersToInsert);
+            const { data: insertedTeamMembers, error: teamError } = await supabase
+              .from('team_members')
+              .insert(teamMembersToInsert)
+              .select();
+            
+            if (teamError) {
+              console.error('Error saving team members:', teamError);
+            } else {
+              console.log('Team members saved successfully:', insertedTeamMembers);
+            }
+          }
+        } catch (error) {
+          console.error('Error processing team members:', error);
+        }
+      }
       
       // Reload progress
       await loadProgress(dealer.id);
@@ -220,6 +602,13 @@ const OnboardingWizard = () => {
   const handleNext = async (stepData?: any) => {
     if (stepData) {
       const stepName = steps[currentStep - 1].title.toLowerCase().replace(/\s+/g, '_');
+      console.log('=== STEP NAME DEBUG ===');
+      console.log('Current step:', currentStep);
+      console.log('Step title:', steps[currentStep - 1].title);
+      console.log('Generated step name:', stepName);
+      console.log('Step data:', stepData);
+      console.log('=== END STEP NAME DEBUG ===');
+      
       await saveStep(stepData, stepName);
     }
 
@@ -309,44 +698,6 @@ const OnboardingWizard = () => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Map onboarding data to dealer table fields
-  const mapOnboardingDataToDealerFields = (data: OnboardingData) => {
-    const mappedData: any = {
-      onboarding_completed: true,
-      verification_status_new: 'pending'
-    };
-
-    // Map organization data
-    if (data.organization) {
-      mappedData.business_name = data.organization.businessName || data.organization.organizationName;
-      mappedData.owner_name = data.organization.ownerName || data.organization.contactPerson;
-      mappedData.gstin = data.organization.gstin;
-      mappedData.pan_number = data.organization.panNumber;
-      mappedData.phone = data.organization.phone || data.organization.contactNumber;
-      mappedData.whatsapp = data.organization.whatsapp || data.organization.whatsappNumber;
-      mappedData.address = data.organization.address || data.organization.businessAddress;
-      mappedData.city = data.organization.city;
-      mappedData.state = data.organization.state;
-      mappedData.pincode = data.organization.pincode;
-      mappedData.website = data.organization.website;
-      mappedData.description = data.organization.description || data.organization.aboutBusiness;
-    }
-
-    // Map bank details
-    if (data.bankDetails) {
-      // Bank details will be saved to bank_details table separately
-      // but we can store a reference in dealer table if needed
-    }
-
-    // Map user type and access level
-    if (data.clientType) {
-      mappedData.user_type = data.clientType;
-    }
-
-    console.log('Mapping onboarding data to dealer fields:', { data, mappedData });
-    return mappedData;
   };
 
   const getStepStatus = (stepId: number) => {

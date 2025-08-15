@@ -28,6 +28,8 @@ type VehicleCardProps = {
   onCompareToggle: (vehicleId: string) => void;
   isInCompare: boolean;
   onMakeOffer: (vehicle: any) => void;
+  isUserVerified: boolean;
+  isUnderReview?: boolean;
 };
 
 export default function VehicleCard({
@@ -37,6 +39,8 @@ export default function VehicleCard({
   onCompareToggle = () => {},
   isInCompare = false,
   onMakeOffer = () => {},
+  isUserVerified = false,
+  isUnderReview = false,
 }: VehicleCardProps) {
   const [isInShortlist, setIsInShortlist] = useState(false);
   const [isShortlisting, setIsShortlisting] = useState(false);
@@ -226,7 +230,19 @@ export default function VehicleCard({
 
             {/* Price */}
             <div className="text-xl font-bold text-blue-600">
-              {formatPrice(vehicleData.asking_price)}
+              {isUserVerified ? (
+                formatPrice(vehicleData.asking_price)
+              ) : (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-sm">
+                    {isUnderReview 
+                      ? 'Price hidden - Verification under review' 
+                      : 'Price hidden - Complete KYB verification'
+                    }
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Key specs */}
@@ -249,22 +265,54 @@ export default function VehicleCard({
             <div className="flex items-center gap-1 text-sm text-slate-500">
               <MapPin className="w-4 h-4" />
               <span>{vehicleData.location_city}</span>
-              <span>•</span>
-              <span>{dealerData.business_name}</span>
+              {isUserVerified && (
+                <>
+                  <span>•</span>
+                  <span>{dealerData.business_name}</span>
+                </>
+              )}
             </div>
+
+            {/* KYB Verification Notice for Unverified Users */}
+            {!isUserVerified && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="flex items-center gap-2 text-amber-700 text-xs">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>
+                    {isUnderReview 
+                      ? 'Verification under review - View profile for updates' 
+                      : 'Complete KYB verification to view dealer details and pricing'
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Link>
 
         {/* Action footer */}
         <div className="mt-4 pt-3 border-t flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            onClick={handleMakeOfferClick}
-          >
-            Make Offer
-          </Button>
+          {isUserVerified ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={handleMakeOfferClick}
+              title="Make an offer on this vehicle"
+            >
+              Make Offer
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={() => window.location.href = isUnderReview ? '/Profile' : '/OnboardingWizard'}
+              title={isUnderReview ? "View profile for verification updates" : "Complete KYB verification to make offers"}
+            >
+              {isUnderReview ? "View Profile" : "Complete KYB First"}
+            </Button>
+          )}
           <Button variant="ghost" size="sm">
             <Eye className="w-4 h-4" />
           </Button>

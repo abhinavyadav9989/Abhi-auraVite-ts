@@ -64,7 +64,8 @@ import {
   BarChart3,
   Shield,
   ExternalLink,
-  Loader2
+  Loader2,
+  Users
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
@@ -86,6 +87,10 @@ import DocumentLocker from "../components/profile/DocumentLocker";
 import ReviewsSection from "../components/profile/ReviewsSection";
 import PerformanceMetrics from "../components/profile/PerformanceMetrics";
 import PublicProfileShare from "../components/profile/PublicProfileShare";
+import SegmentSection from "../components/profile/SegmentSection";
+import PlanSection from "../components/profile/PlanSection";
+import BranchesSection from "../components/profile/BranchesSection";
+import TeamSection from "../components/profile/TeamSection";
 
 const DAYS_OF_WEEK = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
@@ -154,14 +159,48 @@ export default function Profile() {
       const currentUser = await User.me();
       setUser(currentUser);
       
+      console.log('Profile - Current user:', currentUser);
+      
       // Determine user role
       const role = currentUser.role === 'admin' ? 'admin' : 'owner'; // Simplified for demo
       setUserRole(role);
       
+      // First, try to get dealer by email to get the ID
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
+      console.log('Profile - Dealer profile from filter:', dealerProfile);
+      
       if (dealerProfile.length > 0) {
-        const dealerData = dealerProfile[0];
-        setDealer(dealerData);
+        const dealerId = dealerProfile[0].id;
+        console.log('Profile - Found dealer ID:', dealerId);
+        
+        // Force refresh by getting dealer data directly by ID
+        const dealerData = await Dealer.get(dealerId);
+        console.log('Profile - Fresh dealer data from get():', dealerData);
+        console.log('Profile - plan_selection from fresh data:', dealerData?.plan_selection);
+        console.log('Profile - business_mode from fresh data:', dealerData?.business_mode);
+        
+        // Double-check with direct Supabase query to ensure we have the latest data
+        const { data: directDealerData, error: directError } = await supabase
+          .from('dealers')
+          .select('*')
+          .eq('id', dealerId)
+          .single();
+        
+        if (directError) {
+          console.error('Profile - Direct Supabase query error:', directError);
+        } else {
+          console.log('Profile - Direct Supabase dealer data:', directDealerData);
+          console.log('Profile - Direct plan_selection:', directDealerData?.plan_selection);
+          console.log('Profile - Direct business_mode:', directDealerData?.business_mode);
+          
+          // Use the direct data if it's more complete
+          if (directDealerData && (!dealerData.plan_selection?.plan || !dealerData.business_mode?.mode)) {
+            console.log('Profile - Using direct Supabase data as it has more complete information');
+            setDealer(directDealerData);
+          } else {
+            setDealer(dealerData);
+          }
+        }
         
         // Set form data - try to get from dealer table fields first, then from onboarding progress
         const onboardingData = dealerData.onboarding_progress || {};
@@ -690,10 +729,26 @@ export default function Profile() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto p-1">
+          <TabsList className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-11 h-auto p-1">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="segment" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Segment</span>
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Plan</span>
+            </TabsTrigger>
+            <TabsTrigger value="branches" className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              <span className="hidden sm:inline">Branches</span>
+            </TabsTrigger>
+            <TabsTrigger value="team" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Team</span>
             </TabsTrigger>
             <TabsTrigger value="reviews" className="flex items-center gap-2">
               <Star className="w-4 h-4" />
@@ -711,7 +766,7 @@ export default function Profile() {
             {/* DD-14: Conditionally render metrics tab */}
             {canViewMetrics() ? (
               <TabsTrigger value="metrics" className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
+                <TrendingUp className="w-4 h-4" />
                 <span className="hidden sm:inline">Metrics</span>
               </TabsTrigger>
             ) : (
@@ -719,7 +774,7 @@ export default function Profile() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center justify-center gap-2 text-slate-400 cursor-not-allowed p-2">
-                      <BarChart3 className="w-4 h-4" />
+                      <TrendingUp className="w-4 h-4" />
                       <span className="hidden sm:inline">Metrics</span>
                     </div>
                   </TooltipTrigger>
@@ -752,6 +807,26 @@ export default function Profile() {
               uploadingDoc={uploadingDoc}
               inspectionCoverage={getInspectionCoverage()}
             />
+          </TabsContent>
+
+          {/* Segment Tab */}
+          <TabsContent value="segment" className="space-y-6">
+            <SegmentSection dealer={dealer} />
+          </TabsContent>
+
+          {/* Plan Subscribed Tab */}
+          <TabsContent value="plan" className="space-y-6">
+            <PlanSection dealer={dealer} />
+          </TabsContent>
+
+          {/* Branches Tab */}
+          <TabsContent value="branches" className="space-y-6">
+            <BranchesSection dealer={dealer} />
+          </TabsContent>
+
+          {/* Team Members Tab */}
+          <TabsContent value="team" className="space-y-6">
+            <TeamSection dealer={dealer} />
           </TabsContent>
 
           {/* Reviews Tab */}

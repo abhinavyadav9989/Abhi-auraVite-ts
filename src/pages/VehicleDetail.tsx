@@ -62,6 +62,8 @@ export default function VehicleDetail() {
   const [currentDealer, setCurrentDealer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isUserVerified, setIsUserVerified] = useState(false);
+  const [isUnderReview, setIsUnderReview] = useState(false);
   
   // Inspections state
   const [inspections, setInspections] = useState([]);
@@ -128,6 +130,22 @@ export default function VehicleDetail() {
 
       setDealer(dealerData);
       if (currentDealerData) setCurrentDealer(currentDealerData);
+
+      // Check if user is verified (either verification_status or verification_status_new)
+      if (currentDealerData) {
+        const isVerified = currentDealerData.verification_status === 'verified' || currentDealerData.verification_status_new === 'verified';
+        const isUnderReview = currentDealerData.verification_status === 'documents_submitted' || currentDealerData.verification_status_new === 'documents_submitted';
+        
+        setIsUserVerified(isVerified);
+        setIsUnderReview(isUnderReview);
+        
+        console.log('User verification status in VehicleDetail:', {
+          verification_status: currentDealerData.verification_status,
+          verification_status_new: currentDealerData.verification_status_new,
+          isVerified: isVerified,
+          isUnderReview: isUnderReview
+        });
+      }
 
       const isAdmin = currentUser?.role === 'admin';
       const isOwner = currentDealerData && vehicleData.dealer_id === currentDealerData.id;
@@ -439,7 +457,23 @@ export default function VehicleDetail() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-3xl font-bold text-green-600 mb-2">{formatCurrency(vehicle.asking_price)}</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-3xl font-bold text-green-600 mb-2">
+                  {isUserVerified ? (
+                    formatCurrency(vehicle.asking_price)
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <ShieldCheck className="w-5 h-5" />
+                      <span className="text-lg">
+                        {isUnderReview 
+                          ? 'Price hidden - Verification under review' 
+                          : 'Price hidden - Complete KYB verification'
+                        }
+                      </span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex justify-between"><span className="text-slate-600">Year:</span><span className="font-medium">{vehicle.year}</span></div>
@@ -459,8 +493,43 @@ export default function VehicleDetail() {
                     <p className="text-xs text-blue-600 mt-1">{formatDate(inspections[0].inspection_date)}</p>
                   </div>
                 )}
+                
+                {/* KYB Verification Notice for Unverified Users */}
+                {!isUserVerified && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-amber-700 text-sm">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>
+                        {isUnderReview 
+                          ? 'Verification under review - View profile for updates' 
+                          : 'Complete KYB verification to view pricing and dealer details'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
-                  {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="w-full gap-2"><Handshake className="w-4 h-4" />Make Offer</Button>}
+                  {permissions.canMakeOffer && isUserVerified && (
+                    <Button 
+                      onClick={() => setShowOfferModal(true)} 
+                      className="w-full gap-2"
+                      title="Make an offer on this vehicle"
+                    >
+                      <Handshake className="w-4 h-4" />
+                      Make Offer
+                    </Button>
+                  )}
+                  {permissions.canMakeOffer && !isUserVerified && (
+                    <Button 
+                      onClick={() => window.location.href = isUnderReview ? '/Profile' : '/OnboardingWizard'} 
+                      className="w-full gap-2"
+                      title={isUnderReview ? "View profile for verification updates" : "Complete KYB verification to make offers"}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      {isUnderReview ? "View Profile" : "Complete KYB First"}
+                    </Button>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={() => setShowEMICalculator(true)} className="gap-2"><Calculator className="w-4 h-4" />EMI</Button>
                     <Button variant="outline" onClick={() => setShowShareModal(true)} className="gap-2"><Share2 className="w-4 h-4" />Share</Button>
@@ -469,7 +538,7 @@ export default function VehicleDetail() {
               </CardContent>
             </Card>
 
-            {dealer && (
+            {dealer && isUserVerified && (
               <Card>
                 <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="w-5 h-5" />Dealer Information</CardTitle></CardHeader>
                 <CardContent>
@@ -566,7 +635,13 @@ export default function VehicleDetail() {
                         {relatedVehicle.images?.[0] && <img src={relatedVehicle.images[0]} alt={`${relatedVehicle.make} ${relatedVehicle.model}`} className="w-full h-full object-cover rounded" />}
                       </div>
                       <h4 className="font-medium text-sm">{relatedVehicle.year} {relatedVehicle.make} {relatedVehicle.model}</h4>
-                      <p className="text-sm font-bold text-blue-600">{formatCurrency(relatedVehicle.asking_price)}</p>
+                      <p className="text-sm font-bold text-blue-600">
+                        {isUserVerified ? (
+                          formatCurrency(relatedVehicle.asking_price)
+                        ) : (
+                          <span className="text-amber-600 text-xs">Price hidden</span>
+                        )}
+                      </p>
                     </div>
                   </Link>
                 ))}
@@ -583,7 +658,7 @@ export default function VehicleDetail() {
           onClose={() => setShowGallery(false)}
         />
       )}
-      {showOfferModal && (
+      {showOfferModal && isUserVerified && (
         <OfferModal
           vehicle={vehicle}
           dealer={dealer}
