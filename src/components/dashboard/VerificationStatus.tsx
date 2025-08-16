@@ -2,20 +2,31 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  Clock, 
-  Shield, 
-  FileText, 
+import {
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Shield,
+  FileText,
   Building2,
   User,
   CreditCard
 } from 'lucide-react';
 
+interface Dealer {
+  business_name?: string;
+  kyb_status?: string;
+  payment_method_verified?: boolean;
+  background_check_status?: string;
+}
+
+interface DashboardUser {
+  email_verified?: boolean;
+}
+
 interface VerificationStatusProps {
-  dealer: any;
-  user: any;
+  dealer: Dealer;
+  user: DashboardUser;
 }
 
 export default function VerificationStatus({ dealer, user }: VerificationStatusProps) {
