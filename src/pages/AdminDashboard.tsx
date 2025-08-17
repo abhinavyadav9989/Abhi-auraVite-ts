@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { Vehicle } from '@/api/entities';
@@ -35,6 +36,7 @@ import SystemHealthPanel from '../components/admin/SystemHealthPanel';
 import MaintenanceBanner from '../components/admin/MaintenanceBanner';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalDealers: 0,
@@ -56,11 +58,13 @@ export default function AdminDashboard() {
   });
   const [flaggedDealers, setFlaggedDealers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false); // Initialize as false
   
   const { toast } = useToast();
 
   useEffect(() => {
     loadAdminData();
+    console.log('AdminDashboard initialized - Maintenance mode:', isMaintenanceMode);
   }, []);
 
   const loadAdminData = async () => {
@@ -200,6 +204,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleMaintenanceToggle = async (enabled) => {
+    try {
+      console.log(`Maintenance mode toggled: ${enabled}`);
+      setIsMaintenanceMode(enabled);
+      toast({ 
+        title: 'Maintenance Mode Updated', 
+        description: `Maintenance mode has been ${enabled ? 'enabled' : 'disabled'}`,
+        variant: enabled ? 'destructive' : 'default'
+      });
+    } catch (error) {
+      console.error('Error toggling maintenance mode:', error);
+      toast({ title: 'Error', description: 'Failed to update maintenance mode', variant: 'destructive' });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-8 flex justify-center">
@@ -210,8 +229,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Maintenance Banner */}
-      <MaintenanceBanner />
+      {/* Maintenance Banner - Only show when maintenance mode is enabled */}
+      {isMaintenanceMode && <MaintenanceBanner />}
       
       <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -245,6 +264,7 @@ export default function AdminDashboard() {
               icon={Users}
               trend={{ value: 12, isPositive: true }}
               color="blue"
+              onClick={() => navigate(createPageUrl('AdminUsers'))}
             />
             <KpiCard
               title="Active Dealers"
@@ -351,7 +371,10 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* System Health */}
-                <SystemHealthPanel />
+                <SystemHealthPanel 
+                  isMaintenanceMode={isMaintenanceMode}
+                  onMaintenanceToggle={handleMaintenanceToggle}
+                />
               </div>
             </TabsContent>
 

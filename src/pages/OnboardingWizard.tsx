@@ -186,7 +186,7 @@ export default function OnboardingWizard() {
     clientType: '', businessType: '', vehicleSegments: [], customSegments: [],
     
     // C2. Details
-    organizationName: '', contactNumber: '', whatsappNumber: '', isGSTRegistered: false, gstin: '', panNumber: '', businessAddress: '', city: '', state: '', pincode: '',
+    organizationName: '', ownerName: '', contactNumber: '', whatsappNumber: '', isGSTRegistered: false, gstin: '', panNumber: '', businessAddress: '', city: '', state: '', pincode: '',
     
     // E. Group Dealer
     groupName: '', organizations: [],
@@ -375,28 +375,44 @@ export default function OnboardingWizard() {
       const existingDealers = await Dealer.filter({ created_by: onboardingData.email });
       
              let dealerId;
-       if (existingDealers.length > 0) {
-         // Update existing profile
-         console.log('OnboardingWizard - Updating existing dealer profile');
-         const updatedDealer = await Dealer.update(existingDealers[0].id, {
-           onboarding_completed: true,
-           onboarding_data: onboardingData
-         });
-         console.log('OnboardingWizard - Dealer profile updated:', updatedDealer);
-         dealerId = existingDealers[0].id;
-       } else {
-         // Create new profile if none exists
-         console.log('OnboardingWizard - Creating new dealer profile');
-         const dealerData = {
-           email: onboardingData.email,
-           created_by: onboardingData.email,
-           onboarding_completed: true,
-           onboarding_data: onboardingData
-         };
-         const newDealer = await Dealer.create(dealerData);
-         console.log('OnboardingWizard - Dealer profile created:', newDealer);
-         dealerId = newDealer.id;
-       }
+             // Prepare dealer data with both JSONB and direct column mapping
+      const dealerData = {
+        // Direct column mapping for database fields
+        business_name: onboardingData.organizationName || '',
+        owner_name: onboardingData.ownerName || onboardingData.fullName || '',
+        email: onboardingData.email,
+        phone: onboardingData.contactNumber || '',
+        whatsapp: onboardingData.whatsappNumber || '',
+        gstin: onboardingData.gstin || '',
+        pan_number: onboardingData.panNumber || '',
+        address: onboardingData.businessAddress || '',
+        city: onboardingData.city || '',
+        state: onboardingData.state || '',
+        pincode: onboardingData.pincode || '',
+        business_type: onboardingData.businessType || 'individual',
+        client_type: onboardingData.clientType || 'individual',
+        
+        // Onboarding completion flags
+        onboarding_completed: true,
+        onboarding_data: onboardingData
+      };
+
+      if (existingDealers.length > 0) {
+        // Update existing profile
+        console.log('OnboardingWizard - Updating existing dealer profile');
+        const updatedDealer = await Dealer.update(existingDealers[0].id, dealerData);
+        console.log('OnboardingWizard - Dealer profile updated:', updatedDealer);
+        dealerId = existingDealers[0].id;
+      } else {
+        // Create new profile if none exists
+        console.log('OnboardingWizard - Creating new dealer profile');
+        const newDealer = await Dealer.create({
+          ...dealerData,
+          created_by: onboardingData.email
+        });
+        console.log('OnboardingWizard - Dealer profile created:', newDealer);
+        dealerId = newDealer.id;
+      }
 
        // Save uploaded documents to dealer_documents table
        if (dealerId && onboardingData.kybDocuments) {

@@ -531,7 +531,9 @@ export default function VehicleDetail() {
                     </Button>
                   )}
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" onClick={() => setShowEMICalculator(true)} className="gap-2"><Calculator className="w-4 h-4" />EMI</Button>
+                    {isUserVerified && (
+                      <Button variant="outline" onClick={() => setShowEMICalculator(true)} className="gap-2"><Calculator className="w-4 h-4" />EMI</Button>
+                    )}
                     <Button variant="outline" onClick={() => setShowShareModal(true)} className="gap-2"><Share2 className="w-4 h-4" />Share</Button>
                   </div>
                 </div>

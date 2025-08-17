@@ -33,12 +33,12 @@ export default function MarketplaceFilters({
   allVehicles = [], 
   userClientType = 'individual' 
 }) {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(true); // Default to expanded
   const [expandedSections, setExpandedSections] = React.useState({
-    price: false,
-    vehicle: false,
-    specs: false,
-    condition: false
+    price: true,      // Default to expanded
+    vehicle: true,    // Default to expanded
+    specs: true,      // Default to expanded
+    condition: true   // Default to expanded
   });
 
   // Get unique values for filter options
@@ -129,15 +129,6 @@ export default function MarketplaceFilters({
             <Badge variant="outline" className="bg-slate-50">
               {resultsCount} results
             </Badge>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="gap-1 text-slate-600"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              {isExpanded ? 'Less' : 'More'}
-            </Button>
             {activeFilterCount > 0 && (
               <Button 
                 variant="ghost" 
@@ -205,203 +196,201 @@ export default function MarketplaceFilters({
           )}
         </div>
 
-        {isExpanded && (
-          <div className="space-y-4">
-            <Separator />
+        <div className="space-y-4">
+          <Separator />
 
-            {/* Price Range Section */}
-            <FilterSection title="Price Range" sectionKey="price" defaultExpanded={true}>
-              <div className="space-y-3">
+          {/* Price Range Section */}
+          <FilterSection title="Price Range" sectionKey="price" defaultExpanded={true}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="price-min" className="text-xs text-slate-600 mb-1 block">
+                    Min Price (₹ Lakh)
+                  </Label>
+                  <Input
+                    id="price-min"
+                    type="number"
+                    placeholder="e.g. 5"
+                    value={filters.price_min}
+                    onChange={(e) => updateFilter('price_min', e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price-max" className="text-xs text-slate-600 mb-1 block">
+                    Max Price (₹ Lakh)
+                  </Label>
+                  <Input
+                    id="price-max"
+                    type="number"
+                    placeholder="e.g. 15"
+                    value={filters.price_max}
+                    onChange={(e) => updateFilter('price_max', e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </FilterSection>
+
+          {/* Vehicle Type Section */}
+          <FilterSection title="Vehicle Type" sectionKey="vehicle" defaultExpanded={true}>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'two_wheeler', label: '2 Wheeler', icon: '🏍️' },
+                { value: 'hatchback', label: 'Hatchback', icon: '🚗' },
+                { value: 'sedan', label: 'Sedan', icon: '🚙' },
+                { value: 'suv', label: 'SUV', icon: '🚙' },
+                { value: 'muv', label: 'MUV', icon: '🚐' },
+                { value: 'luxury', label: 'Luxury', icon: '🏎️' },
+                { value: 'commercial_light', label: 'LCV', icon: '🚚' },
+                { value: 'specialised', label: 'Specialised', icon: '🏗️' }
+              ].map(category => (
+                <div key={category.value} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                  <Checkbox
+                    id={`category-${category.value}`}
+                    checked={(filters.vehicle_category || []).includes(category.value)}
+                    onCheckedChange={(checked) => updateArrayFilter('vehicle_category', category.value, checked)}
+                  />
+                  <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer flex items-center gap-1">
+                    <span>{category.icon}</span>
+                    {category.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </FilterSection>
+
+          {/* Vehicle Specifications */}
+          <FilterSection title="Specifications" sectionKey="specs" defaultExpanded={true}>
+            <div className="space-y-4">
+              {/* Make */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Make</Label>
+                <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                  {getUniqueValues('make').slice(0, 12).map(make => (
+                    <div key={make} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                      <Checkbox
+                        id={`make-${make}`}
+                        checked={(filters.make || []).includes(make)}
+                        onCheckedChange={(checked) => updateArrayFilter('make', make, checked)}
+                      />
+                      <Label htmlFor={`make-${make}`} className="text-sm cursor-pointer">{make}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fuel Type */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Fuel Type</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['petrol', 'diesel', 'cng', 'electric', 'hybrid'].map(fuel => (
+                    <div key={fuel} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                      <Checkbox
+                        id={`fuel-${fuel}`}
+                        checked={(filters.fuel_type || []).includes(fuel)}
+                        onCheckedChange={(checked) => updateArrayFilter('fuel_type', fuel, checked)}
+                      />
+                      <Label htmlFor={`fuel-${fuel}`} className="text-sm cursor-pointer capitalize">{fuel}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Transmission */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Transmission</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['manual', 'automatic', 'amt', 'cvt'].map(trans => (
+                    <div key={trans} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                      <Checkbox
+                        id={`trans-${trans}`}
+                        checked={(filters.transmission || []).includes(trans)}
+                        onCheckedChange={(checked) => updateArrayFilter('transmission', trans, checked)}
+                      />
+                      <Label htmlFor={`trans-${trans}`} className="text-sm cursor-pointer capitalize">{trans}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </FilterSection>
+
+          {/* Condition & History */}
+          <FilterSection title="Condition & History" sectionKey="condition" defaultExpanded={true}>
+            <div className="space-y-4">
+              {/* Year Range */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Year Range</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={filters.year_min} onValueChange={(value) => updateFilter('year_min', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="From" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 20 }, (_, i) => 2024 - i).map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.year_max} onValueChange={(value) => updateFilter('year_max', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="To" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 20 }, (_, i) => 2024 - i).map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Kilometers */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Kilometers Driven</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="price-min" className="text-xs text-slate-600 mb-1 block">
-                      Min Price (₹ Lakh)
-                    </Label>
                     <Input
-                      id="price-min"
-                      type="number"
-                      placeholder="e.g. 5"
-                      value={filters.price_min}
-                      onChange={(e) => updateFilter('price_min', e.target.value)}
+                      placeholder="Min KMs"
+                      value={filters.kms_min}
+                      onChange={(e) => updateFilter('kms_min', e.target.value)}
                       className="text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="price-max" className="text-xs text-slate-600 mb-1 block">
-                      Max Price (₹ Lakh)
-                    </Label>
                     <Input
-                      id="price-max"
-                      type="number"
-                      placeholder="e.g. 15"
-                      value={filters.price_max}
-                      onChange={(e) => updateFilter('price_max', e.target.value)}
+                      placeholder="Max KMs"
+                      value={filters.kms_max}
+                      onChange={(e) => updateFilter('kms_max', e.target.value)}
                       className="text-sm"
                     />
                   </div>
                 </div>
               </div>
-            </FilterSection>
 
-            {/* Vehicle Type Section */}
-            <FilterSection title="Vehicle Type" sectionKey="vehicle">
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'two_wheeler', label: '2 Wheeler', icon: '🏍️' },
-                  { value: 'hatchback', label: 'Hatchback', icon: '🚗' },
-                  { value: 'sedan', label: 'Sedan', icon: '🚙' },
-                  { value: 'suv', label: 'SUV', icon: '🚙' },
-                  { value: 'muv', label: 'MUV', icon: '🚐' },
-                  { value: 'luxury', label: 'Luxury', icon: '🏎️' },
-                  { value: 'commercial_light', label: 'LCV', icon: '🚚' },
-                  { value: 'specialised', label: 'Specialised', icon: '🏗️' }
-                ].map(category => (
-                  <div key={category.value} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                    <Checkbox
-                      id={`category-${category.value}`}
-                      checked={(filters.vehicle_category || []).includes(category.value)}
-                      onCheckedChange={(checked) => updateArrayFilter('vehicle_category', category.value, checked)}
-                    />
-                    <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer flex items-center gap-1">
-                      <span>{category.icon}</span>
-                      {category.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </FilterSection>
-
-            {/* Vehicle Specifications */}
-            <FilterSection title="Specifications" sectionKey="specs">
-              <div className="space-y-4">
-                {/* Make */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Make</Label>
-                  <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
-                    {getUniqueValues('make').slice(0, 12).map(make => (
-                      <div key={make} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                        <Checkbox
-                          id={`make-${make}`}
-                          checked={(filters.make || []).includes(make)}
-                          onCheckedChange={(checked) => updateArrayFilter('make', make, checked)}
-                        />
-                        <Label htmlFor={`make-${make}`} className="text-sm cursor-pointer">{make}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Fuel Type */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Fuel Type</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['petrol', 'diesel', 'cng', 'electric', 'hybrid'].map(fuel => (
-                      <div key={fuel} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                        <Checkbox
-                          id={`fuel-${fuel}`}
-                          checked={(filters.fuel_type || []).includes(fuel)}
-                          onCheckedChange={(checked) => updateArrayFilter('fuel_type', fuel, checked)}
-                        />
-                        <Label htmlFor={`fuel-${fuel}`} className="text-sm cursor-pointer capitalize">{fuel}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Transmission */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Transmission</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['manual', 'automatic', 'amt', 'cvt'].map(trans => (
-                      <div key={trans} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                        <Checkbox
-                          id={`trans-${trans}`}
-                          checked={(filters.transmission || []).includes(trans)}
-                          onCheckedChange={(checked) => updateArrayFilter('transmission', trans, checked)}
-                        />
-                        <Label htmlFor={`trans-${trans}`} className="text-sm cursor-pointer capitalize">{trans}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </FilterSection>
-
-            {/* Condition & History */}
-            <FilterSection title="Condition & History" sectionKey="condition">
-              <div className="space-y-4">
-                {/* Year Range */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Year Range</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select value={filters.year_min} onValueChange={(value) => updateFilter('year_min', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="From" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 20 }, (_, i) => 2024 - i).map(year => (
-                          <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filters.year_max} onValueChange={(value) => updateFilter('year_max', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="To" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 20 }, (_, i) => 2024 - i).map(year => (
-                          <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Kilometers */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Kilometers Driven</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Input
-                        placeholder="Min KMs"
-                        value={filters.kms_min}
-                        onChange={(e) => updateFilter('kms_min', e.target.value)}
-                        className="text-sm"
+              {/* Ownership */}
+              <div>
+                <Label className="text-sm font-medium text-slate-700 mb-2 block">Ownership</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['first', 'second', 'third', 'fourth_plus'].map(owner => (
+                    <div key={owner} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                      <Checkbox
+                        id={`owner-${owner}`}
+                        checked={(filters.ownership || []).includes(owner)}
+                        onCheckedChange={(checked) => updateArrayFilter('ownership', owner, checked)}
                       />
+                      <Label htmlFor={`owner-${owner}`} className="text-sm cursor-pointer capitalize">
+                        {owner.replace('_', ' ')} owner
+                      </Label>
                     </div>
-                    <div>
-                      <Input
-                        placeholder="Max KMs"
-                        value={filters.kms_max}
-                        onChange={(e) => updateFilter('kms_max', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ownership */}
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Ownership</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['first', 'second', 'third', 'fourth_plus'].map(owner => (
-                      <div key={owner} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                        <Checkbox
-                          id={`owner-${owner}`}
-                          checked={(filters.ownership || []).includes(owner)}
-                          onCheckedChange={(checked) => updateArrayFilter('ownership', owner, checked)}
-                        />
-                        <Label htmlFor={`owner-${owner}`} className="text-sm cursor-pointer capitalize">
-                          {owner.replace('_', ' ')} owner
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
-            </FilterSection>
-          </div>
-        )}
+            </div>
+          </FilterSection>
+        </div>
       </CardContent>
     </Card>
   );

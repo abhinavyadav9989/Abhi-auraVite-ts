@@ -29,6 +29,8 @@ export default function Shortlists() {
   const [activeShortlist, setActiveShortlist] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newShortlistName, setNewShortlistName] = useState('');
+  const [isUserVerified, setIsUserVerified] = useState(false);
+  const [isUnderReview, setIsUnderReview] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,7 +45,14 @@ export default function Shortlists() {
       if (dealerProfiles.length > 0) {
         const dealer = dealerProfiles[0];
         setCurrentDealer(dealer);
-        const userShortlists = await Shortlist.filter({ dealer_id: dealer.id }, '-created_date');
+        
+        // Check if user is verified (either verification_status or verification_status_new)
+        const isVerified = dealer.verification_status === 'verified' || dealer.verification_status_new === 'verified';
+        const isUnderReview = dealer.verification_status === 'documents_submitted' || dealer.verification_status_new === 'documents_submitted';
+        
+        setIsUserVerified(isVerified);
+        setIsUnderReview(isUnderReview);
+        const userShortlists = await Shortlist.filter({ dealer_id: dealer.id });
         const safeLists = userShortlists || [];
         setShortlists(safeLists);
         
@@ -225,6 +234,8 @@ export default function Shortlists() {
                       isInCompare={false}
                       onCompareToggle={(id: string) => { /* no-op in shortlists */ }}
                       onMakeOffer={(v: any) => { /* no-op in shortlists */ }}
+                      isUserVerified={isUserVerified}
+                      isUnderReview={isUnderReview}
                     />
                     <Button
                       size="sm"

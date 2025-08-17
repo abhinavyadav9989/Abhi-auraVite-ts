@@ -19,6 +19,7 @@ import DealRoom from "./DealRoom";
 import AdminPanel from "./AdminPanel";
 
 import AdminDashboard from "./AdminDashboard";
+import AdminUsers from "./AdminUsers";
 
 import DisputeResolution from "./DisputeResolution";
 
@@ -85,6 +86,7 @@ const PAGES = {
     AdminPanel: AdminPanel,
     
     AdminDashboard: AdminDashboard,
+    AdminUsers: AdminUsers,
     
     DisputeResolution: DisputeResolution,
     
@@ -174,6 +176,8 @@ function PagesContent() {
                 <Route path="/AdminPanel" element={<AdminPanel />} />
                 
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
+                
+                <Route path="/AdminUsers" element={<AdminUsers />} />
                 
                 <Route path="/DisputeResolution" element={<DisputeResolution />} />
                 

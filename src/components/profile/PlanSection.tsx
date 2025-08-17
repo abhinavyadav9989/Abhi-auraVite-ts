@@ -184,22 +184,7 @@ const PlanSection: React.FC<PlanSectionProps> = ({ dealer }) => {
         </Card>
       )}
 
-      {/* Raw Data for Debug */}
-      {process.env.NODE_ENV === 'development' && planSelection && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Debug: Raw Plan Selection Data
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-slate-100 p-3 rounded overflow-auto">
-              {JSON.stringify(planSelection, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
+
     </div>
   );
 };

@@ -41,6 +41,22 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const { user: authUser, loading: authLoading, isAuthenticated } = useAuth();
 
+  // Define routes where sidebar should NOT be shown
+  const authOnboardingRoutes = [
+    '/Authentication',
+    '/OnboardingWizard', 
+    '/OnboardingPath',
+    '/EmailVerification'
+  ];
+
+  // Check if current route is an auth/onboarding route
+  const isAuthOnboardingRoute = authOnboardingRoutes.some(route => 
+    location.pathname === route || location.pathname.includes(route.replace('/', ''))
+  );
+
+  // Determine if sidebar should be shown
+  const shouldShowSidebar = isAuthenticated && !isAuthOnboardingRoute;
+
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState) {
@@ -90,7 +106,8 @@ export default function Layout({ children, currentPageName }) {
     });
   };
 
-  if (isLoading || authLoading) {
+  // If on auth/onboarding routes, don't show loading spinner - let the auth pages handle their own loading
+  if ((isLoading || authLoading) && !isAuthOnboardingRoute) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -137,26 +154,33 @@ export default function Layout({ children, currentPageName }) {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-slate-100 text-slate-900">
-        <aside className={cn(
-          "hidden lg:block fixed top-0 left-0 h-full z-30 bg-white/70 backdrop-blur-sm border-r border-slate-200 transition-all duration-300",
-          isCollapsed ? "w-20" : "w-64"
-        )}>
-          <SidebarContent />
-        </aside>
+        {/* Desktop Sidebar - Only show if authenticated and not on auth/onboarding routes */}
+        {shouldShowSidebar && (
+          <aside className={cn(
+            "hidden lg:block fixed top-0 left-0 h-full z-30 bg-white/70 backdrop-blur-sm border-r border-slate-200 transition-all duration-300",
+            isCollapsed ? "w-20" : "w-64"
+          )}>
+            <SidebarContent />
+          </aside>
+        )}
 
-        <div className={cn("transition-all duration-300", isCollapsed ? "lg:ml-20" : "lg:ml-64")}>
-          <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/70 backdrop-blur-sm border-b border-slate-200">
-            <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
-              <Car className="w-6 h-6 text-blue-600" />
-              <span className="font-bold">Aura</span>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-              <Menu className="w-6 h-6" />
-            </Button>
-          </header>
+        <div className={cn("transition-all duration-300", shouldShowSidebar ? (isCollapsed ? "lg:ml-20" : "lg:ml-64") : "lg:ml-0")}>
+          {/* Mobile Header - Only show if authenticated and not on auth/onboarding routes */}
+          {shouldShowSidebar && (
+            <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/70 backdrop-blur-sm border-b border-slate-200">
+              <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
+                <Car className="w-6 h-6 text-blue-600" />
+                <span className="font-bold">Aura</span>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
+                <Menu className="w-6 h-6" />
+              </Button>
+            </header>
+          )}
           
+          {/* Mobile Sidebar - Only show if authenticated and not on auth/onboarding routes */}
           <AnimatePresence>
-            {isMobileMenuOpen && (
+            {shouldShowSidebar && isMobileMenuOpen && (
               <motion.div
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}

@@ -8,8 +8,8 @@ import { Dealer } from '@/api/entities';
 import { DealerPreferences } from '@/api/entities';
 
 // MP-001: Fuzzy Search with auto-suggestions and search history
-export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = "Search vehicles..." }) {
-  const [query, setQuery] = useState('');
+export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = "Search vehicles...", value = "" }) {
+  const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +19,11 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
   useEffect(() => {
     loadSearchHistory();
   }, [currentDealer]);
+
+  // Sync query with value prop
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
 
   const loadSearchHistory = async () => {
     if (!currentDealer) return;
@@ -68,7 +73,13 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
         Dealer.list()
       ]);
 
-      const vehicleSuggestions = vehicles
+      // Filter out current dealer's vehicles from suggestions
+      let filteredVehicles = vehicles;
+      if (currentDealer) {
+        filteredVehicles = vehicles.filter(v => v.dealer_id !== currentDealer.id);
+      }
+
+      const vehicleSuggestions = filteredVehicles
         .filter(v => 
           v.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           v.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,7 +107,7 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
         }));
 
       // Generate make/model suggestions
-      const makeModelSuggestions = [...new Set(vehicles.map(v => v.make))]
+      const makeModelSuggestions = [...new Set(filteredVehicles.map(v => v.make))]
         .filter(make => make?.toLowerCase().includes(searchTerm.toLowerCase()))
         .slice(0, 3)
         .map(make => ({
@@ -137,10 +148,15 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
   }, [isOpen]);
 
   const handleSearch = (searchTerm) => {
-    if (!searchTerm.trim()) return;
-    
+    // Allow empty search to clear filters
     saveSearchHistory(searchTerm);
     onSearch(searchTerm);
+    setIsOpen(false);
+  };
+
+  const handleClearSearch = () => {
+    setQuery('');
+    onSearch(''); // Clear the search
     setIsOpen(false);
   };
 
@@ -174,11 +190,21 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               handleSearch(query);
+            } else if (e.key === 'Escape') {
+              handleClearSearch();
             }
           }}
           placeholder={placeholder}
           className="pl-10 pr-4"
         />
+        {query && (
+          <button
+            onClick={handleClearSearch}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
       
       {/* Dropdown */}
@@ -241,18 +267,33 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
             </div>
           )}
 
-          {/* Empty State */}
-          {query.length > 0 && suggestions.length === 0 && !isLoading && (
-            <div className="p-2 text-center text-sm text-slate-500">
-              No results found for &quot;{query}&quot;
-            </div>
-          )}
+                     {/* Clear Search Option */}
+           {query.length > 0 && (
+             <div className="p-2 border-t border-slate-100">
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 onClick={handleClearSearch}
+                 className="w-full justify-start text-sm text-red-500 hover:text-red-700"
+               >
+                 <X className="w-4 h-4 mr-2" />
+                 Clear search &quot;{query}&quot;
+               </Button>
+             </div>
+           )}
 
-          {isLoading && (
-            <div className="p-2 text-center text-sm text-slate-500">
-              Searching...
-            </div>
-          )}
+           {/* Empty State */}
+           {query.length > 0 && suggestions.length === 0 && !isLoading && (
+             <div className="p-2 text-center text-sm text-slate-500">
+               No results found for &quot;{query}&quot;
+             </div>
+           )}
+
+           {isLoading && (
+             <div className="p-2 text-center text-sm text-slate-500">
+               Searching...
+             </div>
+           )}
         </div>
       )}
     </div>

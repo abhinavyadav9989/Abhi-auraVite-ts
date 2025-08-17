@@ -115,22 +115,7 @@ const SegmentSection: React.FC<SegmentSectionProps> = ({ dealer }) => {
         </CardContent>
       </Card>
 
-      {/* Raw Data for Debug */}
-      {process.env.NODE_ENV === 'development' && businessMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Debug: Raw Business Mode Data
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-slate-100 p-3 rounded overflow-auto">
-              {JSON.stringify(businessMode, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
+
     </div>
   );
 };

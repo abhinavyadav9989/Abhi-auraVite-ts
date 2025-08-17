@@ -12,18 +12,50 @@ import {
 } from 'lucide-react';
 import InfoTooltip from '../ui/InfoTooltip';
 
-export default function BasicDetailsForm({ data, updateData }) {
+// TypeScript interfaces for the form data
+interface BasicDetailsData {
+  organizationName?: string;
+  ownerName?: string;
+  fullName?: string;
+  email?: string;
+  contactNumber?: string;
+  whatsappNumber?: string;
+  isGSTRegistered?: boolean;
+  gstin?: string;
+  panNumber?: string;
+  businessAddress?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
+interface BasicDetailsFormProps {
+  data: BasicDetailsData;
+  updateData: (updates: Partial<BasicDetailsData>) => void;
+}
+
+export default function BasicDetailsForm({ data, updateData }: BasicDetailsFormProps) {
   const [gstinLookupLoading, setGstinLookupLoading] = useState(false);
   const [gstinVerified, setGstinVerified] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Real-time validation
   useEffect(() => {
     validateFields();
-  }, [data.organizationName, data.email, data.contactNumber, data.gstin, data.panNumber]);
+  }, [data.organizationName, data.ownerName, data.email, data.contactNumber, data.gstin, data.panNumber]);
 
   const validateFields = () => {
-    const errors = {};
+    const errors: Record<string, string> = {};
+    
+    // Organization name validation
+    if (data.organizationName && data.organizationName.trim().length < 2) {
+      errors.organizationName = 'Organization name must be at least 2 characters long';
+    }
+    
+    // Owner name validation
+    if (data.ownerName && data.ownerName.trim().length < 2) {
+      errors.ownerName = 'Owner name must be at least 2 characters long';
+    }
     
     // Email validation
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
@@ -50,7 +82,7 @@ export default function BasicDetailsForm({ data, updateData }) {
     setValidationErrors(errors);
   };
 
-  const handleGSTINLookup = async (gstin) => {
+  const handleGSTINLookup = async (gstin: string) => {
     if (!gstin || gstin.length !== 15) return;
     
     setGstinLookupLoading(true);
@@ -79,11 +111,11 @@ export default function BasicDetailsForm({ data, updateData }) {
     }
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: keyof BasicDetailsData, value: string | boolean) => {
     updateData({ [field]: value });
     
     // Auto-lookup GSTIN when complete
-    if (field === 'gstin' && value.length === 15) {
+    if (field === 'gstin' && typeof value === 'string' && value.length === 15) {
       handleGSTINLookup(value);
     }
   };
@@ -106,23 +138,44 @@ export default function BasicDetailsForm({ data, updateData }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="organizationName" className="flex items-center gap-1">
-              Organization Name *
-              <InfoTooltip>
-                This will be displayed to other dealers and customers on the platform.
-              </InfoTooltip>
-            </Label>
-            <Input
-              id="organizationName"
-              value={data.organizationName || ''}
-              onChange={(e) => handleInputChange('organizationName', e.target.value)}
-              placeholder="Enter your business/organization name"
-              className={validationErrors.organizationName ? 'border-red-300' : ''}
-            />
-            {validationErrors.organizationName && (
-              <p className="text-sm text-red-600">{validationErrors.organizationName}</p>
-            )}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="organizationName" className="flex items-center gap-1">
+                Organization Name *
+                <InfoTooltip>
+                  This will be displayed to other dealers and customers on the platform.
+                </InfoTooltip>
+              </Label>
+              <Input
+                id="organizationName"
+                value={data.organizationName || ''}
+                onChange={(e) => handleInputChange('organizationName', e.target.value)}
+                placeholder="Enter your business/organization name"
+                className={validationErrors.organizationName ? 'border-red-300' : ''}
+              />
+              {validationErrors.organizationName && (
+                <p className="text-sm text-red-600">{validationErrors.organizationName}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ownerName" className="flex items-center gap-1">
+                Owner Name *
+                <InfoTooltip>
+                  The name of the business owner/proprietor.
+                </InfoTooltip>
+              </Label>
+              <Input
+                id="ownerName"
+                value={data.ownerName || data.fullName || ''}
+                onChange={(e) => handleInputChange('ownerName', e.target.value)}
+                placeholder="Enter owner name"
+                className={validationErrors.ownerName ? 'border-red-300' : ''}
+              />
+              {validationErrors.ownerName && (
+                <p className="text-sm text-red-600">{validationErrors.ownerName}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -208,13 +261,15 @@ export default function BasicDetailsForm({ data, updateData }) {
                 Are you registered for Goods & Services Tax?
               </p>
             </div>
-            <Switch
-              checked={data.isGSTRegistered}
-              onCheckedChange={(checked) => updateData({ 
-                isGSTRegistered: checked,
-                ...((!checked && { gstin: '' }))
-              })}
-            />
+                         <Switch
+               checked={data.isGSTRegistered || false}
+               onCheckedChange={(checked) => {
+                 updateData({ 
+                   isGSTRegistered: checked,
+                   ...((!checked && { gstin: '' }))
+                 });
+               }}
+             />
           </div>
 
           {/* GSTIN Field */}
@@ -299,20 +354,20 @@ export default function BasicDetailsForm({ data, updateData }) {
         </AlertDescription>
       </Alert>
 
-      {/* Validation Summary */}
-      {Object.keys(validationErrors).length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Please fix the following errors before proceeding:
-            <ul className="list-disc list-inside mt-2">
-              {Object.values(validationErrors).map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
+             {/* Validation Summary */}
+       {Object.keys(validationErrors).length > 0 && (
+         <Alert variant="destructive">
+           <AlertTriangle className="h-4 w-4" />
+           <AlertDescription>
+             Please fix the following errors before proceeding:
+             <ul className="list-disc list-inside mt-2">
+               {Object.values(validationErrors).map((error: string, index: number) => (
+                 <li key={index}>{error}</li>
+               ))}
+             </ul>
+           </AlertDescription>
+         </Alert>
+       )}
     </div>
   );
 }

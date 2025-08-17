@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2, Grid3X3, List } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InventoryFilters from "../components/inventory/InventoryFilters";
 import VehicleCard from "../components/inventory/VehicleCard";
+import VehicleListCard from "../components/marketplace/VehicleListCard";
 import BulkToolbar from "../components/inventory/BulkToolbar";
 import EmptyState from "../components/inventory/EmptyState";
 import ShareLinkModal from '../components/inventory/ShareLinkModal';
@@ -45,6 +46,7 @@ export default function Inventory() {
   const [sharingVehicle, setSharingVehicle] = useState(null);
   const [deletingVehicle, setDeletingVehicle] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   
   // Filter states for InventoryFilters component
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
@@ -256,12 +258,78 @@ export default function Inventory() {
         {isLoading ? <div><Loader2 className="w-8 h-8 animate-spin mx-auto mt-10"/></div> : (
           filteredVehicles.length > 0 ? (
             <div>
-                <div className="flex items-center gap-2 mb-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedVehicles.size === filteredVehicles.length && filteredVehicles.length > 0} className="w-4 h-4 rounded" /> Select all</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredVehicles.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} isSelected={selectedVehicles.has(vehicle.id)} onSelect={handleVehicleSelect} onShare={() => setSharingVehicle(vehicle)} onDelete={handleDeleteVehicle} />
-                ))}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      onChange={handleSelectAll} 
+                      checked={selectedVehicles.size === filteredVehicles.length && filteredVehicles.length > 0} 
+                      className="w-4 h-4 rounded" 
+                    /> 
+                    Select all
+                  </div>
+                  
+                  {/* View Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-700">View:</span>
+                    <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setViewMode('grid')}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                          viewMode === 'grid'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Grid3X3 className="w-4 h-4" />
+                        Grid
+                      </button>
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                          viewMode === 'list'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <List className="w-4 h-4" />
+                        List
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                
+                {/* Vehicle Listings */}
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredVehicles.map((vehicle) => (
+                      <VehicleCard 
+                        key={vehicle.id} 
+                        vehicle={vehicle} 
+                        isSelected={selectedVehicles.has(vehicle.id)} 
+                        onSelect={handleVehicleSelect} 
+                        onShare={() => setSharingVehicle(vehicle)} 
+                        onDelete={handleDeleteVehicle} 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredVehicles.map((vehicle) => (
+                      <VehicleListCard
+                        key={vehicle.id}
+                        vehicle={vehicle}
+                        dealer={dealer}
+                        currentDealer={dealer}
+                        isInCompare={false}
+                        onCompareToggle={() => {}}
+                        onMakeOffer={() => {}}
+                        isUserVerified={true}
+                        isUnderReview={false}
+                      />
+                    ))}
+                  </div>
+                )}
             </div>
           ) : <EmptyState dealer={dealer} />
         )}
