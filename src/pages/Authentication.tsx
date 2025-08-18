@@ -12,7 +12,7 @@ import { createPageUrl } from '@/utils';
 
 export default function Authentication() {
   const navigate = useNavigate();
-  const { signIn, signUp, loading, error, clearError, isAuthenticated } = useAuth();
+  const { signIn, signUpWithEmailCheck, loading, error, clearError, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationEmail, setRegistrationEmail] = useState('');
@@ -52,7 +52,7 @@ export default function Authentication() {
     }
     
     try {
-      const result = await signUp(regEmail, regPassword, regFullName);
+      const result = await signUpWithEmailCheck(regEmail, regPassword, regFullName);
       console.log('Registration successful:', result);
       
       // Show success message

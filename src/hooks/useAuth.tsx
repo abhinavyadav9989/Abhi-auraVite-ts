@@ -68,7 +68,24 @@ export function useAuth() {
         password
       });
       
-      if (error) throw error;
+      if (error) {
+        // Check if it's an unverified email error
+        if (error.message.includes('Email not confirmed') || error.message.includes('Invalid login credentials')) {
+          // Try to resend verification email
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email
+          });
+          
+          if (resendError) {
+            throw new Error('Failed to resend verification email. Please try again.');
+          }
+          
+          throw new Error('Email not verified. A new verification email has been sent to your inbox.');
+        }
+        
+        throw error;
+      }
       
       return data;
     } catch (error) {
@@ -80,17 +97,91 @@ export function useAuth() {
     }
   };
 
-  // Sign up method
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  // Check if email already exists in dealers table
+  const checkDealerEmailExists = async (email: string): Promise<boolean> => {
+    console.log('🔍 Checking email existence for:', email);
+    try {
+      // Try the main function first
+      let { data, error } = await supabase
+        .rpc('check_dealer_email_exists', { email_to_check: email });
+      
+      console.log('📊 Email check result (main):', { data, error });
+      console.log('📊 Data type:', typeof data);
+      console.log('📊 Data value:', data);
+      
+      // If main function fails or returns false, try the simple function
+      if (error || data === false) {
+        console.log('🔄 Trying simple function...');
+        const simpleResult = await supabase
+          .rpc('check_email_simple', { email_to_check: email });
+        
+        console.log('📊 Email check result (simple):', simpleResult);
+        data = simpleResult.data;
+        error = simpleResult.error;
+      }
+      
+      if (error) {
+        console.error('❌ Error checking dealer email existence:', error);
+        return false; // Assume user doesn't exist on error
+      }
+      
+      const exists = Boolean(data);
+      console.log('✅ Email exists (final):', exists);
+      console.log('✅ Data converted to boolean:', Boolean(data));
+      return exists;
+    } catch (error) {
+      console.error('❌ Error checking dealer email existence:', error);
+      return false; // Assume user doesn't exist on error
+    }
+  };
+
+  // Alternative method to check email existence (direct table query)
+  const checkDealerEmailExistsDirect = async (email: string): Promise<boolean> => {
+    console.log('🔍 Checking email existence directly for:', email);
+    try {
+      const { data, error } = await supabase
+        .from('dealers')
+        .select('email')
+        .eq('email', email)
+        .single();
+      
+      console.log('📊 Direct email check result:', { data, error });
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('❌ Error in direct email check:', error);
+        return false;
+      }
+      
+      const exists = !!data;
+      console.log('✅ Email exists (direct):', exists);
+      return exists;
+    } catch (error) {
+      console.error('❌ Error in direct email check:', error);
+      return false;
+    }
+  };
+
+  // Sign up method with email existence check
+  const signUpWithEmailCheck = async (email: string, password: string, fullName?: string) => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
+      // First check if email already exists in dealers table using SQL function
+      const emailExists = await checkDealerEmailExists(email);
+      
+      if (emailExists) {
+        const errorMessage = 'An account with this email already exists. Please login instead.';
+        setAuthState(prev => ({ ...prev, error: errorMessage, loading: false }));
+        throw new Error(errorMessage);
+      }
+      
+      // If email doesn't exist, proceed with sign up
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName || email.split('@')[0], // Use email prefix if no full name provided
+            full_name: fullName || email.split('@')[0],
           }
         }
       });
@@ -100,6 +191,34 @@ export function useAuth() {
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
+      setAuthState(prev => ({ ...prev, error: errorMessage }));
+      throw error;
+    } finally {
+      setAuthState(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Resend verification email
+  const resendVerificationEmail = async (email: string) => {
+    setAuthState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      });
+      
+      if (error) throw error;
+      
+      setAuthState(prev => ({ 
+        ...prev, 
+        loading: false,
+        error: null 
+      }));
+      
+      return { success: true, message: 'Verification email sent successfully!' };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email';
       setAuthState(prev => ({ ...prev, error: errorMessage }));
       throw error;
     } finally {
@@ -189,7 +308,11 @@ export function useAuth() {
     loading: authState.loading,
     error: authState.error,
     signIn,
-    signUp,
+    signUp: signUpWithEmailCheck,
+    signUpWithEmailCheck,
+    checkDealerEmailExists,
+    checkDealerEmailExistsDirect,
+    resendVerificationEmail,
     signOut,
     updateUser,
     clearError,

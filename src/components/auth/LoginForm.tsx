@@ -4,23 +4,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, RefreshCw } from 'lucide-react';
 
 export function LoginForm() {
-  const { signIn, loading, error, clearError } = useAuth();
+  const { signIn, resendVerificationEmail, loading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isVerificationError, setIsVerificationError] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+    setIsVerificationError(false);
     
     try {
       await signIn(email, password);
       // On successful login, the auth state will update automatically
     } catch (error) {
-      // Error is handled by the useAuth hook
+      // Check if it's a verification error
+      if (error instanceof Error && error.message.includes('Email not verified')) {
+        setIsVerificationError(true);
+      }
       console.error('Login failed:', error);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      await resendVerificationEmail(email);
+      setIsVerificationError(false);
+    } catch (error) {
+      console.error('Failed to resend verification:', error);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -32,8 +50,34 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant={isVerificationError ? "default" : "destructive"}>
+              <AlertDescription>
+                {error}
+                {isVerificationError && (
+                  <div className="mt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading}
+                      className="w-full"
+                    >
+                      {resendLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-3 w-3" />
+                          Resend Verification Email
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </AlertDescription>
             </Alert>
           )}
           
