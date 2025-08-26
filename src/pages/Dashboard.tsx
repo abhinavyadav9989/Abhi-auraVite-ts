@@ -36,7 +36,7 @@ import AITipsCarousel from "../components/dashboard/AITipsCarousel";
 import ConditionalBanners from "../components/dashboard/ConditionalBanners";
 import GlobalSearch from "../components/dashboard/GlobalSearch";
 import NotificationsCenter from "../components/dashboard/NotificationsCenter";
-import FirstTimeIntro from "../components/dashboard/FirstTimeIntro";
+
 import ProgressiveVerificationBanner from "../components/dashboard/ProgressiveVerificationBanner";
 import OfflineBanner from '../components/dashboard/OfflineBanner';
 import VerificationStatus from '../components/dashboard/VerificationStatus';
@@ -205,14 +205,7 @@ export default function Dashboard() {
     console.log('Searching for:', query);
   };
 
-  // DD-13: Check if user needs first-time intro
-  const shouldShowFirstTimeIntro = () => {
-    if (!dashboardData || !user) return false; // Ensure data is loaded
-    const totalDeals = dashboardData.deals.negotiating + dashboardData.deals.pending_payment + dashboardData.deals.disputed;
-    return dashboardData.inventory.live === 0 &&
-    totalDeals === 0 &&
-    user?.role !== 'admin';
-  };
+
 
   // Helper function to determine actual verification status
   const getActualVerificationStatus = (dealer) => {
@@ -299,42 +292,7 @@ export default function Dashboard() {
       )}
       
       <div className={`min-h-screen bg-slate-50 ${!isOnline ? 'opacity-75' : ''}`}>
-        {/* Top Bar */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-4 md:px-8 py-4 shadow-sm">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            {/* Logo (handled by Layout) and Global Search */}
-            <div className="flex items-center gap-4 flex-1">
-              <GlobalSearch onSearch={handleGlobalSearch} />
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3">
-              <FeatureGate feature="add_vehicle" user={dealer}>
-                <Link to={createPageUrl("AddVehicle")}>
-                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 gap-2">
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden md:inline">Add Vehicle</span>
-                  </Button>
-                </Link>
-              </FeatureGate>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative bg-white/50 border-gray-200 hover:bg-white/80 shadow-sm">
-                <Bell className="w-4 h-4" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              </Button>
-              
-              <Link to={createPageUrl("Profile")}>
-                <Button variant="outline" size="icon" className="bg-white/50 border-gray-200 hover:bg-white/80 shadow-sm">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
+        
 
         {/* Notifications Overlay */}
         {showNotifications &&
@@ -362,70 +320,64 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {shouldShowFirstTimeIntro() ?
-            <FirstTimeIntro dealer={dealer} /> :
+            {/* Welcome Section */}
+            <div className="text-center py-8 mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                Welcome to Aura, {dealer?.name || 'Dealer'}!
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Ready to start selling vehicles on India's most trusted B2B platform?
+              </p>
+            </div>
 
-            <>
-                {/* Welcome Section */}
-                <div className="text-center py-8 mb-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                    Welcome to Aura, {dealer?.name || 'Dealer'}!
-                  </h2>
-                  <p className="text-gray-600 max-w-2xl mx-auto">
-                    Ready to start selling vehicles on India's most trusted B2B platform?
-                  </p>
-                </div>
+            {/* Progressive Verification Steps */}
+            <ProgressiveVerificationBanner 
+              dealer={dealer} 
+              user={user} 
+              onUpdate={() => initializeDashboard()} 
+            />
 
-                {/* Progressive Verification Steps */}
-                <ProgressiveVerificationBanner 
-                  dealer={dealer} 
-                  user={user} 
-                  onUpdate={() => initializeDashboard()} 
-                />
+            {/* Row 1: Main Dashboard Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <InventorySnapshot
+              data={dashboardData.inventory}
+              dealer={dealer} />
 
-                {/* Row 1: Main Dashboard Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <InventorySnapshot
-                  data={dashboardData.inventory}
-                  dealer={dealer} />
+              <OpenDeals
+              data={dashboardData.deals}
+              dealer={dealer} />
 
-                  <OpenDeals
-                  data={dashboardData.deals}
-                  dealer={dealer} />
+              <EscrowStatus
+              data={dashboardData.escrow}
+              dealer={dealer} />
 
-                  <EscrowStatus
-                  data={dashboardData.escrow}
-                  dealer={dealer} />
+              <TasksToDo
+              tasks={dashboardData.tasks}
+              dealer={dealer} />
 
-                  <TasksToDo
-                  tasks={dashboardData.tasks}
-                  dealer={dealer} />
+            </div>
 
-                </div>
+            {/* Row 2: Verification Status */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <VerificationStatus dealer={dealer} user={user} />
+              </div>
+              <div>
+                <AITipsCarousel dealer={dealer} />
+              </div>
+            </div>
 
-                {/* Row 2: Verification Status */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <VerificationStatus dealer={dealer} user={user} />
-                  </div>
-                  <div>
-                    <AITipsCarousel dealer={dealer} />
-                  </div>
-                </div>
-
-                {/* Row 3: Analytics */}
-                <div className="grid lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-3">
-                    <PerformanceChart dealer={dealer} />
-                  </div>
-                </div>
-              </>
-            }
+            {/* Row 3: Analytics */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-3">
+                <PerformanceChart dealer={dealer} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
