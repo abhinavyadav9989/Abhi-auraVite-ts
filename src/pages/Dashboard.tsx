@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { FeatureGate } from "@/components/FeatureGate";
 import {
   Car,
   Plus,
@@ -36,6 +37,7 @@ import ConditionalBanners from "../components/dashboard/ConditionalBanners";
 import GlobalSearch from "../components/dashboard/GlobalSearch";
 import NotificationsCenter from "../components/dashboard/NotificationsCenter";
 import FirstTimeIntro from "../components/dashboard/FirstTimeIntro";
+import ProgressiveVerificationBanner from "../components/dashboard/ProgressiveVerificationBanner";
 import OfflineBanner from '../components/dashboard/OfflineBanner';
 import VerificationStatus from '../components/dashboard/VerificationStatus';
 
@@ -85,6 +87,8 @@ export default function Dashboard() {
 
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
       if (dealerProfile.length > 0) {
+        console.log('Dashboard - Dealer profile loaded:', dealerProfile[0]);
+        console.log('Dashboard - branches_added flag:', dealerProfile[0].branches_added);
         setDealer(dealerProfile[0]);
         await loadDashboardData(dealerProfile[0]);
       } else {
@@ -296,7 +300,7 @@ export default function Dashboard() {
       
       <div className={`min-h-screen bg-slate-50 ${!isOnline ? 'opacity-75' : ''}`}>
         {/* Top Bar */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4">
+        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-4 md:px-8 py-4 shadow-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             {/* Logo (handled by Layout) and Global Search */}
             <div className="flex items-center gap-4 flex-1">
@@ -305,25 +309,26 @@ export default function Dashboard() {
             
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
-              <Link to={createPageUrl("AddVehicle")}>
-                <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden md:inline">Add Vehicle</span>
-                </Button>
-              </Link>
+              <FeatureGate feature="add_vehicle" user={dealer}>
+                <Link to={createPageUrl("AddVehicle")}>
+                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 gap-2">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden md:inline">Add Vehicle</span>
+                  </Button>
+                </Link>
+              </FeatureGate>
               
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative">
-
+                className="relative bg-white/50 border-gray-200 hover:bg-white/80 shadow-sm">
                 <Bell className="w-4 h-4" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
               </Button>
               
               <Link to={createPageUrl("Profile")}>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="bg-white/50 border-gray-200 hover:bg-white/80 shadow-sm">
                   <Settings className="w-4 h-4" />
                 </Button>
               </Link>
@@ -339,18 +344,18 @@ export default function Dashboard() {
 
         }
 
-        <div className="md:p-8 bg-none">
-          <div className="max-w-6xl mx-auto space-y-8">
+        <div className="p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen">
+          <div className="max-w-7xl mx-auto space-y-8">
             
             {/* Welcome Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+                <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Control Tower
                 </h1>
-                <p className="text-slate-600 flex items-center gap-2">
+                <p className="text-slate-600 flex items-center gap-2 mt-2">
                   What needs your attention right now
-                  <span className="text-xs bg-slate-100 px-2 py-1 rounded">
+                  <span className="text-xs bg-white/70 backdrop-blur-sm border border-slate-200 px-3 py-1 rounded-full shadow-sm">
                     Updated {lastUpdated.toLocaleTimeString()}
                   </span>
                 </p>
@@ -361,8 +366,27 @@ export default function Dashboard() {
             <FirstTimeIntro dealer={dealer} /> :
 
             <>
-                {/* Conditional Banners (Row 3) */}
-                <ConditionalBanners dealer={dealer} />
+                {/* Welcome Section */}
+                <div className="text-center py-8 mb-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                    Welcome to Aura, {dealer?.name || 'Dealer'}!
+                  </h2>
+                  <p className="text-gray-600 max-w-2xl mx-auto">
+                    Ready to start selling vehicles on India's most trusted B2B platform?
+                  </p>
+                </div>
+
+                {/* Progressive Verification Steps */}
+                <ProgressiveVerificationBanner 
+                  dealer={dealer} 
+                  user={user} 
+                  onUpdate={() => initializeDashboard()} 
+                />
 
                 {/* Row 1: Main Dashboard Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

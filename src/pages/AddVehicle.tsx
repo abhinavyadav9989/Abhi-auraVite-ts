@@ -14,6 +14,7 @@ import { InvokeLLM } from '@/api/integrations';
 import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
 
 // Import step components
+import BranchSelectionStep from '@/components/addvehicle/BranchSelectionStep';
 import RegistrationInputStep from '@/components/listing-wizard/RegistrationInputStep';
 import AIVehicleDetailsStep from '@/components/listing-wizard/AIVehicleDetailsStep';
 import CategorySpecificsStep from '@/components/listing-wizard/CategorySpecificsStep';
@@ -37,6 +38,7 @@ const CATEGORY_FIELDS = {
 };
 
 const STEPS = [
+  { id: 'branch_selection', title: 'Select Branch', component: BranchSelectionStep },
   { id: 'reg_input', title: 'Registration Number', component: RegistrationInputStep },
   { id: 'ai_details', title: 'Vehicle Details', component: AIVehicleDetailsStep },
   { id: 'category_specifics', title: 'Category Details', component: CategorySpecificsStep }, // New step
@@ -61,7 +63,9 @@ export default function AddVehicle() {
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<'draft' | 'live' | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [vehicleData, setVehicleData] = useState<any>({
+    branch_id: '', // New field for branch association
     registration_number: '',
     make: '',
     model: '',
@@ -136,6 +140,9 @@ export default function AddVehicle() {
       }
 
       const dealerProfile = dealers[0];
+      
+      // Note: We no longer block users without branches - the BranchSelectionStep handles this
+      // We keep other verification checks for serious issues
       
       // Check if dealer verification allows listing
       if (!dealerProfile.verification_status || dealerProfile.verification_status === 'rejected') {
@@ -408,22 +415,37 @@ export default function AddVehicle() {
                 <p className="text-slate-600">Fetching vehicle details...</p>
               </div>
             ) : (
-              <CurrentStepComponent 
-                data={vehicleData} 
-                updateData={updateVehicleData} 
-                dealer={dealer} 
-              />
+              STEPS[currentStep].id === 'branch_selection' ? (
+                <BranchSelectionStep
+                  selectedBranch={selectedBranch}
+                  onBranchSelect={(branchId) => {
+                    setSelectedBranch(branchId);
+                    setVehicleData(prev => ({ ...prev, branch_id: branchId }));
+                  }}
+                  onNext={() => setCurrentStep(currentStep + 1)}
+                  onBack={() => navigate(createPageUrl('Dashboard'))}
+                  dealer={dealer}
+                  onDealerUpdate={loadDealer}
+                />
+              ) : (
+                <CurrentStepComponent 
+                  data={vehicleData} 
+                  updateData={updateVehicleData} 
+                  dealer={dealer} 
+                />
+              )
             )}
           </CardContent>
         </Card>
 
-        {/* Navigation */}
-        <div className="mt-8 flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={(currentStep === 0 && !isEditMode) || (currentStep === 1 && isEditMode) || isSubmitting}
-          >
+        {/* Navigation - Hide for branch selection step as it has its own buttons */}
+        {STEPS[currentStep].id !== 'branch_selection' && (
+          <div className="mt-8 flex justify-between items-center">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={(currentStep === 0 && !isEditMode) || (currentStep === 1 && isEditMode) || isSubmitting}
+            >
             Back
           </Button>
           <div className="flex items-center gap-4">
@@ -456,7 +478,8 @@ export default function AddVehicle() {
               )}
             </Button>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       <PasswordConfirmationModal

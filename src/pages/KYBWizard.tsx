@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { DealerDocument } from '@/api/entities';
-import { BankAccount } from '@/api/entities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { 
   Building2, 
   FileText, 
-  CreditCard, 
   CheckCircle, 
   ArrowRight, 
   ArrowLeft, 
@@ -35,7 +33,6 @@ import SubscriptionStep from '../components/kyb/SubscriptionStep'; // ONB-23: Im
 const STEPS = [
   { id: 'business', title: 'Business Information', icon: Building2 },
   { id: 'documents', title: 'Documents', icon: FileText },
-  { id: 'banking', title: 'Banking Details', icon: CreditCard },
   { id: 'subscription', title: 'Choose Plan', icon: Star }, // ONB-23: Add subscription step
   { id: 'review', title: 'Review & Submit', icon: CheckCircle }
 ];
@@ -77,14 +74,6 @@ export default function KYBWizard() {
 
   type DocumentData = { url?: string; name?: string; size?: number; uploaded_at?: string } | null
   const [documents, setDocuments] = useState<Record<string, DocumentData>>({});
-  const [bankingData, setBankingData] = useState({
-    account_number: '',
-    ifsc_code: '',
-    account_holder_name: '',
-    bank_name: '',
-    branch_name: '',
-    cheque_image: null
-  });
   const [subscriptionData, setSubscriptionData] = useState({ plan: 'standard' }); // ONB-23
 
   useEffect(() => {
@@ -99,7 +88,7 @@ export default function KYBWizard() {
       // Pre-fill some data
       setBusinessData(prev => ({
         ...prev,
-        owner_name: currentUser.full_name,
+        owner_name: currentUser.user_metadata?.full_name || currentUser.email,
         email: currentUser.email
       }));
 
@@ -133,10 +122,7 @@ export default function KYBWizard() {
           if (dealer.draft_data?.documents) {
             setDocuments(dealer.draft_data.documents);
           }
-          // Restore banking data if present
-          if (dealer.draft_data?.banking) {
-            setBankingData(dealer.draft_data.banking);
-          }
+
           // Restore current step if not rejected
           if (dealer.verification_status !== 'rejected' && dealer.draft_data?.current_step !== undefined) {
             setCurrentStep(dealer.draft_data.current_step);
@@ -217,29 +203,7 @@ export default function KYBWizard() {
     setUploadingDoc(null);
   };
 
-  const handleIFSCLookup = async (ifsc) => {
-    if (!ifsc || ifsc.length !== 11) return;
-    
-    try {
-      // Mock IFSC lookup - in real app would call bank API
-      const mockBankData = {
-        bank_name: "State Bank of India",
-        branch_name: "Mumbai Main Branch"
-      };
-      
-      setBankingData(prev => ({
-        ...prev,
-        ...mockBankData
-      }));
-      
-      toast({
-        title: "IFSC Verified",
-        description: "Bank details auto-filled.",
-      });
-    } catch (error) {
-      console.error('IFSC lookup error:', error);
-    }
-  };
+
 
   const handleNext = async () => {
     if (currentStep < STEPS.length - 1) {
@@ -271,7 +235,6 @@ export default function KYBWizard() {
         draft_data: {
           business: businessData,
           documents: documents,
-          banking: bankingData,
           subscription: subscriptionData, // ONB-23: Save subscription choice
           current_step: currentStep
         }
@@ -311,6 +274,10 @@ export default function KYBWizard() {
         submitted_at: new Date().toISOString(),
         subscription_plan: subscriptionData.plan, // ONB-23: Save final plan
         verification_notes: null, // ONB-16: Clear rejection notes on re-submission
+        // Update progressive verification flags based on current step
+        kyc_completed: true, // KYC completed when business info and documents are submitted
+        bank_details_added: false, // Bank details will be collected separately when making deals
+        kyb_completed: false, // Set to true only after admin approval
       };
       
       let dealerId;
@@ -345,22 +312,7 @@ export default function KYBWizard() {
           }
         }
 
-        // Save banking details (clear old ones and create new ones for resubmission)
-        const existingBankAccounts = await BankAccount.filter({ dealer_id: dealerId });
-        for (const account of existingBankAccounts) {
-          await BankAccount.delete(account.id);
-        }
 
-        await BankAccount.create({
-          dealer_id: dealerId,
-          account_number: bankingData.account_number,
-          ifsc_code: bankingData.ifsc_code,
-          account_holder_name: bankingData.account_holder_name,
-          bank_name: bankingData.bank_name,
-          branch_name: bankingData.branch_name,
-          is_verified: false,
-          cheque_image_url: bankingData.cheque_image ? `https://storage.aura.com/cheques/${bankingData.cheque_image.name}` : null // Mock URL for cheque image
-        });
       }
       
       toast({
@@ -607,101 +559,7 @@ export default function KYBWizard() {
     </div>
   );
 
-  const renderBankingStep = () => (
-    <div className="space-y-6">
-      {/* ONB-16: Show rejection reason for this step */}
-      {rejectionNotes && rejectionNotes.toLowerCase().includes("bank") && (
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Correction Needed:</strong> {rejectionNotes}
-                </AlertDescription>
-            </Alert>
-       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="account_number">Account Number *</Label>
-          <Input
-            id="account_number"
-            value={bankingData.account_number}
-            onChange={(e) => setBankingData(prev => ({ ...prev, account_number: e.target.value }))}
-            placeholder="Enter account number"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="ifsc_code">IFSC Code *</Label>
-          <Input
-            id="ifsc_code"
-            value={bankingData.ifsc_code}
-            onChange={(e) => setBankingData(prev => ({ ...prev, ifsc_code: e.target.value.toUpperCase() }))}
-            onBlur={(e) => handleIFSCLookup(e.target.value)}
-            placeholder="Enter IFSC code"
-            maxLength={11}
-          />
-        </div>
-      </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="account_holder_name">Account Holder Name *</Label>
-        <Input
-          id="account_holder_name"
-          value={bankingData.account_holder_name}
-          onChange={(e) => setBankingData(prev => ({ ...prev, account_holder_name: e.target.value }))}
-          placeholder="Enter account holder name"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="bank_name">Bank Name</Label>
-          <Input
-            id="bank_name"
-            value={bankingData.bank_name}
-            onChange={(e) => setBankingData(prev => ({ ...prev, bank_name: e.target.value }))}
-            placeholder="Auto-filled from IFSC"
-            disabled
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="branch_name">Branch Name</Label>
-          <Input
-            id="branch_name"
-            value={bankingData.branch_name}
-            onChange={(e) => setBankingData(prev => ({ ...prev, branch_name: e.target.value }))}
-            placeholder="Auto-filled from IFSC"
-            disabled
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Bank Cheque (Optional)</Label>
-        <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
-          <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-          <p className="text-sm text-slate-600 mb-2">
-            Upload cancelled cheque for faster verification
-          </p>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => setBankingData(prev => ({ ...prev, cheque_image: e.target.files[0] }))}
-            className="hidden"
-            id="cheque-upload"
-          />
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => document.getElementById('cheque-upload').click()}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Cheque
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderReviewStep = () => (
     <div className="space-y-6">
@@ -770,35 +628,7 @@ export default function KYBWizard() {
           </CardContent>
         </Card>
 
-        {/* Banking Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Banking Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-slate-600">Account Number:</span>
-                <p className="font-medium">{bankingData.account_number ? `****${bankingData.account_number.slice(-4)}` : 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-slate-600">IFSC Code:</span>
-                <p className="font-medium">{bankingData.ifsc_code || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-slate-600">Account Holder:</span>
-                <p className="font-medium">{bankingData.account_holder_name || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-slate-600">Bank:</span>
-                <p className="font-medium">{bankingData.bank_name || 'N/A'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* ONB-23: Subscription Summary */}
         <Card>
@@ -878,9 +708,8 @@ export default function KYBWizard() {
           <CardContent className="p-6">
             {currentStep === 0 && renderBusinessStep()}
             {currentStep === 1 && renderDocumentsStep()}
-            {currentStep === 2 && renderBankingStep()}
-            {currentStep === 3 && <SubscriptionStep data={subscriptionData} onChange={setSubscriptionData} />} {/* ONB-23 */}
-            {currentStep === 4 && renderReviewStep()} {/* Shifted index */}
+            {currentStep === 2 && <SubscriptionStep data={subscriptionData} onChange={setSubscriptionData} />} {/* ONB-23 */}
+            {currentStep === 3 && renderReviewStep()}
           </CardContent>
         </Card>
 

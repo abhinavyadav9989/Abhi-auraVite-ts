@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2, Grid3X3, List } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2, Grid3X3, List, Building2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FeatureGate } from "@/components/FeatureGate";
 import InventoryFilters from "../components/inventory/InventoryFilters";
 import VehicleCard from "../components/inventory/VehicleCard";
 import VehicleListCard from "../components/marketplace/VehicleListCard";
@@ -19,6 +20,7 @@ import ShareLinkModal from '../components/inventory/ShareLinkModal';
 import InventoryTypeSwitcher from '../components/inventory/InventoryTypeSwitcher';
 import { useToast } from "@/components/ui/use-toast";
 import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
+import { supabase } from "@/api/supabaseClient";
 
 const INVENTORY_TYPE_FILTERS = [
   { value: 'all', label: 'All', icon: Globe },
@@ -51,10 +53,16 @@ export default function Inventory() {
   // Filter states for InventoryFilters component
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
   const [onlyMine, setOnlyMine] = useState<boolean>(false);
+  
+  // Branch filter states
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [branchVehicleCounts, setBranchVehicleCounts] = useState<{[key: string]: number}>({});
 
   useEffect(() => { loadInventory(); }, []);
-  useEffect(() => { filterAndSortVehicles(); }, [vehicles, searchQuery, sortBy, inventoryType, priceRange, onlyMine]); // Add new filters to dependencies
+  useEffect(() => { filterAndSortVehicles(); }, [vehicles, searchQuery, sortBy, inventoryType, priceRange, onlyMine, selectedBranch]); // Add selectedBranch to dependencies
   useEffect(() => { setShowBulkToolbar(selectedVehicles.size > 0); }, [selectedVehicles]);
+  useEffect(() => { loadBranches(); }, [dealer]);
 
   const loadInventory = async () => {
     setIsLoading(true);
@@ -63,11 +71,55 @@ export default function Inventory() {
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
       if (dealerProfile.length > 0) {
         setDealer(dealerProfile[0]);
-        const vehicleData = await Vehicle.filter({ dealer_id: dealerProfile[0].id });
-        setVehicles(vehicleData);
+        // Load vehicles with branch information
+        const { data: vehicleData, error } = await supabase
+          .from('vehicles')
+          .select(`
+            *,
+            branches(name, is_default)
+          `)
+          .eq('dealer_id', dealerProfile[0].id);
+        
+        if (error) throw error;
+        setVehicles(vehicleData || []);
       }
     } catch (error) { console.error("Error loading inventory:", error); }
     setIsLoading(false);
+  };
+
+  const loadBranches = async () => {
+    if (!dealer?.id) return;
+    
+    try {
+      // Load branches
+      const { data: branchesData, error: branchesError } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('dealer_id', dealer.id)
+        .order('created_at', { ascending: true });
+      
+      if (branchesError) throw branchesError;
+      setBranches(branchesData || []);
+      
+      // Load vehicle counts per branch
+      const { data: vehicleCounts, error: countsError } = await supabase
+        .from('vehicles')
+        .select('branch_id')
+        .eq('dealer_id', dealer.id);
+      
+      if (countsError) throw countsError;
+      
+      // Calculate counts
+      const counts: {[key: string]: number} = {};
+      (vehicleCounts || []).forEach(vehicle => {
+        const branchId = vehicle.branch_id || 'unassigned';
+        counts[branchId] = (counts[branchId] || 0) + 1;
+      });
+      
+      setBranchVehicleCounts(counts);
+    } catch (error) {
+      console.error("Error loading branches:", error);
+    }
   };
 
   const filterAndSortVehicles = () => {
@@ -92,7 +144,10 @@ export default function Inventory() {
       const vehiclePrice = vehicle?.asking_price || 0;
       const withinPriceRange = vehiclePrice >= priceRange[0] && vehiclePrice <= priceRange[1];
       
-      return matchesSearch && matchesType && withinPriceRange;
+      // Branch filter
+      const matchesBranch = selectedBranch === "all" || vehicle?.branch_id === selectedBranch;
+      
+      return matchesSearch && matchesType && withinPriceRange && matchesBranch;
     });
 
     // Safe sorting
@@ -146,6 +201,8 @@ export default function Inventory() {
         newSelected.delete(deletingVehicle);
         return newSelected;
       });
+      // Refresh branch data to update counts
+      loadBranches();
     } catch (error) {
       console.error("Error deleting vehicle:", error);
       toast({
@@ -190,7 +247,9 @@ export default function Inventory() {
           </div>
           <div className="flex gap-3">
             <Link to={createPageUrl("BulkImport")}><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" /> Bulk Import</Button></Link>
-            <Link to={createPageUrl("AddVehicle")}><Button className="gap-2"><Plus className="w-4 h-4" /> Add Vehicle</Button></Link>
+            <FeatureGate feature="add_vehicle" user={dealer}>
+              <Link to={createPageUrl("AddVehicle")}><Button className="gap-2"><Plus className="w-4 h-4" /> Add Vehicle</Button></Link>
+            </FeatureGate>
           </div>
         </div>
 
@@ -218,7 +277,38 @@ export default function Inventory() {
                 />
               </div>
               <div className="flex flex-wrap gap-3">
-                 <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
+                {/* Branch Filter */}
+                <Select value={selectedBranch} onValueChange={(v) => setSelectedBranch(v)}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select Branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        All Branches ({vehicles.length})
+                      </div>
+                    </SelectItem>
+                    {branches.map(branch => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            {branch.name}
+                            {branch.is_default && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Main</span>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-500 ml-2">
+                            ({branchVehicleCounts[branch.id] || 0})
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -341,7 +431,11 @@ export default function Inventory() {
             vehicles={getSelectedVehicles()}
             isOpen={showTypeSwitcher}
             onClose={() => setShowTypeSwitcher(false)}
-            onSuccess={() => { loadInventory(); setSelectedVehicles(new Set()); }}
+            onSuccess={() => { 
+              loadInventory(); 
+              loadBranches(); 
+              setSelectedVehicles(new Set()); 
+            }}
           />
         )}
 

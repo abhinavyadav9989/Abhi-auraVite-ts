@@ -2,161 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
-import { DealerDocument } from '@/api/entities';
 import { createPageUrl } from '@/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Building2, Users, Car, FileText, CreditCard, CheckCircle, Shield, 
-  ArrowRight, ArrowLeft, Save, RefreshCw, AlertTriangle, Clock, 
-  Phone, Mail, Globe, Star, Info, Loader2
+  Building2, Users, Car, CheckCircle, ArrowRight, ArrowLeft, Clock, 
+  Phone, Mail, MapPin, Info, Loader2, Zap
 } from 'lucide-react';
 
-// Import comprehensive step components
-import AccountCreation from '../components/onboarding/AccountCreation';
-import ClientTypeSelection from '../components/onboarding/ClientTypeSelection';
-import BusinessTypeSelection from '../components/onboarding/BusinessTypeSelection';
-import VehicleSegmentSelection from '../components/onboarding/VehicleSegmentSelection';
-import BasicDetailsForm from '../components/onboarding/BasicDetailsForm';
-import GroupDealerDetails from '../components/onboarding/GroupDealerDetails';
-import DocumentConfiguration from '../components/onboarding/DocumentConfiguration';
-import MarketplaceAccess from '../components/onboarding/MarketplaceAccess';
-import PlanSelection from '../components/onboarding/PlanSelection';
-import TermsAndVerification from '../components/onboarding/TermsAndVerification';
-import OnboardingComplete from '../components/onboarding/OnboardingComplete';
-import KybDocumentUpload from '../components/onboarding/KybDocumentUpload';
-
-// ONB-ALL: Comprehensive and adaptive step configuration
-const ONBOARDING_STEPS = [
-  // A. Account Creation & Authentication
+// Progressive Disclosure: Minimal onboarding steps for immediate dashboard access
+const MINIMAL_ONBOARDING_STEPS = [
   { 
-    id: 'account_creation', 
-    title: 'Create Account', 
-    icon: Users, 
-    description: 'Setup your login credentials',
-    category: 'authentication',
-    estimatedTime: 2,
-    skipFor: ['returning_user', 'sso_user']
-  },
-  
-  // C1. Client Type & Business Profile
-  { 
-    id: 'client_type', 
-    title: 'Client Type', 
+    id: 'organization_details', 
+    title: 'Organization Setup', 
     icon: Building2, 
-    description: 'Select your business classification',
-    category: 'profile',
+    description: 'Basic business information to get started',
     estimatedTime: 3
   },
-  { 
-    id: 'business_type', 
-    title: 'Business Model', 
-    icon: Car, 
-    description: 'New vehicles, Used, or Both',
-    category: 'profile',
-    estimatedTime: 2,
-    excludeFor: ['dsa', 'chauffeur', 'self_user', 'partner']
-  },
-  { 
-    id: 'vehicle_segments', 
-    title: 'Vehicle Segments', 
-    icon: Car, 
-    description: 'Which vehicle types you deal in',
-    category: 'profile',
-    estimatedTime: 3,
-    excludeFor: ['dsa', 'chauffeur', 'self_user', 'partner']
-  },
-  
-  // C2. Basic Details & Verification
-  { 
-    id: 'basic_details', 
-    title: 'Business Details', 
-    icon: FileText, 
-    description: 'Organization information & tax details',
-    category: 'details',
-    estimatedTime: 8
-  },
-  
-  // E. Group Dealer Specific
-  { 
-    id: 'group_details', 
-    title: 'Group Organizations', 
-    icon: Users, 
-    description: 'Add organizations to your group',
-    category: 'group',
-    estimatedTime: 10,
-    conditional: (data) => data.clientType === 'group_dealer'
-  },
-
-  // D. KYB / Dealer Verification Flow
-  {
-    id: 'kyb_documents',
-    title: 'Upload Documents',
-    icon: Shield,
-    description: 'Provide documents for verification',
-    category: 'verification',
-    estimatedTime: 10,
-    excludeFor: ['self_user', 'partner']
-  },
-  
-  // F. Document Configuration (For Admins of certain client types)
-  { 
-    id: 'document_config', 
-    title: 'Customer Document Setup', 
-    icon: FileText, 
-    description: 'Configure required documents for your customers',
-    category: 'configuration',
-    estimatedTime: 5,
-    conditional: (data) => ['group_dealer', 'franchise'].includes(data.clientType)
-  },
-  
-  // G. Marketplace Access
-  { 
-    id: 'marketplace_access', 
-    title: 'Marketplace Access', 
-    icon: Globe, 
-    description: 'Set marketplace permissions',
-    category: 'configuration',
-    estimatedTime: 3,
-    excludeFor: ['chauffeur', 'self_user', 'partner']
-  },
-  
-  // C2. Plan Selection
-  { 
-    id: 'plan_selection', 
-    title: 'Choose Plan', 
-    icon: Star, 
-    description: 'Select subscription plan',
-    category: 'billing',
-    estimatedTime: 5,
-    excludeFor: ['dsa', 'chauffeur', 'self_user']
-  },
-  
-  // C2. Terms & Verification
-  { 
-    id: 'terms_verification', 
-    title: 'Final Verification', 
-    icon: Shield, 
-    description: 'Accept terms & verify contact',
-    category: 'verification',
-    estimatedTime: 4
-  },
-  
-  // J. Completion
   { 
     id: 'complete', 
     title: 'Setup Complete', 
     icon: CheckCircle, 
-    description: 'Welcome to Aura!',
-    category: 'completion',
+    description: 'Welcome to Aura Dashboard!',
     estimatedTime: 1
   }
+];
+
+// Business type options for quick setup
+const BUSINESS_TYPES = [
+  { value: 'dealer_single', label: 'Single Dealer', description: 'Individual car dealer' },
+  { value: 'dealer_network', label: 'Dealer Network', description: 'Multiple dealerships' },
+  { value: 'franchise_dealer', label: 'Franchise Dealer', description: 'Brand franchise' },
+  { value: 'multi_brand_dealer', label: 'Multi-Brand Dealer', description: 'Multiple car brands' },
+  { value: 'park_and_sell', label: 'Park & Sell', description: 'Consignment business' },
+  { value: 'auctions', label: 'Auction House', description: 'Vehicle auctions' }
+];
+
+// Indian states for address selection
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh'
 ];
 
 export default function OnboardingWizard() {
@@ -168,47 +65,40 @@ export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [lastSaved, setLastSaved] = useState(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [inviteToken] = useState(searchParams.get('invite'));
-  const [isReturningUser, setIsReturningUser] = useState(false);
+  interface ValidationErrors {
+    organizationName?: string;
+    legalName?: string;
+    businessType?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    city?: string;
+    state?: string;
+    address?: string;
+    pincode?: string;
+    termsAccepted?: string;
+    privacyAccepted?: string;
+  }
+  
+  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingDealerId, setExistingDealerId] = useState<string | null>(null);
 
-  // ONB-ALL: Comprehensive onboarding data state
-  const [onboardingData, setOnboardingData] = useState({
-    // A. Account Creation
-    fullName: '', email: '', password: '', confirmPassword: '', emailVerified: false, googleSSO: false,
+  // Minimal onboarding data for immediate dashboard access
+  const [organizationData, setOrganizationData] = useState({
+    // Essential organization details only
+    organizationName: '',
+    legalName: '',
+    businessType: '',
+    contactPhone: '',
+    contactEmail: '',
+    city: '',
+    state: '',
+    address: '',
+    pincode: '',
     
-    // B. Role & Invitation
-    inviteToken: inviteToken || '', invitedBy: '', invitedRole: '',
-    
-    // C1. Profile
-    clientType: '', businessType: '', vehicleSegments: [], customSegments: [],
-    
-    // C2. Details
-    organizationName: '', ownerName: '', contactNumber: '', whatsappNumber: '', isGSTRegistered: false, gstin: '', panNumber: '', businessAddress: '', city: '', state: '', pincode: '',
-    
-    // E. Group Dealer
-    groupName: '', organizations: [],
-
-    // D. KYB
-    kybDocuments: {}, // { trade_licence: { url, name, status }, ... }
-    
-    // F. Document Config
-    requiredDocuments: ['trade_licence', 'gst_certificate', 'pan_card', 'address_proof'], documentValidationRules: {},
-    
-    // G. Marketplace Access
-    newVehicleAccess: true, usedVehicleAccess: true, specialisedAccess: false,
-    
-    // Plan Selection
-    selectedPlan: 'standard', billingCycle: 'monthly',
-    
-    // Terms & Verification
-    termsAccepted: false, privacyPolicyAccepted: false, marketingConsent: false, emailOTP: '', mobileOTP: '', mobileVerified: false,
-    
-    // H. UX / State Management
-    completedSteps: [], skippedSteps: [], startedAt: new Date().toISOString(),
-    isDraft: true, lastSavedAt: null,
+    // Basic flags
+    termsAccepted: false,
+    privacyAccepted: false
   });
 
   useEffect(() => {
@@ -222,21 +112,64 @@ export default function OnboardingWizard() {
       try {
         currentUser = await User.me();
         setUser(currentUser);
-        setIsReturningUser(true);
-        setOnboardingData(prev => ({ 
+        
+        // Pre-fill with user data
+        setOrganizationData(prev => ({ 
           ...prev, 
-          email: currentUser.email, 
-          fullName: (currentUser as any).full_name || currentUser.email, 
-          emailVerified: (currentUser as any).email_verified || false 
+          contactEmail: currentUser.email
         }));
+
+        // Check if user already has a COMPLETE dealer profile
+        const existingDealers = await Dealer.filter({ created_by: currentUser.email });
+        if (existingDealers.length > 0) {
+          const dealerProfile = existingDealers[0];
+          
+          // Check if dealer has complete minimal required information
+          const hasMinimalProfile = !!(
+            dealerProfile.business_name && 
+            dealerProfile.business_type && 
+            dealerProfile.email && 
+            dealerProfile.onboarding_completed === true
+          );
+          
+          console.log('OnboardingWizard - Checking existing dealer profile:', {
+            business_name: dealerProfile.business_name,
+            business_type: dealerProfile.business_type,
+            email: dealerProfile.email,
+            onboarding_completed: dealerProfile.onboarding_completed,
+            hasMinimalProfile
+          });
+          
+          if (hasMinimalProfile) {
+            // User has complete profile, redirect to dashboard
+            console.log('OnboardingWizard - User has complete dealer profile, redirecting to dashboard');
+            setTimeout(() => {
+              navigate(createPageUrl('Dashboard'), { replace: true });
+            }, 100);
+            return;
+          } else {
+            // User has incomplete profile, store ID for updating and pre-fill form
+            console.log('User has incomplete dealer profile, pre-filling form');
+            setExistingDealerId(dealerProfile.id);
+            setOrganizationData(prev => ({
+              ...prev,
+              organizationName: dealerProfile.business_name || '',
+              legalName: dealerProfile.name || '',              // 'name' column stores legal_name
+              businessType: dealerProfile.business_type || '',
+              contactPhone: dealerProfile.phone || '',
+              contactEmail: dealerProfile.email || currentUser.email,
+              city: dealerProfile.city || '',
+              state: dealerProfile.state || '',
+              address: dealerProfile.address || '',
+              pincode: dealerProfile.pincode || ''
+            }));
+          }
+        }
       } catch (error) { 
-        console.log('Starting fresh onboarding'); 
-        // If no user, redirect to authentication
+        console.log('No authenticated user, redirecting to authentication'); 
         navigate(createPageUrl('Authentication'));
         return;
       }
-      if (inviteToken) await handleInviteToken(inviteToken);
-      if (currentUser) await loadExistingDraft(currentUser.email);
     } catch (error) {
       console.error('Error initializing onboarding:', error);
       toast({ title: "Initialization Error", description: "Failed to load onboarding data.", variant: "destructive" });
@@ -245,199 +178,140 @@ export default function OnboardingWizard() {
     }
   };
 
-  const handleInviteToken = async (token) => {
-    // ... same as previous correct implementation ...
-    const mockInviteData = { invitedBy: 'admin@aura.com', invitedRole: 'staff', organizationName: 'Sample Motors', clientType: 'individual' };
-    setOnboardingData(prev => ({ ...prev, ...mockInviteData, inviteToken: token }));
-    toast({ title: "Invite Accepted", description: `You&apos;ve been invited to join ${mockInviteData.organizationName}` });
-  };
-
-  const loadExistingDraft = async (email) => {
-    try {
-      // First try to find any dealer profile for this user
-      const existingDrafts = await Dealer.filter({ created_by: email });
-      if (existingDrafts.length > 0) {
-        const draft = existingDrafts[0];
-        // Check if it has onboarding data and is not completed
-        if (draft.onboarding_data && !draft.onboarding_completed) {
-          setOnboardingData(prev => ({ ...prev, ...draft.onboarding_data, isDraft: true }));
-          setCurrentStep(draft.onboarding_data.currentStep || 0);
-          setLastSaved(new Date(draft.updated_at || draft.updated_date));
-          toast({ title: "Draft Loaded", description: "We've restored your previous progress." });
-        }
-      }
-    } catch (error) { 
-      console.error('Error loading draft:', error); 
+  const updateOrganizationData = (field: string, value: any) => {
+    setOrganizationData(prev => ({ ...prev, [field]: value }));
+    // Clear any existing errors for this field
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
     }
   };
 
-  const updateOnboardingData = (updates) => {
-    setOnboardingData(prev => ({ ...prev, ...updates }));
-    setIsDirty(true);
-    setErrors({});
-  };
-
-  const getVisibleSteps = () => {
-    return ONBOARDING_STEPS.filter(step => {
-      if (step.skipFor?.includes('returning_user') && isReturningUser) return false;
-      if (step.skipFor?.includes('sso_user') && onboardingData.googleSSO) return false;
-      if (step.conditional && !step.conditional(onboardingData)) return false;
-      if (step.excludeFor?.includes(onboardingData.clientType)) return false;
-      return true;
-    });
-  };
-
-  const validateCurrentStep = () => {
-    // ... more comprehensive validation will be added here based on each step's requirements
-    const currentStepId = getVisibleSteps()[currentStep]?.id;
+  const validateOrganizationDetails = () => {
     const stepErrors: Record<string, string> = {};
-    // This will be expanded to cover all steps thoroughly
-    switch(currentStepId) {
-        case 'client_type':
-            if (!onboardingData.clientType) stepErrors.clientType = "Please select a client type.";
-            break;
-        case 'basic_details':
-            if (!onboardingData.organizationName) stepErrors.organizationName = "Organization name is required.";
-            if (!onboardingData.contactNumber) stepErrors.contactNumber = "Contact number is required.";
-            break;
+    
+    if (!organizationData.organizationName.trim()) {
+      stepErrors.organizationName = "Organization name is required";
     }
+    
+    if (!organizationData.legalName.trim()) {
+      stepErrors.legalName = "Legal name is required";
+    }
+    
+    if (!organizationData.businessType) {
+      stepErrors.businessType = "Please select a business type";
+    }
+    
+    if (!organizationData.contactPhone.trim()) {
+      stepErrors.contactPhone = "Contact phone is required";
+    }
+    
+    if (!organizationData.city.trim()) {
+      stepErrors.city = "City is required";
+    }
+    
+    if (!organizationData.state) {
+      stepErrors.state = "Please select a state";
+    }
+    
+    if (!organizationData.address.trim()) {
+      stepErrors.address = "Business address is required";
+    }
+    
+    if (!organizationData.pincode.trim()) {
+      stepErrors.pincode = "Pincode is required";
+    } else if (!/^\d{6}$/.test(organizationData.pincode)) {
+      stepErrors.pincode = "Pincode must be 6 digits";
+    }
+    
+    if (!organizationData.termsAccepted) {
+      stepErrors.termsAccepted = "Please accept the terms and conditions";
+    }
+    
+    if (!organizationData.privacyAccepted) {
+      stepErrors.privacyAccepted = "Please accept the privacy policy";
+    }
+    
     setErrors(stepErrors);
     return Object.keys(stepErrors).length === 0;
   };
 
-  const handleNext = async () => {
-    if (!validateCurrentStep()) {
-        toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive" });
+  const handleNext = () => {
+    if (currentStep === 0) {
+      // Validate organization details
+      if (!validateOrganizationDetails()) {
+        toast({ 
+          title: "Validation Error", 
+          description: "Please fill all required fields correctly.", 
+          variant: "destructive" 
+        });
         return;
     }
-    const visibleSteps = getVisibleSteps();
-    const currentStepId = visibleSteps[currentStep]?.id;
-    if (currentStepId && !onboardingData.completedSteps.includes(currentStepId)) {
-        setOnboardingData(prev => ({...prev, completedSteps: [...prev.completedSteps, currentStepId]}));
-    }
-    if (isDirty) await handleSaveDraft();
-    if (currentStep < visibleSteps.length - 1) {
-        setCurrentStep(prev => prev + 1);
+      setCurrentStep(1);
     } else {
-        await handleCompleteOnboarding();
+      handleCompleteOnboarding();
     }
   };
 
   const handlePrevious = () => {
-    if (currentStep > 0) setCurrentStep(prev => prev - 1);
-  };
-
-  const handleSaveDraft = async () => {
-    if (!user && !onboardingData.email) {
-      toast({ title: "Cannot Save", description: "Please complete account creation to save progress.", variant: "destructive" });
-      return;
-    }
-    try {
-      setIsLoading(true);
-      const draftData = { ...onboardingData, currentStep };
-      const userEmail = user?.email || onboardingData.email;
-      const existingDrafts = await Dealer.filter({ created_by: userEmail });
-      if (existingDrafts.length > 0) {
-        await Dealer.update(existingDrafts[0].id, { 
-          onboarding_data: draftData
-        });
-      } else {
-        // Create with essential fields and default values for required columns
-        await Dealer.create({
-          email: userEmail,
-          created_by: userEmail,
-          name: userEmail.split('@')[0], // Use email prefix as default name
-          business_name: 'Pending Setup',
-          business_type: 'individual',
-          client_type: 'individual',
-          contact_number: '0000000000',
-          address: 'Address to be updated'
-        });
-      }
-      setIsDirty(false);
-      setLastSaved(new Date());
-      toast({ title: "Draft Saved", description: "Your progress has been saved." });
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast({ title: "Save Failed", description: "Failed to save your progress. Please try again.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
     }
   };
 
   const handleCompleteOnboarding = async () => {
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
+      console.log('OnboardingWizard - Creating minimal dealer profile...');
       
-      console.log('OnboardingWizard - Starting onboarding completion...');
-      
-      // Check if dealer profile already exists
-      const existingDealers = await Dealer.filter({ created_by: onboardingData.email });
-      
-             let dealerId;
-             // Prepare dealer data with both JSONB and direct column mapping
+      // Create dealer profile with minimal required data
       const dealerData = {
-        // Direct column mapping for database fields
-        business_name: onboardingData.organizationName || '',
-        owner_name: onboardingData.ownerName || onboardingData.fullName || '',
-        email: onboardingData.email,
-        phone: onboardingData.contactNumber || '',
-        whatsapp: onboardingData.whatsappNumber || '',
-        gstin: onboardingData.gstin || '',
-        pan_number: onboardingData.panNumber || '',
-        address: onboardingData.businessAddress || '',
-        city: onboardingData.city || '',
-        state: onboardingData.state || '',
-        pincode: onboardingData.pincode || '',
-        business_type: onboardingData.businessType || 'individual',
-        client_type: onboardingData.clientType || 'individual',
+        // Use actual database columns
+        business_name: organizationData.organizationName,
+        name: organizationData.legalName,           // legal_name is stored as 'name' in schema
+        business_type: organizationData.businessType,
+        email: organizationData.contactEmail,
+        phone: organizationData.contactPhone,
+        address: organizationData.address,
+        city: organizationData.city,
+        state: organizationData.state,
+        pincode: organizationData.pincode,
+        created_by: user?.email || organizationData.contactEmail,
         
-        // Onboarding completion flags
-        onboarding_completed: true,
-        onboarding_data: onboardingData
+        // Progressive disclosure flags (use existing columns)
+        onboarding_completed: true,          // Minimal onboarding complete
+        kyc_completed: false,               // KYC pending (for price viewing)
+        bank_details_added: false,         // Bank details pending (for deals)
+        branches_added: false,             // Branches pending (for adding vehicles)
+        
+        // Store additional data and kyb_completed (since that column doesn't exist)
+        onboarding_data: {
+          ...organizationData,
+          progressive_verification: {
+            kyb_completed: false,               // KYB pending (stored in JSON as column doesn't exist)
+          }
+        }
       };
 
-      if (existingDealers.length > 0) {
-        // Update existing profile
-        console.log('OnboardingWizard - Updating existing dealer profile');
-        const updatedDealer = await Dealer.update(existingDealers[0].id, dealerData);
-        console.log('OnboardingWizard - Dealer profile updated:', updatedDealer);
-        dealerId = existingDealers[0].id;
+      let dealerResult;
+      
+      if (existingDealerId) {
+        // Update existing dealer profile
+        console.log('OnboardingWizard - Updating existing dealer profile:', existingDealerId);
+        dealerResult = await Dealer.update(existingDealerId, dealerData);
+        console.log('OnboardingWizard - Dealer profile updated:', dealerResult);
       } else {
-        // Create new profile if none exists
-        console.log('OnboardingWizard - Creating new dealer profile');
-        const newDealer = await Dealer.create({
-          ...dealerData,
-          created_by: onboardingData.email
-        });
-        console.log('OnboardingWizard - Dealer profile created:', newDealer);
-        dealerId = newDealer.id;
+        // Create new dealer profile
+        console.log('OnboardingWizard - Creating new dealer profile with data:', dealerData);
+        dealerResult = await Dealer.create(dealerData);
+        console.log('OnboardingWizard - Dealer profile created:', dealerResult);
       }
-
-       // Save uploaded documents to dealer_documents table
-       if (dealerId && onboardingData.kybDocuments) {
-         console.log('OnboardingWizard - Saving documents to dealer_documents table...');
-         for (const [docType, docData] of Object.entries(onboardingData.kybDocuments)) {
-           if (docData && typeof docData === 'object' && 'url' in docData) {
-             const document = docData as { url: string; name: string };
-             console.log(`OnboardingWizard - Saving document: ${docType}`);
-             await DealerDocument.create({
-               dealer_id: dealerId,
-               document_type: docType,
-               file_url: document.url,
-               file_name: document.name,
-               status: 'pending_review'
-             });
-           }
-         }
-         console.log('OnboardingWizard - Documents saved successfully');
-       }
       
       // Update user profile with onboarding completion
       console.log('OnboardingWizard - Updating user metadata...');
       await User.updateMyUserData({
         onboarding_completed: true,
-        dealer_profile_created: true
+        dealer_profile_created: true,
+        dealer_id: dealerResult.id
       });
       console.log('OnboardingWizard - User metadata updated');
 
@@ -447,81 +321,291 @@ export default function OnboardingWizard() {
       console.log('OnboardingWizard - Auth state refreshed');
 
       toast({
-        title: "Onboarding Complete!", 
-        description: "Your profile has been created successfully. Redirecting to dashboard."
+        title: "Welcome to Aura!", 
+        description: "Your organization is set up. Complete verification steps as needed to unlock features."
       });
       
-      // Redirect to dashboard
+      // Redirect to dashboard immediately
       setTimeout(() => {
         console.log('OnboardingWizard - Redirecting to dashboard...');
         navigate(createPageUrl('Dashboard'));
-      }, 1500);
+      }, 1000);
       
     } catch (error) {
       console.error('Error completing onboarding:', error);
       toast({
-        title: "Error", 
-        description: "Failed to complete onboarding. Please try again.", 
+        title: "Setup Failed", 
+        description: "Failed to create your organization profile. Please try again.", 
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
-  };
-
-  const calculateRemainingTime = () => {
-    const visibleSteps = getVisibleSteps();
-    const remainingSteps = visibleSteps.slice(currentStep + 1);
-    return remainingSteps.reduce((total, step) => total + (step.estimatedTime || 5), 0);
   };
 
   const renderCurrentStep = () => {
-    const visibleSteps = getVisibleSteps();
-    const currentStepId = visibleSteps[currentStep]?.id;
-    const stepProps = { data: onboardingData, updateData: updateOnboardingData, errors, isReturningUser, inviteToken };
+    if (currentStep === 0) {
+      return (
+        <div className="space-y-6">
+          <div className="grid gap-4">
+            {/* Organization Name */}
+            <div className="space-y-2">
+              <Label htmlFor="organizationName">Organization Name *</Label>
+              <Input
+                id="organizationName"
+                value={organizationData.organizationName}
+                onChange={(e) => updateOrganizationData('organizationName', e.target.value)}
+                placeholder="e.g., ABC Motors"
+                className={errors.organizationName ? 'border-red-500' : ''}
+              />
+              {errors.organizationName && (
+                <p className="text-sm text-red-600">{errors.organizationName}</p>
+              )}
+            </div>
 
-    switch (currentStepId) {
-      case 'account_creation': return <AccountCreation {...stepProps} />;
-      case 'client_type': return <ClientTypeSelection {...stepProps} />;
-      case 'business_type': return <BusinessTypeSelection {...stepProps} />;
-      case 'vehicle_segments': return <VehicleSegmentSelection {...stepProps} />;
-      case 'basic_details': return <BasicDetailsForm {...stepProps} />;
-      case 'group_details': return <GroupDealerDetails {...stepProps} />;
-      case 'kyb_documents': return <KybDocumentUpload {...stepProps} />;
-      case 'document_config': return <DocumentConfiguration {...stepProps} />;
-      case 'marketplace_access': return <MarketplaceAccess {...stepProps} />;
-      case 'plan_selection': return <PlanSelection {...stepProps} />;
-      case 'terms_verification': return <TermsAndVerification {...stepProps} />;
-      case 'complete': return <OnboardingComplete onComplete={handleCompleteOnboarding} isLoading={isLoading} />;
-      default: return <div>Step &apos;{currentStepId}&apos; not found or implemented.</div>;
+            {/* Legal Name */}
+            <div className="space-y-2">
+              <Label htmlFor="legalName">Legal Name *</Label>
+              <Input
+                id="legalName"
+                value={organizationData.legalName}
+                onChange={(e) => updateOrganizationData('legalName', e.target.value)}
+                placeholder="e.g., ABC Motors Pvt Ltd"
+                className={errors.legalName ? 'border-red-500' : ''}
+              />
+              {errors.legalName && (
+                <p className="text-sm text-red-600">{errors.legalName}</p>
+              )}
+            </div>
+
+            {/* Business Type */}
+            <div className="space-y-2">
+              <Label htmlFor="businessType">Business Type *</Label>
+              <Select 
+                value={organizationData.businessType} 
+                onValueChange={(value) => updateOrganizationData('businessType', value)}
+              >
+                <SelectTrigger className={errors.businessType ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Select business type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      <div>
+                        <div className="font-medium">{type.label}</div>
+                        <div className="text-xs text-gray-500">{type.description}</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.businessType && (
+                <p className="text-sm text-red-600">{errors.businessType}</p>
+              )}
+            </div>
+
+            {/* Contact Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contactPhone">Contact Phone *</Label>
+                <Input
+                  id="contactPhone"
+                  value={organizationData.contactPhone}
+                  onChange={(e) => updateOrganizationData('contactPhone', e.target.value)}
+                  placeholder="+91-9876543210"
+                  className={errors.contactPhone ? 'border-red-500' : ''}
+                />
+                {errors.contactPhone && (
+                  <p className="text-sm text-red-600">{errors.contactPhone}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contactEmail">Contact Email *</Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  value={organizationData.contactEmail}
+                  onChange={(e) => updateOrganizationData('contactEmail', e.target.value)}
+                  placeholder="contact@organization.com"
+                  className={errors.contactEmail ? 'border-red-500' : ''}
+                />
+                {errors.contactEmail && (
+                  <p className="text-sm text-red-600">{errors.contactEmail}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Address Information */}
+            <div className="space-y-2">
+              <Label htmlFor="address">Business Address *</Label>
+              <Textarea
+                id="address"
+                value={organizationData.address}
+                onChange={(e) => updateOrganizationData('address', e.target.value)}
+                placeholder="Street address, building number, landmarks"
+                className={errors.address ? 'border-red-500' : ''}
+                rows={3}
+              />
+              {errors.address && (
+                <p className="text-sm text-red-600">{errors.address}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City *</Label>
+                <Input
+                  id="city"
+                  value={organizationData.city}
+                  onChange={(e) => updateOrganizationData('city', e.target.value)}
+                  placeholder="e.g., Mumbai"
+                  className={errors.city ? 'border-red-500' : ''}
+                />
+                {errors.city && (
+                  <p className="text-sm text-red-600">{errors.city}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="state">State *</Label>
+                <Select 
+                  value={organizationData.state} 
+                  onValueChange={(value) => updateOrganizationData('state', value)}
+                >
+                  <SelectTrigger className={errors.state ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDIAN_STATES.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.state && (
+                  <p className="text-sm text-red-600">{errors.state}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pincode">Pincode *</Label>
+                <Input
+                  id="pincode"
+                  value={organizationData.pincode}
+                  onChange={(e) => updateOrganizationData('pincode', e.target.value)}
+                  placeholder="400001"
+                  maxLength={6}
+                  className={errors.pincode ? 'border-red-500' : ''}
+                />
+                {errors.pincode && (
+                  <p className="text-sm text-red-600">{errors.pincode}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Terms and Privacy */}
+          <div className="space-y-4 border-t pt-6">
+            <div className="space-y-3">
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="termsAccepted"
+                  checked={organizationData.termsAccepted}
+                  onChange={(e) => updateOrganizationData('termsAccepted', e.target.checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="termsAccepted" className="text-sm leading-relaxed">
+                  I accept the <a href="#" className="text-blue-600 hover:underline">Terms and Conditions</a> *
+                </Label>
+              </div>
+              {errors.termsAccepted && (
+                <p className="text-sm text-red-600 ml-6">{errors.termsAccepted}</p>
+              )}
+
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="privacyAccepted"
+                  checked={organizationData.privacyAccepted}
+                  onChange={(e) => updateOrganizationData('privacyAccepted', e.target.checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="privacyAccepted" className="text-sm leading-relaxed">
+                  I accept the <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a> *
+                </Label>
+              </div>
+              {errors.privacyAccepted && (
+                <p className="text-sm text-red-600 ml-6">{errors.privacyAccepted}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Progressive Disclosure Information */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Quick Setup:</strong> This is all we need to get you started! 
+              You can complete additional verification steps later to unlock more features like viewing marketplace prices, making deals, and adding vehicles.
+            </AlertDescription>
+          </Alert>
+        </div>
+      );
+    } else {
+      // Completion step
+      return (
+        <div className="text-center space-y-6">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Aura!</h3>
+            <p className="text-gray-600 mb-4">
+              Your organization "{organizationData.organizationName}" is now set up and ready to use.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+              <h4 className="font-medium text-blue-900 mb-2">Next Steps - Unlock Features:</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• <strong>Add a branch</strong> - Required to add vehicles to inventory</li>
+                <li>• <strong>Complete KYC</strong> - View marketplace prices and dealer details</li>
+                <li>• <strong>Add bank details</strong> - Participate in deals and transactions</li>
+                <li>• <strong>Complete KYB</strong> - Access all premium features</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
     }
   };
 
-  if (isLoading && !user && currentStep === 0) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Setting up your onboarding...</p>
+        </div>
       </div>
     );
   }
   
-  const visibleSteps = getVisibleSteps();
-  if (visibleSteps.length === 0) {
-      return <div className="p-8">Loading configuration...</div>;
-  }
-  const currentStepInfo = visibleSteps[currentStep];
-  const progressPercentage = ((currentStep) / (visibleSteps.length - 1)) * 100;
+  const currentStepInfo = MINIMAL_ONBOARDING_STEPS[currentStep];
+  const progressPercentage = (currentStep / (MINIMAL_ONBOARDING_STEPS.length - 1)) * 100;
+  const remainingTime = MINIMAL_ONBOARDING_STEPS.slice(currentStep).reduce((total, step) => total + step.estimatedTime, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Car className="w-12 h-12 text-blue-600" />
+          </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to Aura</h1>
-          <p className="text-slate-600">Complete setup to start trading on India&apos;s leading B2B automotive marketplace</p>
+          <p className="text-slate-600">Quick setup to get you started immediately</p>
           <div className="flex items-center justify-center gap-2 mt-2 text-sm text-slate-500">
             <Clock className="w-4 h-4" />
-            <span>~{calculateRemainingTime()} minutes remaining</span>
+            <span>~{remainingTime} minutes remaining</span>
           </div>
         </div>
 
@@ -535,13 +619,12 @@ export default function OnboardingWizard() {
               </div>
               <div className="flex items-center gap-4">
                 <Badge variant="outline" className="text-sm">
-                  Step {currentStep + 1} of {visibleSteps.length}
+                  Step {currentStep + 1} of {MINIMAL_ONBOARDING_STEPS.length}
                 </Badge>
-                {lastSaved && (
-                  <Badge variant="outline" className="text-xs">
-                    Saved {lastSaved.toLocaleTimeString()}
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  <Zap className="w-3 h-3 mr-1" />
+                  Quick Setup
                   </Badge>
-                )}
               </div>
             </div>
             <Progress value={progressPercentage} className="h-2" />
@@ -569,21 +652,39 @@ export default function OnboardingWizard() {
         {/* Navigation */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 0 || isLoading}>
+            <Button 
+              variant="outline" 
+              onClick={handlePrevious} 
+              disabled={currentStep === 0 || isSubmitting}
+            >
               <ArrowLeft className="w-4 h-4 mr-2" /> Previous
-            </Button>
-            <Button variant="ghost" onClick={handleSaveDraft} disabled={!isDirty || isLoading}>
-              <Save className="w-4 h-4 mr-2" /> Save Draft
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            {currentStep < visibleSteps.length - 1 ? (
-              <Button onClick={handleNext} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+            {currentStep < MINIMAL_ONBOARDING_STEPS.length - 1 ? (
+              <Button 
+                onClick={handleNext} 
+                disabled={isSubmitting} 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 Next <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleCompleteOnboarding} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
+              <Button 
+                onClick={handleCompleteOnboarding} 
+                disabled={isSubmitting} 
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating Profile...
+                  </>
+                ) : (
+                  <>
                 Complete Setup <CheckCircle className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             )}
           </div>

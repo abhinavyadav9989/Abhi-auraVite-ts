@@ -57,7 +57,7 @@ import Shortlists from "./Shortlists";
 
 import VehicleView from "./VehicleView";
 
-import OnboardingWizard from "../components/onboarding/OnboardingWizard";
+import OnboardingWizard from "./OnboardingWizard";
 
 import DataMigrationPanel from "./DataMigrationPanel";
 

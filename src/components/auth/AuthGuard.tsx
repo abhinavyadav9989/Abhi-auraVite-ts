@@ -17,6 +17,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading, isAuthenticated } = useAuth();
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState<'unknown' | 'completed' | 'incomplete'>('unknown');
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   // List of public routes that don't require authentication
   const publicRoutes = [
@@ -31,6 +32,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     location.pathname === route || location.pathname.includes(route.replace('/', ''))
   );
 
+  // Reset navigation flag when location changes
+  useEffect(() => {
+    setHasNavigated(false);
+  }, [location.pathname]);
+
   useEffect(() => {
     const checkAuthAndOnboarding = async () => {
       // If still loading auth state, wait
@@ -41,7 +47,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       // If not authenticated, redirect to authentication
       if (!isAuthenticated || !user) {
         // Only redirect to authentication if not already on a public route
-        if (!isPublicRoute) {
+        if (!isPublicRoute && !hasNavigated && location.pathname !== createPageUrl('Authentication')) {
+          setHasNavigated(true);
           setTimeout(() => {
             navigate(createPageUrl('Authentication'), { replace: true });
           }, 100);
@@ -165,20 +172,31 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         const dealerProfiles = await Dealer.filter({ created_by: currentUser.email });
         const hasDealerProfile = dealerProfiles.length > 0;
         
-        // Check if dealer profile has completed onboarding
-        let hasCompletedOnboarding = false;
+        // Progressive Disclosure: Check for minimal profile completion
+        let hasMinimalProfile = false;
         if (hasDealerProfile && dealerProfiles.length > 0) {
           const dealerProfile = dealerProfiles[0];
-          hasCompletedOnboarding = dealerProfile.onboarding_completed === true;
-          console.log('AuthGuard - Dealer profile onboarding status:', {
+          
+          // Check if dealer has minimal required information
+          hasMinimalProfile = !!(
+            dealerProfile.business_name && 
+            dealerProfile.business_type && 
+            dealerProfile.email && 
+            dealerProfile.onboarding_completed === true
+          );
+          
+          console.log('AuthGuard - Progressive onboarding check:', {
+            business_name: dealerProfile.business_name,
+            business_type: dealerProfile.business_type,
+            email: dealerProfile.email,
             onboarding_completed: dealerProfile.onboarding_completed,
-            dealerProfile
+            hasMinimalProfile
           });
           
-          // If dealer profile shows onboarding is completed but user metadata doesn't,
-          // update the user metadata to match
-          if (hasCompletedOnboarding && !hasOnboardingCompleted) {
-            console.log('AuthGuard - Updating user metadata to match dealer profile');
+          // If dealer profile has minimal info but user metadata doesn't reflect it,
+          // update the user metadata
+          if (hasMinimalProfile && !hasOnboardingCompleted) {
+            console.log('AuthGuard - Updating user metadata for progressive onboarding');
             try {
               await supabase.auth.updateUser({
                 data: {
@@ -195,22 +213,25 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           }
         }
         
-        console.log('AuthGuard - Thorough check results:', {
+        console.log('AuthGuard - Progressive disclosure check results:', {
           emailVerified: (currentUser as any).email_verified,
           hasDealerProfile,
-          hasCompletedOnboarding
+          hasMinimalProfile
         });
         
-        if (hasCompletedOnboarding) {
-          console.log('AuthGuard - Onboarding completed, allowing access');
+        if (hasMinimalProfile) {
+          console.log('AuthGuard - Minimal profile completed, allowing dashboard access');
           setOnboardingStatus('completed');
         } else {
-          console.log('AuthGuard - Onboarding incomplete, redirecting to onboarding');
+          console.log('AuthGuard - Minimal profile incomplete, redirecting to simplified onboarding');
           setOnboardingStatus('incomplete');
-          // Redirect to onboarding if not completed
-          setTimeout(() => {
-            navigate(createPageUrl('OnboardingWizard'), { replace: true });
-          }, 100);
+          // Redirect to simplified onboarding (with protection against loops)
+          if (!hasNavigated && location.pathname !== createPageUrl('OnboardingWizard')) {
+            setHasNavigated(true);
+            setTimeout(() => {
+              navigate(createPageUrl('OnboardingWizard'), { replace: true });
+            }, 100);
+          }
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
