@@ -7,7 +7,18 @@ const VALID_CATEGORIES = [
   'Luxury', 'Commercial', 'Electric', 'Specialised', 'Service'
 ];
 
-const CATEGORY_SCHEMAS = {
+type FieldSchema = {
+  type: 'number' | 'select' | 'date' | 'text'
+  min?: number
+  max?: number
+  required?: boolean
+  options?: string[]
+  maxLength?: number
+}
+
+type CategorySchema = Record<string, FieldSchema>
+
+const CATEGORY_SCHEMAS: Record<string, CategorySchema> = {
   'Two-Wheeler': {
     engine_displacement: { type: 'number', min: 50, max: 2000, required: true },
     bike_type: { type: 'select', options: ['Scooter', 'Cruiser', 'Sport', 'Commuter'], required: false }
@@ -34,8 +45,8 @@ const CATEGORY_SCHEMAS = {
   }
 };
 
-export const validateVehicleCategories = (categories) => {
-  const normalizedCategories = ensureArray(categories);
+export const validateVehicleCategories = (categories: string | string[]) => {
+  const normalizedCategories = ensureArray<string>(categories);
   const validCategories = normalizedCategories.filter(cat => 
     VALID_CATEGORIES.includes(cat)
   );
@@ -49,59 +60,67 @@ export const validateVehicleCategories = (categories) => {
   };
 };
 
-export const validateCustomAttributes = (categories, customAttributes = {}) => {
-  const normalizedCategories = ensureArray(categories);
-  const errors = {};
-  const warnings = [];
+export const validateCustomAttributes = (
+  categories: string | string[],
+  customAttributes: Record<string, unknown> = {}
+) => {
+  const normalizedCategories = ensureArray<string>(categories);
+  const errors: Record<string, string> = {};
+  const warnings: string[] = [];
   
   normalizedCategories.forEach(category => {
     const schema = CATEGORY_SCHEMAS[category];
     if (!schema) return;
     
-    Object.entries(schema).forEach(([fieldName, fieldSchema]) => {
-      const value = customAttributes[fieldName];
+    Object.entries(schema as CategorySchema).forEach(([fieldName, fieldSchema]) => {
+      const value = (customAttributes as Record<string, unknown>)[fieldName];
       
       // Check required fields
-      if (fieldSchema.required && (!value || value === '')) {
+      if (fieldSchema.required && (value === undefined || value === null || value === '')) {
         errors[fieldName] = `${fieldName} is required for ${category} vehicles`;
         return;
       }
       
       // Skip validation if field is not provided and not required
-      if (!value && !fieldSchema.required) return;
+      if ((value === undefined || value === null || value === '') && !fieldSchema.required) return;
       
       // Type validation
       switch (fieldSchema.type) {
         case 'number': {
           const numValue = Number(value);
-          if (isNaN(numValue)) {
+          if (Number.isNaN(numValue)) {
             errors[fieldName] = `${fieldName} must be a valid number`;
           } else {
-            if (fieldSchema.min && numValue < fieldSchema.min) {
+            if (typeof fieldSchema.min === 'number' && numValue < fieldSchema.min) {
               errors[fieldName] = `${fieldName} must be at least ${fieldSchema.min}`;
             }
-            if (fieldSchema.max && numValue > fieldSchema.max) {
+            if (typeof fieldSchema.max === 'number' && numValue > fieldSchema.max) {
               errors[fieldName] = `${fieldName} must not exceed ${fieldSchema.max}`;
             }
           }
           break;
         }
           
-        case 'select':
-          if (!fieldSchema.options.includes(value)) {
-            errors[fieldName] = `${fieldName} must be one of: ${fieldSchema.options.join(', ')}`;
+        case 'select': {
+          const v = String(value);
+          if (!Array.isArray(fieldSchema.options) || !fieldSchema.options.includes(v)) {
+            errors[fieldName] = `${fieldName} must be one of: ${(fieldSchema.options || []).join(', ')}`;
           }
           break;
+        }
           
         case 'date':
-          if (isNaN(Date.parse(value))) {
+          if (Number.isNaN(Date.parse(String(value)))) {
             errors[fieldName] = `${fieldName} must be a valid date`;
           }
           break;
           
         case 'text':
-          if (fieldSchema.maxLength && value.length > fieldSchema.maxLength) {
-            errors[fieldName] = `${fieldName} must not exceed ${fieldSchema.maxLength} characters`;
+          {
+            const v = String(value);
+            if (typeof fieldSchema.maxLength === 'number' && v.length > fieldSchema.maxLength) {
+              errors[fieldName] = `${fieldName} must not exceed ${fieldSchema.maxLength} characters`;
+            }
           }
           break;
       }
@@ -115,14 +134,14 @@ export const validateCustomAttributes = (categories, customAttributes = {}) => {
   };
 };
 
-export const getCategoryRequiredFields = (categories) => {
-  const normalizedCategories = ensureArray(categories);
-  const requiredFields = {};
+export const getCategoryRequiredFields = (categories: string | string[]) => {
+  const normalizedCategories = ensureArray<string>(categories);
+  const requiredFields: Record<string, FieldSchema & { category: string }> = {};
   
   normalizedCategories.forEach(category => {
     const schema = CATEGORY_SCHEMAS[category];
     if (schema) {
-      Object.entries(schema).forEach(([fieldName, fieldSchema]) => {
+      Object.entries(schema as CategorySchema).forEach(([fieldName, fieldSchema]) => {
         if (fieldSchema.required) {
           requiredFields[fieldName] = {
             ...fieldSchema,
@@ -136,19 +155,19 @@ export const getCategoryRequiredFields = (categories) => {
   return requiredFields;
 };
 
-export const getAvailableCategories = () => VALID_CATEGORIES;
+export const getAvailableCategories = (): string[] => VALID_CATEGORIES;
 
-export const getCategorySchema = (category) => CATEGORY_SCHEMAS[category] || {};
+export const getCategorySchema = (category: string): CategorySchema => CATEGORY_SCHEMAS[category] || {};
 
 // Component for displaying validation errors
-export const ValidationErrors = ({ errors, className = "" }) => {
+export const ValidationErrors: React.FC<{ errors?: Record<string, unknown>; className?: string }> = ({ errors, className = "" }) => {
   if (!errors || Object.keys(errors).length === 0) return null;
   
   return (
     <div className={`space-y-2 ${className}`}>
-      {Object.entries(errors).map(([field, error]) => (
+      {Object.entries(errors as Record<string, unknown>).map(([field, error]) => (
         <div key={field} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-          {error}
+          {String(error)}
         </div>
       ))}
     </div>

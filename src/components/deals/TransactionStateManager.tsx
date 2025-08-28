@@ -80,7 +80,7 @@ export default function TransactionStateManager({ transaction, user, userRole, o
     setIsProcessing(true);
     try {
       // Update transaction with new status and timestamp
-      const updateData = {
+      const updateData: any = {
         status: newStatus,
         last_action_by: user?.id,
         ...additionalData
@@ -95,7 +95,7 @@ export default function TransactionStateManager({ transaction, user, userRole, o
         evidence: []
       };
       
-      const existingTimeline = transaction.timeline || [];
+      const existingTimeline = (transaction as any)?.timeline || [];
       updateData.timeline = [...existingTimeline, timelineEntry];
       
       await Transaction.update(transaction.id, updateData);

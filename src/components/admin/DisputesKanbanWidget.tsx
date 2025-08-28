@@ -30,6 +30,26 @@ const POLICY_CODES = [
   { value: 'POL-005', label: 'Fraudulent Activity' }
 ];
 
+type Dispute = {
+  id: string | number;
+  vehicle?: string;
+  reason?: string;
+};
+
+type DisputesBoard = {
+  new: Dispute[];
+  investigating: Dispute[];
+  awaiting_evidence: Dispute[];
+  resolved: Dispute[];
+};
+
+type Props = {
+  disputes?: Partial<DisputesBoard>;
+  onStatusChange?: (disputeId: string | number, newStatus: string) => Promise<void> | void;
+  onRefund?: (disputeId: string | number, refundPercentage: number) => Promise<void> | void;
+  onAddNote?: (disputeId: string | number, payload: { note: string; policyCode: string }) => Promise<void> | void;
+};
+
 export default function DisputesKanbanWidget({ 
   disputes = {
     new: [],
@@ -40,9 +60,9 @@ export default function DisputesKanbanWidget({
   onStatusChange, 
   onRefund, 
   onAddNote 
-}) {
+}: Props) {
   const { toast } = useToast();
-  const [selectedDispute, setSelectedDispute] = React.useState(null);
+  const [selectedDispute, setSelectedDispute] = React.useState<Dispute | null>(null);
   const [refundPercentage, setRefundPercentage] = React.useState(100);
   const [resolutionNote, setResolutionNote] = React.useState('');
   const [selectedPolicyCode, setSelectedPolicyCode] = React.useState('');
@@ -55,7 +75,7 @@ export default function DisputesKanbanWidget({
     resolved: disputes?.resolved || []
   };
 
-  const handleStatusChange = async (disputeId, newStatus) => {
+  const handleStatusChange = async (disputeId: string | number, newStatus: string) => {
     try {
       await onStatusChange?.(disputeId, newStatus);
       toast({
@@ -71,7 +91,7 @@ export default function DisputesKanbanWidget({
     }
   };
 
-  const handleRefund = async (disputeId) => {
+  const handleRefund = async (disputeId: string | number) => {
     try {
       await onRefund?.(disputeId, refundPercentage);
       toast({
@@ -88,7 +108,7 @@ export default function DisputesKanbanWidget({
     }
   };
 
-  const DisputeCard = ({ dispute = {} }) => (
+  const DisputeCard = ({ dispute }: { dispute: Dispute }) => (
     <div 
       className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => setSelectedDispute(dispute)}
@@ -203,7 +223,7 @@ export default function DisputesKanbanWidget({
                       min="0"
                       max="100"
                       value={refundPercentage}
-                      onChange={(e) => setRefundPercentage(e.target.value)}
+                      onChange={(e) => setRefundPercentage(Number(e.target.value))}
                       className="flex-1"
                     />
                     <span className="text-sm font-medium">{refundPercentage}%</span>

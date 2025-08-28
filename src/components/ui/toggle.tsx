@@ -26,7 +26,14 @@ const toggleVariants = cva(
   }
 )
 
-const Toggle = React.forwardRef(({ className, variant, size, ...props }, ref) => (
+type ToggleVariant = "default" | "outline"
+type ToggleSize = "default" | "sm" | "lg"
+type ToggleProps = React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root> & {
+  variant?: ToggleVariant
+  size?: ToggleSize
+}
+
+const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(({ className, variant, size, ...props }, ref) => (
   <TogglePrimitive.Root
     ref={ref}
     className={cn(toggleVariants({ variant, size, className }))}

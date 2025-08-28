@@ -8,13 +8,15 @@ interface PlanSectionProps {
 }
 
 const PlanSection: React.FC<PlanSectionProps> = ({ dealer }) => {
-  const planSelection = dealer?.plan_selection;
+  // Prefer simple subscription_plan field; fallback to plan_selection.plan
+  const planKey = dealer?.subscription_plan || dealer?.plan_selection?.plan;
   
-  // Debug logging
+  // Debug logging (safe)
+  const planSelection = dealer?.plan_selection || {};
   console.log('PlanSection - dealer:', dealer);
   console.log('PlanSection - plan_selection:', planSelection);
-  console.log('PlanSection - plan_selection.plan:', planSelection?.plan);
-  console.log('PlanSection - plan_selection.features:', planSelection?.features);
+  console.log('PlanSection - plan_selection.plan:', (planSelection as any)?.plan);
+  console.log('PlanSection - plan_selection.features:', (planSelection as any)?.features);
 
   const plans = [
     {
@@ -65,15 +67,14 @@ const PlanSection: React.FC<PlanSectionProps> = ({ dealer }) => {
   ];
 
   const getSelectedPlan = () => {
-    if (!planSelection?.plan) return null;
-    return plans.find(plan => plan.id === planSelection.plan);
+    if (!planKey) return null;
+    return plans.find(plan => plan.id === planKey);
   };
 
   const getSelectedFeatures = () => {
-    if (!planSelection?.features) return [];
-    return additionalFeatures.filter(feature => 
-      planSelection.features.includes(feature.id)
-    );
+    const feats: string[] = (planSelection as any)?.features || [];
+    if (!feats || feats.length === 0) return [];
+    return additionalFeatures.filter(f => feats.includes(f.id));
   };
 
   const selectedPlan = getSelectedPlan();
@@ -133,10 +134,10 @@ const PlanSection: React.FC<PlanSectionProps> = ({ dealer }) => {
                 </div>
               </div>
 
-              {planSelection?.selectedAt && (
+              {(planSelection as any)?.selectedAt && (
                 <div className="border-t pt-4">
                   <p className="text-sm text-slate-500">
-                    Subscribed on: {new Date(planSelection.selectedAt).toLocaleDateString()}
+                    Subscribed on: {new Date((planSelection as any).selectedAt).toLocaleDateString()}
                   </p>
                 </div>
               )}

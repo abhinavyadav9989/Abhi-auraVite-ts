@@ -62,6 +62,7 @@ import OnboardingWizard from "./OnboardingWizard";
 import DataMigrationPanel from "./DataMigrationPanel";
 
 import Authentication from "./Authentication";
+import BusinessVerification from "./BusinessVerification";
 
 import { Route, Routes, useLocation } from 'react-router-dom';
 
@@ -202,6 +203,7 @@ function PagesContent() {
                 <Route path="/OnboardingPath" element={<OnboardingPath />} />
                 
                 <Route path="/KYBWizard" element={<KYBWizard />} />
+                <Route path="/BusinessVerification" element={<BusinessVerification />} />
                 
                 <Route path="/AdminKYBVerification" element={<AdminKYBVerification />} />
                 

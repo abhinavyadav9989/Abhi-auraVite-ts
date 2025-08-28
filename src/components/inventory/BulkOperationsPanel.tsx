@@ -24,7 +24,35 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Vehicle } from '@/api/entities';
 
-const BULK_OPERATIONS = [
+type BulkOperationId =
+  | 'change_status'
+  | 'change_inventory_type'
+  | 'adjust_pricing'
+  | 'add_tags'
+  | 'schedule_actions'
+  | 'archive_old';
+
+type OperationConfig = {
+  new_status?: string;
+  new_inventory_type?: string;
+  adjustment_type?: 'percentage' | 'fixed';
+  adjustment_direction?: 'increase' | 'decrease';
+  adjustment_value?: number;
+  tags?: string;
+  action?: 'schedule_publish' | 'schedule_archive';
+  schedule_date?: string; // ISO datetime-local string
+  days_threshold?: number;
+};
+
+type BulkOperationDef = {
+  id: BulkOperationId;
+  label: string;
+  icon: any;
+  description: string;
+  options: string[];
+};
+
+const BULK_OPERATIONS: BulkOperationDef[] = [
   {
     id: 'change_status',
     label: 'Change Status',
@@ -70,23 +98,24 @@ const BULK_OPERATIONS = [
 ];
 
 export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComplete }) {
-  const [selectedOperation, setSelectedOperation] = useState('');
-  const [operationConfig, setOperationConfig] = useState({});
+  const initialConfig: OperationConfig = {};
+  const [selectedOperation, setSelectedOperation] = useState<BulkOperationId | ''>('');
+  const [operationConfig, setOperationConfig] = useState<OperationConfig>(initialConfig);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState(null);
   const { toast } = useToast();
 
-  const selectedVehicleData = vehicles.filter(v => selectedVehicles.has(v.id));
+  const selectedVehicleData = vehicles.filter((v: any) => selectedVehicles.has(v.id));
 
-  const handleOperationChange = (operationId) => {
+  const handleOperationChange = (operationId: BulkOperationId) => {
     setSelectedOperation(operationId);
-    setOperationConfig({});
+    setOperationConfig(initialConfig);
     setResults(null);
   };
 
-  const handleConfigChange = (key, value) => {
-    setOperationConfig(prev => ({ ...prev, [key]: value }));
+  const handleConfigChange = (key: keyof OperationConfig, value: OperationConfig[typeof key]) => {
+    setOperationConfig((prev) => ({ ...prev, [key]: value }));
   };
 
   const executeOperation = async () => {
@@ -134,7 +163,7 @@ export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComp
     }
   };
 
-  const executeSingleOperation = async (vehicleId, operation, config) => {
+  const executeSingleOperation = async (vehicleId: string, operation: BulkOperationId, config: OperationConfig) => {
     switch (operation) {
       case 'change_status':
         await Vehicle.update(vehicleId, { status: config.new_status });
@@ -145,13 +174,15 @@ export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComp
         break;
         
       case 'adjust_pricing': {
-        const vehicle = vehicles.find(v => v.id === vehicleId);
-        const adjustment = config.adjustment_type === 'percentage' 
-          ? (vehicle.asking_price * config.adjustment_value / 100)
-          : config.adjustment_value;
-        const newPrice = config.adjustment_direction === 'increase' 
-          ? vehicle.asking_price + adjustment
-          : Math.max(0, vehicle.asking_price - adjustment);
+        const vehicle = vehicles.find((v: any) => v.id === vehicleId);
+        const currentAsking: number = Number(vehicle?.asking_price ?? 0);
+        const baseAdjustment: number = Number(config.adjustment_value ?? 0);
+        const adjustment = config.adjustment_type === 'percentage'
+          ? (currentAsking * baseAdjustment) / 100
+          : baseAdjustment;
+        const newPrice = (config.adjustment_direction ?? 'increase') === 'increase'
+          ? currentAsking + adjustment
+          : Math.max(0, currentAsking - adjustment);
         await Vehicle.update(vehicleId, { asking_price: Math.round(newPrice) });
         break;
       }
@@ -175,8 +206,11 @@ export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComp
       }
         
       case 'archive_old': {
-        const daysOld = Math.floor((new Date() - new Date(vehicles.find(v => v.id === vehicleId).created_date)) / (1000 * 60 * 60 * 24));
-        if (daysOld >= config.days_threshold) {
+        const created = vehicles.find((v: any) => v.id === vehicleId)?.created_date;
+        const createdMs = created ? new Date(created).getTime() : Date.now();
+        const nowMs = Date.now();
+        const daysOld = Math.floor((nowMs - createdMs) / (1000 * 60 * 60 * 24));
+        if (daysOld >= (config.days_threshold ?? Number.POSITIVE_INFINITY)) {
           await Vehicle.update(vehicleId, { status: 'archived' });
         }
         break;
@@ -391,7 +425,7 @@ export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComp
                 <button
                   key={operation.id}
                   type="button"
-                  onClick={() => handleOperationChange(operation.id)}
+                  onClick={() => handleOperationChange(operation.id as BulkOperationId)}
                   className={`p-3 text-left border rounded-lg transition-all hover:border-blue-300 ${
                     selectedOperation === operation.id
                       ? 'border-blue-500 bg-blue-50'

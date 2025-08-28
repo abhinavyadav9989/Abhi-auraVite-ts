@@ -8,23 +8,28 @@ import {
 } from '@/components/ui/popover';
 import { Calculator, IndianRupee, Truck, Wrench, FileText } from 'lucide-react';
 
-export default function LandedCostPreview({ vehicle = {}, userClientType = 'individual' }) {
+type LandedCostPreviewProps = {
+  vehicle?: any;
+  userClientType?: 'individual' | 'dealer' | 'self_user' | string;
+};
+
+export default function LandedCostPreview({ vehicle = {}, userClientType = 'individual' }: LandedCostPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Safe property access
   const vehicleData = {
-    asking_price: vehicle.asking_price || 0,
-    landed_cost_components: vehicle.landed_cost_components || {
+    asking_price: Number((vehicle as any).asking_price || 0),
+    landed_cost_components: (vehicle as any).landed_cost_components || {
       procurement: 0,
       refurbishment: 0,
       logistics: 0,
       other: 0
     },
-    location_city: vehicle.location_city || '',
-    location_state: vehicle.location_state || ''
+    location_city: (vehicle as any).location_city || '',
+    location_state: (vehicle as any).location_state || ''
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (price: number) => {
     if (!price || price === 0) return '₹0';
     if (price >= 100000) {
       return `₹${(price / 100000).toFixed(1)}L`;
@@ -72,8 +77,9 @@ export default function LandedCostPreview({ vehicle = {}, userClientType = 'indi
         </Button>
       </PopoverTrigger>
       
-      <PopoverContent className="w-80" align="start">
-        <div className="space-y-4">
+      {(() => { const PC: any = PopoverContent as any; return (
+        <PC className="w-80" align="start">
+          <div className="space-y-4">
           <div>
             <h4 className="font-semibold text-sm mb-1">Estimated Landed Cost</h4>
             <p className="text-xs text-slate-600">
@@ -145,8 +151,9 @@ export default function LandedCostPreview({ vehicle = {}, userClientType = 'indi
           <div className="text-xs text-slate-500">
             *Estimates based on location and vehicle type. Actual costs may vary.
           </div>
-        </div>
-      </PopoverContent>
+          </div>
+        </PC>
+      )})()}
     </Popover>
   );
 }

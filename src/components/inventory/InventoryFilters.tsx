@@ -20,6 +20,7 @@ export default function InventoryFilters({
   setOnlyMine = () => {}, 
   vehicles = [] 
 }: InventoryFiltersProps) {
+  const SliderAny: any = Slider;
   // Safe calculation of maxPrice with proper fallback
   const vehiclesArray = Array.isArray(vehicles) ? vehicles : [];
   const prices = vehiclesArray
@@ -61,9 +62,9 @@ export default function InventoryFilters({
         <div className="space-y-3">
           <Label className="text-sm font-medium">Price Range</Label>
           <div className="px-3">
-            <Slider
-              value={safePriceRange}
-              onValueChange={handlePriceRangeChange}
+            <SliderAny
+              value={safePriceRange as unknown as number[]}
+              onValueChange={(val: number[]) => handlePriceRangeChange(val)}
               max={maxPrice}
               min={0}
               step={50000}
@@ -89,7 +90,7 @@ export default function InventoryFilters({
             <Checkbox 
               id="only-mine" 
               checked={onlyMine}
-              onCheckedChange={setOnlyMine}
+              onCheckedChange={(checked) => setOnlyMine(checked === true)}
             />
             <Label htmlFor="only-mine" className="text-sm">Only my vehicles</Label>
           </div>

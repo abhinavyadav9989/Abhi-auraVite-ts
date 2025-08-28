@@ -86,15 +86,15 @@ export default function DealerRatingSystem({
     }
   ]);
 
-  const setCategoryRating = (categoryId, rating) => {
+  const setCategoryRating = (categoryId: string, rating: number) => {
     setRatings(prev => ({
       ...prev,
       [categoryId]: rating
     }));
     
     // Update overall rating (average of all categories)
-    const newRatings = { ...ratings, [categoryId]: rating };
-    const average = Object.values(newRatings).reduce((sum, r) => sum + r, 0) / RATING_CATEGORIES.length;
+    const newRatings: Record<string, number> = { ...ratings, [categoryId]: rating } as Record<string, number>;
+    const average = (Object.values(newRatings) as number[]).reduce((sum, r) => sum + r, 0) / RATING_CATEGORIES.length;
     setOverallRating(Math.round(average * 2) / 2); // Round to nearest 0.5
   };
 
@@ -120,12 +120,12 @@ export default function DealerRatingSystem({
     setIsSubmitting(false);
   };
 
-  const canSubmit = overallRating > 0 && Object.values(ratings).every(r => r > 0);
+  const canSubmit = overallRating > 0 && (Object.values(ratings) as number[]).every((r) => r > 0);
   const averageRating = reviews.length > 0 
-    ? (reviews.reduce((sum, r) => sum + r.overall_rating, 0) / reviews.length).toFixed(1)
+    ? (reviews.reduce((sum, r) => sum + Number(r.overall_rating || 0), 0) / reviews.length).toFixed(1)
     : '0.0';
 
-  const RatingStars = ({ rating, onRate, size = 'default' }) => {
+  const RatingStars = ({ rating, onRate, size = 'default' }: { rating: any; onRate?: (v: number) => void; size?: 'default' | 'large' | 'small' }) => {
     const starSize = size === 'large' ? 'w-8 h-8' : size === 'small' ? 'w-4 h-4' : 'w-5 h-5';
     
     return (
@@ -287,7 +287,7 @@ export default function DealerRatingSystem({
 
                         {/* Rating */}
                         <div className="flex items-center gap-2 mb-2">
-                          <RatingStars rating={reviewData.overall_rating} size="small" />
+                          <RatingStars rating={reviewData.overall_rating} onRate={() => {}} size="small" />
                           <span className="text-sm font-medium">
                             {reviewData.overall_rating.toFixed(1)}
                           </span>
@@ -309,6 +309,7 @@ export default function DealerRatingSystem({
                               <div className="flex items-center gap-1">
                                 <RatingStars 
                                   rating={reviewData.ratings[category.id]} 
+                                  onRate={() => {}}
                                   size="small" 
                                 />
                                 <span className="font-medium">

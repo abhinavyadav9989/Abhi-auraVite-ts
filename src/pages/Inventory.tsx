@@ -247,9 +247,6 @@ export default function Inventory() {
           </div>
           <div className="flex gap-3">
             <Link to={createPageUrl("BulkImport")}><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" /> Bulk Import</Button></Link>
-            <FeatureGate feature="add_vehicle" user={dealer}>
-              <Link to={createPageUrl("AddVehicle")}><Button className="gap-2"><Plus className="w-4 h-4" /> Add Vehicle</Button></Link>
-            </FeatureGate>
           </div>
         </div>
 

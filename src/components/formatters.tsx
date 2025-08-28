@@ -1,7 +1,13 @@
 // Centralized formatting utilities to ensure consistency across the app
 
-export const formatCurrency = (amount, options = {}) => {
-  if (amount === null || amount === undefined || isNaN(amount)) return '₹0';
+type CurrencyFormatOptions = {
+  showDecimals?: boolean
+  shortForm?: boolean
+  currency?: string
+}
+
+export const formatCurrency = (amount: number | string, options: CurrencyFormatOptions = {}) => {
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return '₹0';
   
   const { 
     showDecimals = false, 
@@ -29,13 +35,13 @@ export const formatCurrency = (amount, options = {}) => {
   }).format(numAmount);
 };
 
-export const formatDate = (date, format = 'short') => {
+export const formatDate = (date: Date | string | number, format: 'short' | 'long' | 'datetime' = 'short') => {
   if (!date) return 'N/A';
   
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) return 'Invalid Date';
   
-  const formats = {
+  const formats: Record<string, Intl.DateTimeFormatOptions> = {
     short: { day: '2-digit', month: '2-digit', year: 'numeric' },
     long: { day: '2-digit', month: 'long', year: 'numeric' },
     datetime: { 
@@ -51,8 +57,10 @@ export const formatDate = (date, format = 'short') => {
     .format(dateObj);
 };
 
-export const formatKilometers = (kms, options = {}) => {
-  if (kms === null || kms === undefined || isNaN(kms)) return '0 km';
+type KmFormatOptions = { showUnit?: boolean; shortForm?: boolean }
+
+export const formatKilometers = (kms: number | string, options: KmFormatOptions = {}) => {
+  if (kms === null || kms === undefined || Number.isNaN(Number(kms))) return '0 km';
   
   const { showUnit = true, shortForm = false } = options;
   const numKms = Number(kms);
@@ -69,7 +77,7 @@ export const formatKilometers = (kms, options = {}) => {
   return showUnit ? `${formatted}${shortForm ? '' : ' km'}` : formatted;
 };
 
-export const formatPhoneNumber = (phone) => {
+export const formatPhoneNumber = (phone: string) => {
   if (!phone) return '';
   
   const cleaned = phone.replace(/\D/g, '');
@@ -82,7 +90,7 @@ export const formatPhoneNumber = (phone) => {
   return phone;
 };
 
-export const formatRegistrationNumber = (regNo) => {
+export const formatRegistrationNumber = (regNo: string) => {
   if (!regNo) return '';
   
   // Format Indian registration numbers (e.g., KA01AB1234 -> KA 01 AB 1234)
@@ -96,7 +104,7 @@ export const formatRegistrationNumber = (regNo) => {
   return regNo.toUpperCase();
 };
 
-export const formatFileSize = (bytes) => {
+export const formatFileSize = (bytes: number) => {
   if (!bytes || bytes === 0) return '0 B';
   
   const k = 1024;
@@ -106,7 +114,7 @@ export const formatFileSize = (bytes) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-export const formatDuration = (minutes) => {
+export const formatDuration = (minutes: number) => {
   if (!minutes || minutes < 0) return '0 min';
   
   const hours = Math.floor(minutes / 60);
@@ -120,16 +128,16 @@ export const formatDuration = (minutes) => {
 };
 
 // Helper function to safely handle array conversion
-export const ensureArray = (value) => {
+export const ensureArray = <T,>(value: T | T[] | null | undefined): T[] => {
   if (Array.isArray(value)) return value;
   if (value === null || value === undefined) return [];
   return [value];
 };
 
 // Helper function for safe property access
-export const safeGet = (obj, path, defaultValue = null) => {
+export const safeGet = (obj: unknown, path: string, defaultValue: unknown = null): any => {
   if (!path) return defaultValue;
-  return path.split('.').reduce((current, key) => {
+  return path.split('.').reduce((current: any, key: string) => {
     return (current && current[key] !== undefined && current[key] !== null) ? current[key] : defaultValue;
-  }, obj);
+  }, obj as any);
 };

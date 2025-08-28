@@ -84,7 +84,7 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
       unlocks: ['⭐ Premium Features', '🔗 API Access', '🏷️ White-label Solutions', '📊 Advanced Analytics'],
       estimatedTime: '15 min',
       priority: 'low',
-      action: () => navigate(createPageUrl('KYBWizard'))
+      action: () => navigate(createPageUrl('BusinessVerification'))
     }
   ];
 

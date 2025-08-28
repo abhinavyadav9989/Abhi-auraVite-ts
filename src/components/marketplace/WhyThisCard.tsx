@@ -3,25 +3,33 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target, TrendingUp, MapPin, DollarSign, Star } from 'lucide-react';
 
+type WhyThisCardProps = {
+  vehicle?: any;
+  dealer?: any;
+  userClientType?: 'individual' | 'dealer' | 'self_user' | string;
+};
+
 export default function WhyThisCard({ 
   vehicle = {}, 
   dealer = {}, 
   userClientType = 'individual' 
-}) {
+}: WhyThisCardProps) {
   // Safe property access
+  const safeVehicle: any = vehicle || {};
   const vehicleData = {
-    make: vehicle.make || '',
-    model: vehicle.model || '',
-    year: vehicle.year || new Date().getFullYear(),
-    asking_price: vehicle.asking_price || 0,
-    location_city: vehicle.location_city || '',
-    vehicle_category: vehicle.vehicle_category || 'sedan'
+    make: safeVehicle.make || '',
+    model: safeVehicle.model || '',
+    year: safeVehicle.year || new Date().getFullYear(),
+    asking_price: Number(safeVehicle.asking_price || 0),
+    location_city: safeVehicle.location_city || '',
+    vehicle_category: safeVehicle.vehicle_category || 'sedan'
   };
 
+  const safeDealer: any = dealer || {};
   const dealerData = {
-    rating: dealer.rating || 0,
-    total_deals: dealer.total_deals || 0,
-    verification_status: dealer.verification_status || 'pending'
+    rating: Number(safeDealer.rating || 0),
+    total_deals: Number(safeDealer.total_deals || 0),
+    verification_status: safeDealer.verification_status || 'pending'
   };
 
   // Generate reasons based on vehicle and dealer data

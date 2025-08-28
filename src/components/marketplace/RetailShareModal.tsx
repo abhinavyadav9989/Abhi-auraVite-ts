@@ -23,7 +23,7 @@ export default function RetailShareModal({ vehicle, transaction, onClose }) {
     const fetchPrefs = async () => {
       try {
         const user = await User.me();
-        const dealerPrefs = await DealerPreferences.filter({ created_by: user.email }, '', 1);
+        const dealerPrefs = await DealerPreferences.filter({ created_by: user.email });
         if (dealerPrefs.length > 0 && dealerPrefs[0].default_markup_pct) {
           setMarkup(dealerPrefs[0].default_markup_pct);
         }
@@ -64,14 +64,15 @@ export default function RetailShareModal({ vehicle, transaction, onClose }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="markup">Retail Markup: {markup}%</Label>
-            <Slider
+            {(() => { const SliderAny: any = Slider as any; return (
+            <SliderAny
               id="markup"
               min={0}
               max={25}
               step={1}
-              value={[markup]}
-              onValueChange={(value) => setMarkup(value[0])}
-            />
+              value={[Number(markup)]}
+              onValueChange={(value: number[]) => setMarkup(value[0])}
+            />) })()}
           </div>
           <div className="p-4 bg-blue-50 rounded-lg text-center">
             <Label className="text-sm text-slate-600">Suggested Retail Price</Label>
@@ -81,7 +82,7 @@ export default function RetailShareModal({ vehicle, transaction, onClose }) {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Checkbox id="hide-price" checked={hidePrice} onCheckedChange={setHidePrice} />
+            <Checkbox id="hide-price" checked={hidePrice} onCheckedChange={(checked) => setHidePrice(checked === true)} />
             <Label htmlFor="hide-price">Hide price on shared link</Label>
           </div>
           <div className="relative">

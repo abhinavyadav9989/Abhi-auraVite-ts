@@ -37,9 +37,14 @@ const MARKETPLACE_TYPES = [
   }
 ];
 
-export default function MarketplaceAccess({ data, updateData }) {
-  const handleAccessToggle = (type, enabled) => {
-    const updates = {};
+type MarketplaceAccessProps = {
+  data: any;
+  updateData: (updates: any) => void;
+};
+
+export default function MarketplaceAccess({ data, updateData }: MarketplaceAccessProps) {
+  const handleAccessToggle = (type: string, enabled: boolean) => {
+    const updates: any = {};
     
     switch (type) {
       case 'new_vehicles':
@@ -56,20 +61,21 @@ export default function MarketplaceAccess({ data, updateData }) {
     updateData(updates);
   };
 
-  const isAccessEnabled = (type) => {
+  const isAccessEnabled = (type: string) => {
+    const d: any = data || {};
     switch (type) {
       case 'new_vehicles':
-        return data.newVehicleAccess;
+        return Boolean(d.newVehicleAccess);
       case 'used_vehicles':
-        return data.usedVehicleAccess;
+        return Boolean(d.usedVehicleAccess);
       case 'specialised':
-        return data.specialisedAccess;
+        return Boolean(d.specialisedAccess);
       default:
         return false;
     }
   };
 
-  const canAccess = (marketplace) => {
+  const canAccess = (marketplace: any) => {
     // Check if user's selected plan allows access
     const planHierarchy = { standard: 1, pro: 2, enterprise: 3 };
     const userPlanLevel = planHierarchy[data.selectedPlan] || 1;
@@ -152,7 +158,7 @@ export default function MarketplaceAccess({ data, updateData }) {
                   <div className="flex flex-col items-end gap-2">
                     <Switch
                       checked={isEnabled}
-                      onCheckedChange={(checked) => handleAccessToggle(marketplace.id, checked)}
+                      onCheckedChange={(checked) => handleAccessToggle(marketplace.id, checked === true)}
                       disabled={!hasAccess}
                     />
                     {hasAccess && (
@@ -193,20 +199,20 @@ export default function MarketplaceAccess({ data, updateData }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="flex items-center justify-between">
                 <span>New Vehicles:</span>
-                <Badge variant={data.newVehicleAccess ? 'default' : 'secondary'}>
-                  {data.newVehicleAccess ? 'Enabled' : 'Disabled'}
+                <Badge variant={isAccessEnabled('new_vehicles') ? 'default' : 'secondary'}>
+                  {isAccessEnabled('new_vehicles') ? 'Enabled' : 'Disabled'}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span>Used Vehicles:</span>
-                <Badge variant={data.usedVehicleAccess ? 'default' : 'secondary'}>
-                  {data.usedVehicleAccess ? 'Enabled' : 'Disabled'}
+                <Badge variant={isAccessEnabled('used_vehicles') ? 'default' : 'secondary'}>
+                  {isAccessEnabled('used_vehicles') ? 'Enabled' : 'Disabled'}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span>Specialised:</span>
-                <Badge variant={data.specialisedAccess ? 'default' : 'secondary'}>
-                  {data.specialisedAccess ? 'Enabled' : 'Disabled'}
+                <Badge variant={isAccessEnabled('specialised') ? 'default' : 'secondary'}>
+                  {isAccessEnabled('specialised') ? 'Enabled' : 'Disabled'}
                 </Badge>
               </div>
             </div>

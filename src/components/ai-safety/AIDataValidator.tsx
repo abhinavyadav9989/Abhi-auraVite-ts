@@ -43,19 +43,28 @@ const MODEL_COMPATIBILITY = {
   // Add more as needed
 };
 
+type ValidationResult = {
+  isValid: boolean;
+  warnings?: string[];
+  suggestions?: string[];
+  error?: string;
+};
+
+type ValidationResultsMap = Record<string, ValidationResult>;
+
 export default function AIDataValidator({ vehicleData, onDataUpdate, onValidationComplete }) {
-  const [validationResults, setValidationResults] = useState({});
+  const [validationResults, setValidationResults] = useState<ValidationResultsMap>({});
   const [isValidating, setIsValidating] = useState(false);
   const [isCorrectingWithAI, setIsCorrectingWithAI] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
   const { toast } = useToast();
 
-  const validateField = (fieldName, value) => {
+  const validateField = (fieldName: string, value: any): ValidationResult => {
     const rule = VALIDATION_RULES[fieldName];
     if (!rule) return { isValid: true };
 
-    const validation = { isValid: true, warnings: [], suggestions: [] };
+    const validation: ValidationResult = { isValid: true, warnings: [], suggestions: [] };
 
     // Type validation
     if (rule.type === 'number') {
@@ -111,7 +120,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
     return validation;
   };
 
-  const validateMakeModelCompatibility = (make, model) => {
+  const validateMakeModelCompatibility = (make: string, model: string): ValidationResult => {
     if (!make || !model) return { isValid: true };
     
     const compatibleModels = MODEL_COMPATIBILITY[make];
@@ -136,7 +145,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
 
   const runFullValidation = () => {
     setIsValidating(true);
-    const results = {};
+    const results: ValidationResultsMap = {};
 
     // Validate individual fields
     Object.keys(VALIDATION_RULES).forEach(fieldName => {
@@ -158,7 +167,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
     setIsValidating(false);
 
     // Notify parent component
-    const hasErrors = Object.values(results).some(result => !result.isValid);
+    const hasErrors = (Object.values(results) as ValidationResult[]).some((result) => !result.isValid);
     if (onValidationComplete) {
       onValidationComplete({ hasErrors, results });
     }
@@ -237,7 +246,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
     }
   };
 
-  const handleManualEdit = (fieldName, currentValue) => {
+  const handleManualEdit = (fieldName: string, currentValue: any) => {
     setEditingField(fieldName);
     setEditValue(currentValue || '');
   };
@@ -253,14 +262,14 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
     }
   };
 
-  const applySuggestion = (fieldName, suggestion) => {
+  const applySuggestion = (fieldName: string, suggestion: any) => {
     onDataUpdate({ [fieldName]: suggestion });
     
     // Re-validate after applying suggestion
     setTimeout(runFullValidation, 500);
   };
 
-  const getFieldStatus = (fieldName) => {
+  const getFieldStatus = (fieldName: string) => {
     const result = validationResults[fieldName];
     if (!result) return 'unknown';
     if (!result.isValid) return 'error';
@@ -268,7 +277,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
     return 'valid';
   };
 
-  const renderFieldValidation = (fieldName, displayName) => {
+  const renderFieldValidation = (fieldName: string, displayName: string) => {
     const result = validationResults[fieldName];
     const currentValue = vehicleData[fieldName];
     const status = getFieldStatus(fieldName);
@@ -401,7 +410,7 @@ export default function AIDataValidator({ vehicleData, onDataUpdate, onValidatio
               <Alert className="border-red-300 bg-red-50">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  {validationResults.make_model_compatibility.error}
+                  {validationResults.make_model_compatibility?.error}
                 </AlertDescription>
               </Alert>
             )}

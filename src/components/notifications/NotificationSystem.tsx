@@ -45,7 +45,10 @@ const NOTIFICATION_TYPES = {
 
 // Mock WebSocket connection for real-time notifications
 class NotificationWebSocket {
-  constructor(onNotification) {
+  private onNotification: (notification: any) => void;
+  private interval?: ReturnType<typeof setInterval>;
+
+  constructor(onNotification: (notification: any) => void) {
     this.onNotification = onNotification;
     this.connect();
   }
@@ -55,7 +58,7 @@ class NotificationWebSocket {
     console.log('Connecting to notification WebSocket...');
     
     // Simulate receiving notifications
-    this.interval = setInterval(() => {
+    this.interval = setInterval((): void => {
       if (Math.random() > 0.7) { // 30% chance every 10 seconds
         this.simulateNotification();
       }
@@ -103,6 +106,7 @@ class NotificationWebSocket {
   disconnect() {
     if (this.interval) {
       clearInterval(this.interval);
+      this.interval = undefined;
     }
   }
 }

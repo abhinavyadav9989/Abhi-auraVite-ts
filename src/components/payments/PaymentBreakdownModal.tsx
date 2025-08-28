@@ -156,7 +156,7 @@ export default function PaymentBreakdownModal({ amount, finalPrice, onClose, onC
             <Checkbox 
               id="agree-terms" 
               checked={agreeTerms}
-              onCheckedChange={setAgreeTerms}
+              onCheckedChange={(checked) => setAgreeTerms(checked === true)}
             />
             <label htmlFor="agree-terms" className="text-sm text-slate-600 leading-relaxed">
               I agree to the <span className="text-blue-600 underline cursor-pointer">Terms & Conditions</span> and 

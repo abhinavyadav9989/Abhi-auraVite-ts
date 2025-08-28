@@ -5,7 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Car } from "lucide-react";
 
-export default function DuplicateListingHelper({ vehicles, onDuplicate }) {
+type DuplicateListingHelperProps = {
+  vehicles?: any[];
+  onDuplicate: (duplicateData: any) => void;
+  regNumber?: string;
+  currentVehicleId?: string;
+};
+
+export default function DuplicateListingHelper({ vehicles, onDuplicate }: DuplicateListingHelperProps) {
   const [recentVehicles] = useState((vehicles || []).slice(0, 5)); // Show last 5 vehicles
   
   const handleDuplicate = (vehicle) => {

@@ -123,14 +123,15 @@ export default function AdvancedFilters({
               Price Range
             </Label>
             <div className="px-3">
-              <Slider
-                value={priceRange}
-                onValueChange={(value) => updateFilter('price_range', value)}
+              {(() => { const SliderAny: any = Slider as any; return (
+              <SliderAny
+                value={priceRange as number[]}
+                onValueChange={(value: number[]) => updateFilter('price_range', value)}
                 max={5000000}
                 min={0}
                 step={50000}
                 className="w-full"
-              />
+              />); })()}
               <div className="flex justify-between text-sm text-slate-600 mt-1">
                 <span>₹{(priceRange[0] / 100000).toFixed(1)}L</span>
                 <span>₹{(priceRange[1] / 100000).toFixed(1)}L</span>
@@ -145,14 +146,15 @@ export default function AdvancedFilters({
               Model Year
             </Label>
             <div className="px-3">
-              <Slider
-                value={yearRange}
-                onValueChange={(value) => updateFilter('year_range', value)}
+              {(() => { const SliderAny: any = Slider as any; return (
+              <SliderAny
+                value={yearRange as number[]}
+                onValueChange={(value: number[]) => updateFilter('year_range', value)}
                 max={2024}
                 min={2000}
                 step={1}
                 className="w-full"
-              />
+              />); })()}
               <div className="flex justify-between text-sm text-slate-600 mt-1">
                 <span>{yearRange[0]}</span>
                 <span>{yearRange[1]}</span>
@@ -167,14 +169,15 @@ export default function AdvancedFilters({
               Kilometers Driven
             </Label>
             <div className="px-3">
-              <Slider
-                value={kmRange}
-                onValueChange={(value) => updateFilter('km_range', value)}
+              {(() => { const SliderAny: any = Slider as any; return (
+              <SliderAny
+                value={kmRange as number[]}
+                onValueChange={(value: number[]) => updateFilter('km_range', value)}
                 max={200000}
                 min={0}
                 step={5000}
                 className="w-full"
-              />
+              />); })()}
               <div className="flex justify-between text-sm text-slate-600 mt-1">
                 <span>{(kmRange[0] / 1000).toFixed(0)}K km</span>
                 <span>{(kmRange[1] / 1000).toFixed(0)}K km</span>
@@ -345,14 +348,15 @@ export default function AdvancedFilters({
                 <Label className="text-sm">Minimum dealer rating</Label>
                 <div className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-yellow-500" />
-                  <Slider
-                    value={[filters.rating_min || 0]}
-                    onValueChange={(value) => updateFilter('rating_min', value[0])}
+                  {(() => { const SliderAny: any = Slider as any; return (
+                  <SliderAny
+                    value={[Number(filters.rating_min || 0)]}
+                    onValueChange={(value: number[]) => updateFilter('rating_min', value[0])}
                     max={5}
                     min={0}
                     step={0.5}
                     className="flex-1"
-                  />
+                  />); })()}
                   <span className="text-sm font-medium w-8">
                     {(filters.rating_min || 0).toFixed(1)}
                   </span>

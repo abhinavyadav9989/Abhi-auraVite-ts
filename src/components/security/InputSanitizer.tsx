@@ -1,7 +1,22 @@
 import { useState, useMemo } from 'react';
 
+type SanitizeOptions = {
+  allowHtml?: boolean;
+  maxLength?: number;
+  removeScripts?: boolean;
+  trimWhitespace?: boolean;
+};
+
+type ValidateOptions = {
+  required?: boolean;
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+};
+
 // Input sanitization utilities for frontend
-export const sanitizeInput = (input, options = {}) => {
+export const sanitizeInput = (input: string, options: SanitizeOptions = {}) => {
   if (!input || typeof input !== 'string') return input;
   
   const {
@@ -48,7 +63,7 @@ export const sanitizeInput = (input, options = {}) => {
   return sanitized;
 };
 
-export const validateInput = (input, type, options = {}) => {
+export const validateInput = (input: string, type: 'email' | 'phone' | 'number' | 'date' | 'text', options: ValidateOptions = {}) => {
   const errors = [];
   
   if (!input && options.required) {
@@ -117,14 +132,19 @@ export const validateInput = (input, type, options = {}) => {
 };
 
 // Hook for form validation
-export const useInputValidation = (initialValues = {}) => {
-  const [values, setValues] = useState(initialValues);
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+export const useInputValidation = (initialValues: Record<string, any> = {}) => {
+  const [values, setValues] = useState<Record<string, any>>(initialValues);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   
-  const validateField = (name, value, type, options = {}) => {
-    const sanitizedValue = sanitizeInput(value, options.sanitize);
-    const validation = validateInput(sanitizedValue, type, options.validate);
+  const validateField = (
+    name: string,
+    value: string,
+    type: 'email' | 'phone' | 'number' | 'date' | 'text',
+    options: { sanitize?: SanitizeOptions; validate?: ValidateOptions } = {}
+  ) => {
+    const sanitizedValue = sanitizeInput(value, options.sanitize ?? {});
+    const validation = validateInput(sanitizedValue, type, options.validate ?? {});
     
     setErrors(prev => ({
       ...prev,
@@ -138,7 +158,12 @@ export const useInputValidation = (initialValues = {}) => {
     };
   };
   
-  const handleChange = (name, value, type, options = {}) => {
+  const handleChange = (
+    name: string,
+    value: string,
+    type: 'email' | 'phone' | 'number' | 'date' | 'text',
+    options: { sanitize?: SanitizeOptions; validate?: ValidateOptions } = {}
+  ) => {
     const result = validateField(name, value, type, options);
     setValues(prev => ({
       ...prev,
@@ -146,7 +171,7 @@ export const useInputValidation = (initialValues = {}) => {
     }));
   };
   
-  const handleBlur = (name) => {
+  const handleBlur = (name: string) => {
     setTouched(prev => ({
       ...prev,
       [name]: true
@@ -154,9 +179,10 @@ export const useInputValidation = (initialValues = {}) => {
   };
   
   const isFormValid = useMemo(() => {
-    return Object.values(errors).every(fieldErrors => 
-      !fieldErrors || fieldErrors.length === 0
-    );
+    return Object.values(errors).every((fieldErrors) => {
+      const errs = fieldErrors as unknown as string[];
+      return !errs || errs.length === 0;
+    });
   }, [errors]);
   
   return {

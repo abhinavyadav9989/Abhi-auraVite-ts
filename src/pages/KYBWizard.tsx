@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { DealerDocument } from '@/api/entities';
+import { UploadFile } from '@/api/integrations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,12 +29,11 @@ import {
   Star // ONB-23: Added for subscription
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
-import SubscriptionStep from '../components/kyb/SubscriptionStep'; // ONB-23: Import new component
+// Subscription step removed from KYC flow
 
 const STEPS = [
   { id: 'business', title: 'Business Information', icon: Building2 },
   { id: 'documents', title: 'Documents', icon: FileText },
-  { id: 'subscription', title: 'Choose Plan', icon: Star }, // ONB-23: Add subscription step
   { id: 'review', title: 'Review & Submit', icon: CheckCircle }
 ];
 
@@ -51,6 +51,7 @@ export default function KYBWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const [dealerId, setDealerId] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [rejectionNotes, setRejectionNotes] = useState(null); // ONB-16: For rejected fields
 
@@ -74,7 +75,7 @@ export default function KYBWizard() {
 
   type DocumentData = { url?: string; name?: string; size?: number; uploaded_at?: string } | null
   const [documents, setDocuments] = useState<Record<string, DocumentData>>({});
-  const [subscriptionData, setSubscriptionData] = useState({ plan: 'standard' }); // ONB-23
+  // Plan selection removed from KYC flow
 
   useEffect(() => {
     loadUserAndDraftData();
@@ -96,6 +97,7 @@ export default function KYBWizard() {
       const existingDealers = await Dealer.filter({ created_by: currentUser.email });
       if (existingDealers.length > 0) {
         const dealer = existingDealers[0];
+        setDealerId(dealer.id);
         
         // ONB-16: Handle rejected status
         if (dealer.verification_status === 'rejected') {
@@ -114,10 +116,7 @@ export default function KYBWizard() {
             city: dealer.city || '',
             state: dealer.state || ''
           }));
-          // ONB-23: Restore subscription choice if saved in draft
-          if (dealer.draft_data?.subscription) {
-            setSubscriptionData(dealer.draft_data.subscription);
-          }
+          // Subscription choice is not part of KYC anymore
           // Restore documents if present
           if (dealer.draft_data?.documents) {
             setDocuments(dealer.draft_data.documents);
@@ -174,13 +173,54 @@ export default function KYBWizard() {
     setUploadingDoc(docType);
     
     try {
-      // Mock document upload - in real app would upload to storage
-      const mockUrl = `https://storage.aura.com/docs/${docType}_${Date.now()}.pdf`;
+      // Validate like Profile's DocumentLocker
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        toast({ title: 'Invalid File Type', description: 'Upload images (JPEG, PNG, GIF, WebP) or documents (PDF, DOC, DOCX).', variant: 'destructive' });
+        return;
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        toast({ title: 'File Too Large', description: 'File size must be less than 10MB.', variant: 'destructive' });
+        return;
+      }
+
+      if (!dealerId) {
+        toast({ title: 'Profile Required', description: 'Please save your business info first.', variant: 'destructive' });
+        return;
+      }
+
+      // Upload to storage and persist permanent URL
+      const { file_url, url, type } = await UploadFile({ file });
+      const finalUrl = file_url || url;
       
+      // Persist immediately to dealer_documents
+      // Check if existing doc for this type
+      const existingDocs = await DealerDocument.filter({ dealer_id: dealerId });
+      const current = existingDocs.find((d: any) => d.document_type === docType);
+      const payload: any = {
+        dealer_id: dealerId,
+        document_type: docType,
+        file_url: finalUrl,
+        file_name: file.name,
+        file_size: file.size || 0,
+        file_type: type || file.type,
+        status: 'pending_review'
+      };
+      if (current) {
+        await DealerDocument.update(current.id, payload);
+      } else {
+        await DealerDocument.create(payload);
+      }
+      
+      // Update local UI state for green tick
       setDocuments(prev => ({
         ...prev,
         [docType]: {
-          url: mockUrl,
+          url: finalUrl,
           name: file.name,
           size: file.size,
           uploaded_at: new Date().toISOString()
@@ -235,7 +275,6 @@ export default function KYBWizard() {
         draft_data: {
           business: businessData,
           documents: documents,
-          subscription: subscriptionData, // ONB-23: Save subscription choice
           current_step: currentStep
         }
       };
@@ -268,17 +307,26 @@ export default function KYBWizard() {
       // Create or update dealer record
       const existingDealers = await Dealer.filter({ created_by: user.email });
       
-      const dealerData = {
+      const dealerData: any = {
         ...businessData,
         verification_status: 'documents_submitted',
         submitted_at: new Date().toISOString(),
-        subscription_plan: subscriptionData.plan, // ONB-23: Save final plan
+        // subscription_plan handled in Business Verification (not in KYC)
         verification_notes: null, // ONB-16: Clear rejection notes on re-submission
         // Update progressive verification flags based on current step
         kyc_completed: true, // KYC completed when business info and documents are submitted
         bank_details_added: false, // Bank details will be collected separately when making deals
         kyb_completed: false, // Set to true only after admin approval
       };
+      // Persist identifiers explicitly (even if some parts of businessData are missing)
+      if (businessData?.gstin) dealerData.gstin = businessData.gstin;
+      if (businessData?.pan_number) dealerData.pan_number = businessData.pan_number;
+      if (businessData?.business_name) dealerData.business_name = businessData.business_name;
+      if (businessData?.owner_name) dealerData.owner_name = businessData.owner_name;
+      // If Aadhaar is part of the form later, store it inside kyb_data JSON safely
+      if ((businessData as any)?.aadhar_number) {
+        dealerData.kyb_data = { ...(existingDealers?.[0]?.kyb_data || {}), aadhar_number: (businessData as any).aadhar_number };
+      }
       
       let dealerId;
       if (existingDealers.length > 0) {
@@ -630,18 +678,7 @@ export default function KYBWizard() {
 
 
 
-        {/* ONB-23: Subscription Summary */}
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5" />
-                    Selected Plan
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="font-medium capitalize">{subscriptionData.plan} Plan</p>
-            </CardContent>
-        </Card>
+        {/* Subscription summary removed from KYC */}
       </div>
 
       <Alert className="border-blue-200 bg-blue-50">
@@ -708,8 +745,7 @@ export default function KYBWizard() {
           <CardContent className="p-6">
             {currentStep === 0 && renderBusinessStep()}
             {currentStep === 1 && renderDocumentsStep()}
-            {currentStep === 2 && <SubscriptionStep data={subscriptionData} onChange={setSubscriptionData} />} {/* ONB-23 */}
-            {currentStep === 3 && renderReviewStep()}
+            {currentStep === 2 && renderReviewStep()}
           </CardContent>
         </Card>
 

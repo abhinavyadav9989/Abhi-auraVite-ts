@@ -91,10 +91,10 @@ export default function ReviewsSection({
           <div className="grid md:grid-cols-2 gap-6">
             <div className="text-center">
               <div className="text-4xl font-bold text-slate-900 mb-2">
-                {getAverageRating()}
+                {String(getAverageRating())}
               </div>
               <div className="flex justify-center mb-2">
-                {renderStars(Math.round(parseFloat(getAverageRating())))}
+                {renderStars(Math.round(parseFloat(String(getAverageRating()))))}
               </div>
               <p className="text-slate-600">
                 Based on {reviews.length} review{reviews.length !== 1 ? 's' : ''}

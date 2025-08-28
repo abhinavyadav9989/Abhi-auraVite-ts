@@ -20,7 +20,7 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     business_name: '',
     owner_name: '',
     phone: '',
@@ -183,7 +183,7 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
                     onChange={(e) => handleInputChange('owner_name', e.target.value)}
                     placeholder="Business owner name"
                   />
-                  {formData.owner_name_ocr && (
+                  {(formData as any).owner_name_ocr && (
                     <Badge className="absolute -top-2 -right-2 bg-green-100 text-green-700 text-xs">
                       <Zap className="w-3 h-3 mr-1" />
                       Auto-filled by OCR (demo)
@@ -258,7 +258,7 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
                     onChange={(e) => handleInputChange('gstin', e.target.value)}
                     placeholder="27AAAAA0000A1Z5"
                   />
-                  {formData.gstin_ocr && (
+                  {(formData as any).gstin_ocr && (
                     <Badge className="absolute -top-2 -right-2 bg-green-100 text-green-700 text-xs">
                       <Zap className="w-3 h-3 mr-1" />
                       Auto-filled by OCR (demo)
@@ -286,7 +286,7 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
                     onChange={(e) => handleInputChange('pan_number', e.target.value)}
                     placeholder="AAAAA0000A"
                   />
-                  {formData.pan_number_ocr && (
+                  {(formData as any).pan_number_ocr && (
                     <Badge className="absolute -top-2 -right-2 bg-green-100 text-green-700 text-xs">
                       <Zap className="w-3 h-3 mr-1" />
                       Auto-filled by OCR (demo)

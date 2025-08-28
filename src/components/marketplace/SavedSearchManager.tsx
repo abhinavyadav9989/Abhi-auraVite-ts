@@ -191,8 +191,7 @@ export default function SavedSearchManager({
                         <Bell className="w-4 h-4 text-slate-400" />
                         <Switch
                           checked={search.alert_enabled}
-                          onCheckedChange={(enabled) => toggleAlert(search.id, enabled)}
-                          size="sm"
+                          onCheckedChange={(checked) => toggleAlert(search.id, checked === true)}
                         />
                       </div>
                       <Button

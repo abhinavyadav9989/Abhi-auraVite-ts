@@ -7,7 +7,12 @@ import {
 } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 
-export default function InfoTooltip({ children, side = 'top' }) {
+type InfoTooltipProps = {
+  children: React.ReactNode
+  side?: 'top' | 'bottom' | 'left' | 'right'
+}
+
+export default function InfoTooltip({ children, side = 'top' }: InfoTooltipProps) {
   return (
     <TooltipProvider>
       <Tooltip>

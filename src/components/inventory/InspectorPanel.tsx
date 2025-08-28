@@ -29,9 +29,27 @@ const DEFECT_SEVERITIES = [
   { value: 'critical', label: 'Critical', color: 'text-red-600' }
 ];
 
+type Defect = {
+  id: number;
+  category: string;
+  severity: 'minor' | 'moderate' | 'major' | 'critical';
+  description: string;
+  estimated_cost: number;
+};
+
+type InspectionData = {
+  overall_rating: number;
+  category_ratings: Record<string, number>;
+  defects: Defect[];
+  recommendations: string;
+  estimated_refurbishment_cost: number;
+  photos: any[];
+  status: string;
+};
+
 export default function InspectorPanel({ vehicle, onInspectionComplete, existingInspection = null }) {
   const { getConfig, isLoading: configLoading } = useAppConfig();
-  const [inspectionData, setInspectionData] = useState({
+  const [inspectionData, setInspectionData] = useState<InspectionData>({
     overall_rating: 0,
     category_ratings: {},
     defects: [],
@@ -42,7 +60,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newDefect, setNewDefect] = useState({
+  const [newDefect, setNewDefect] = useState<Omit<Defect, 'id'>>({
     category: '',
     severity: 'minor',
     description: '',
@@ -68,7 +86,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
     }
   };
 
-  const handleCategoryRating = (categoryId, rating) => {
+  const handleCategoryRating = (categoryId: string, rating: number) => {
     setInspectionData(prev => ({
       ...prev,
       category_ratings: {
@@ -88,7 +106,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
       return;
     }
 
-    const defect = {
+    const defect: Defect = {
       id: Date.now(),
       ...newDefect,
       estimated_cost: Number(newDefect.estimated_cost) || 0
@@ -108,7 +126,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
     });
   };
 
-  const removeDefect = (defectId) => {
+  const removeDefect = (defectId: number) => {
     setInspectionData(prev => ({
       ...prev,
       defects: prev.defects.filter(d => d.id !== defectId)
@@ -116,13 +134,13 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
   };
 
   const calculateOverallRating = () => {
-    const ratings = Object.values(inspectionData.category_ratings).filter(r => r > 0);
+    const ratings = (Object.values(inspectionData.category_ratings) as number[]).filter((r) => r > 0);
     if (ratings.length === 0) return 0;
     return Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length);
   };
 
   const calculateTotalRefurbishmentCost = () => {
-    const defectsCost = inspectionData.defects.reduce((sum, defect) => sum + (defect.estimated_cost || 0), 0);
+    const defectsCost = inspectionData.defects.reduce((sum, defect) => sum + (Number(defect.estimated_cost) || 0), 0);
     const manualCost = Number(inspectionData.estimated_refurbishment_cost) || 0;
     return defectsCost + manualCost;
   };
@@ -336,7 +354,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
                   </div>
                   <div>
                     <Label>Severity</Label>
-                    <Select value={newDefect.severity} onValueChange={(value) => setNewDefect(prev => ({...prev, severity: value}))}>
+                    <Select value={newDefect.severity} onValueChange={(value) => setNewDefect(prev => ({...prev, severity: value as Defect['severity']}))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -354,7 +372,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
                     <Input
                       type="number"
                       value={newDefect.estimated_cost}
-                      onChange={(e) => setNewDefect(prev => ({...prev, estimated_cost: e.target.value}))}
+                      onChange={(e) => setNewDefect(prev => ({...prev, estimated_cost: Number(e.target.value)}))}
                       placeholder="0"
                     />
                   </div>
@@ -422,7 +440,7 @@ export default function InspectorPanel({ vehicle, onInspectionComplete, existing
               <Input
                 type="number"
                 value={inspectionData.estimated_refurbishment_cost}
-                onChange={(e) => setInspectionData(prev => ({...prev, estimated_refurbishment_cost: e.target.value}))}
+                onChange={(e) => setInspectionData(prev => ({...prev, estimated_refurbishment_cost: Number(e.target.value)}))}
                 placeholder="0"
               />
               <p className="text-xs text-slate-500 mt-1">

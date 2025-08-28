@@ -28,7 +28,7 @@ export default function ChatMessages({ messages = [], timeline = [], currentUser
   const allEvents = [
     ...messages.map(m => ({ ...m, eventType: 'message' })),
     ...timeline.map(t => ({ ...t, eventType: 'timeline' }))
-  ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   const formatPrice = (amount) => {
     if (!amount) return '';

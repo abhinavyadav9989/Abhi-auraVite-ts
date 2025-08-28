@@ -57,8 +57,8 @@ export default function HistoryTab({ vehicleId }) {
   const loadHistoryData = async () => {
     setIsLoading(true);
     try {
-      const logs = await AuditLog.filter({ target_id: vehicleId }, '-created_date');
-      setActivities(logs);
+      const logs = await AuditLog.filter({ target_id: vehicleId });
+      setActivities((logs as any[]).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
     } catch (error) {
       console.error("Failed to load history: -", error);
     } finally {

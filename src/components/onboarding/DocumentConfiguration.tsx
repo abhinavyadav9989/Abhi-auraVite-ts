@@ -16,7 +16,7 @@ const DEFAULT_DOCS = [
 
 export default function DocumentConfiguration({ data, updateData }) {
     const [customDocName, setCustomDocName] = useState('');
-    const documentRules = data.documentValidationRules || {};
+    const documentRules = (data.documentValidationRules || {}) as Record<string, any>;
 
     const handleRequirementChange = (docType, isRequired) => {
         const newRules = {
@@ -43,11 +43,13 @@ export default function DocumentConfiguration({ data, updateData }) {
         updateData({ documentValidationRules: newRules });
     };
 
+    const customDocEntries = (Object.entries(documentRules) as [string, any][])
+        .filter(([_, rule]) => !!(rule && (rule as any).custom))
+        .map(([type, rule]) => ({ ...(rule || {}), type, editable: true }));
+
     const allDocs = [
         ...DEFAULT_DOCS,
-        ...Object.entries(documentRules)
-            .filter(([_, rule]) => rule.custom)
-            .map(([type, rule]) => ({ ...rule, type, editable: true }))
+        ...customDocEntries
     ];
     // de-duplicate
     const uniqueDocs = allDocs.filter((doc, index, self) => index === self.findIndex(d => d.type === doc.type));

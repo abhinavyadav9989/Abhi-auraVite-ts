@@ -360,14 +360,19 @@ export default function PriceAndAI({ data, onChange, dealer }) {
               <span>{formatPrice(sliderMaxVal)}</span>
             </div>
 
-            <Slider
-              value={[data.asking_price || aiSuggestion?.median_price || 500000]}
-              onValueChange={handlePriceSliderChange}
-              max={sliderMaxVal}
-              min={sliderMinVal}
-              step={5000}
-              className="w-full"
-            />
+            {(() => {
+              const SliderAny: any = Slider as any;
+              return (
+                <SliderAny
+                  value={[Number(data.asking_price || aiSuggestion?.median_price || 500000)]}
+                  onValueChange={(val: number[]) => handlePriceSliderChange(val)}
+                  max={sliderMaxVal}
+                  min={sliderMinVal}
+                  step={5000}
+                  className="w-full"
+                />
+              );
+            })()}
 
             {aiSuggestion && (
               <div className="flex justify-between mt-2 relative h-4">

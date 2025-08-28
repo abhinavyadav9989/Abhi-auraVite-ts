@@ -388,11 +388,37 @@ export default function AdminKYBVerification() {
                 </CardHeader>
                 <CardContent className="h-full pb-16">
                   {selectedDocument ? (
-                    <iframe
-                      src={selectedDocument.file_url}
-                      title={selectedDocument.file_name}
-                      className="w-full h-full border rounded-md"
-                    />
+                    (() => {
+                      const url: string = selectedDocument.file_url || '';
+                      const name: string = selectedDocument.file_name || '';
+                      const lower = `${url} ${name}`.toLowerCase();
+                      const isImage = lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp');
+                      const isPdf = lower.endsWith('.pdf');
+                      if (isImage) {
+                        return (
+                          <img
+                            src={selectedDocument.file_url}
+                            alt={selectedDocument.file_name}
+                            className="max-h-full max-w-full object-contain w-full h-full border rounded-md bg-white"
+                          />
+                        );
+                      }
+                      if (isPdf) {
+                        return (
+                          <iframe
+                            src={selectedDocument.file_url}
+                            title={selectedDocument.file_name}
+                            className="w-full h-full border rounded-md"
+                          />
+                        );
+                      }
+                      return (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 rounded-md">
+                          <p className="text-slate-600 mb-3">Preview not available. Download to view.</p>
+                          <a href={selectedDocument.file_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open Document</a>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 rounded-md">
                       <ShieldCheck className="w-24 h-24 text-slate-300" />

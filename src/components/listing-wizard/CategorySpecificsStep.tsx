@@ -19,11 +19,26 @@ import {
 } from '@/components/vehicle-safety/VehicleCategoryValidator';
 import { ensureArray } from '@/components/formatters';
 
-export default function CategorySpecificsStep({ data, updateData }) {
-  const [validationErrors, setValidationErrors] = React.useState({});
+type CategorySpecificsProps = {
+  data: any;
+  updateData: (partial: any) => void;
+};
+
+type RequiredFieldConfig = {
+  type: 'number' | 'select' | 'date' | 'text';
+  min?: number;
+  max?: number;
+  maxLength?: number;
+  options?: string[];
+  required?: boolean;
+  category?: string;
+};
+
+export default function CategorySpecificsStep({ data, updateData }: CategorySpecificsProps) {
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
   const availableCategories = getAvailableCategories();
   
-  const handleCategoryToggle = (category) => {
+  const handleCategoryToggle = (category: string) => {
     const currentCategories = ensureArray(data.vehicle_category);
     const newCategories = currentCategories.includes(category)
       ? currentCategories.filter(c => c !== category)
@@ -46,7 +61,7 @@ export default function CategorySpecificsStep({ data, updateData }) {
     }
   };
 
-  const handleAttributeChange = (name, value) => {
+  const handleAttributeChange = (name: string, value: any) => {
     const newAttributes = {
       ...data.custom_attributes,
       [name]: value
@@ -78,7 +93,7 @@ export default function CategorySpecificsStep({ data, updateData }) {
   const selectedCategories = ensureArray(data.vehicle_category);
   const requiredFields = getCategoryRequiredFields(selectedCategories);
 
-  const renderFieldInput = (fieldName, fieldConfig) => {
+  const renderFieldInput = (fieldName: string, fieldConfig: RequiredFieldConfig) => {
     const currentValue = data.custom_attributes?.[fieldName] || '';
     const hasError = validationErrors[fieldName];
     
@@ -136,7 +151,7 @@ export default function CategorySpecificsStep({ data, updateData }) {
     }
   };
 
-  const getFieldLabel = (fieldName) => {
+  const getFieldLabel = (fieldName: string) => {
     return fieldName.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -175,7 +190,7 @@ export default function CategorySpecificsStep({ data, updateData }) {
         )}
       </div>
 
-      {selectedCategories.length > 0 && Object.keys(requiredFields).length > 0 && (
+      {selectedCategories.length > 0 && Object.keys(requiredFields as Record<string, RequiredFieldConfig>).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -187,7 +202,7 @@ export default function CategorySpecificsStep({ data, updateData }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(requiredFields).map(([fieldName, fieldConfig]) => (
+            {(Object.entries(requiredFields) as [string, RequiredFieldConfig][]).map(([fieldName, fieldConfig]) => (
               <div key={fieldName} className="space-y-2">
                 <Label htmlFor={fieldName} className="flex items-center gap-2">
                   {getFieldLabel(fieldName)}

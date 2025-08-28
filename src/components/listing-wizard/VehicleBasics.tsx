@@ -58,7 +58,7 @@ export default function VehicleBasics({ data, onChange }) {
             </InfoTooltip>
         </Label>
         <Input name="registration_number" id="registration_number" value={data.registration_number || ''} onChange={handleChange} className="uppercase" />
-        <DuplicateListingHelper regNumber={data.registration_number} currentVehicleId={data.id} />
+        <DuplicateListingHelper vehicles={[]} onDuplicate={() => {}} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

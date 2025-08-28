@@ -37,9 +37,10 @@ const mockPerformanceData = [
 export default function PerformanceMetrics({ dealer, vehicles = [], reviews = [] }) {
   // Calculate metrics
   const totalVehicles = vehicles.length;
-  const averageRating = reviews.length > 0 
-    ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+  const averageRatingNum = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
     : 0;
+  const averageRatingDisplay = averageRatingNum.toFixed(1);
   
   // Mock calculations
   const responseTime = '2.4 hours';
@@ -100,13 +101,13 @@ export default function PerformanceMetrics({ dealer, vehicles = [], reviews = []
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Customer Rating</p>
-                <p className="text-2xl font-bold text-slate-900">{averageRating}</p>
+                <p className="text-2xl font-bold text-slate-900">{averageRatingDisplay}</p>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star
                       key={i}
                       className={`w-3 h-3 ${
-                        i < Math.round(parseFloat(averageRating))
+                        i < Math.round(averageRatingNum)
                           ? 'text-yellow-400 fill-yellow-400'
                           : 'text-slate-300'
                       }`}
@@ -148,8 +149,8 @@ export default function PerformanceMetrics({ dealer, vehicles = [], reviews = []
               <BarChart data={mockPerformanceData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `₹${(value / 100000).toFixed(0)}L`} />
-                <Tooltip formatter={(value) => [`₹${(value / 100000).toFixed(1)}L`, 'Revenue']} />
+                <YAxis tickFormatter={(value: number | string) => `₹${(Number(value) / 100000).toFixed(0)}L`} />
+                <Tooltip formatter={(value: number | string) => [`₹${(Number(value) / 100000).toFixed(1)}L`, 'Revenue']} />
                 <Bar dataKey="revenue" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>

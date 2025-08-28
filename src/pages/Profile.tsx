@@ -207,7 +207,7 @@ export default function Profile() {
         const organizationData = onboardingData.organization_details || {};
         
         setProfileForm({
-          business_name: dealerData.business_name || organizationData.businessName || organizationData.organizationName || "",
+          business_name: dealerData.business_name || dealerData.name || organizationData.businessName || organizationData.organizationName || "",
           owner_name: dealerData.owner_name || organizationData.ownerName || organizationData.contactPerson || "",
           gstin: dealerData.gstin || organizationData.gstin || "",
           pan_number: dealerData.pan_number || organizationData.panNumber || "",
@@ -625,7 +625,7 @@ export default function Profile() {
                   <img src={dealer.logo_url} alt="Business Logo" className="object-cover" />
                 ) : (
                   <AvatarFallback className="text-xl">
-                    {dealer?.business_name?.[0]?.toUpperCase() || 'D'}
+                    {(dealer?.business_name || dealer?.name || 'D')?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 )}
               </Avatar>
@@ -650,7 +650,7 @@ export default function Profile() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-                  {dealer?.business_name || 'Loading...'}
+                  {dealer?.business_name || dealer?.name || 'Loading...'}
                 </h1>
                 {/* PF-07: KYB verification badge */}
                 {verificationStatus && (

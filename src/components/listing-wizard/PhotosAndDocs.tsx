@@ -20,15 +20,16 @@ export default function PhotosAndDocs({ data, onChange }) {
   const images = data.images || [];
   const documents = data.documents || [];
 
-  const handleImageUpload = async (files) => {
-    if (images.length + files.length > MAX_PHOTOS) {
+  const handleImageUpload = async (files: File[] | FileList) => {
+    const fileArray: File[] = Array.isArray(files) ? files : Array.from(files);
+    if (images.length + fileArray.length > MAX_PHOTOS) {
       toast({ title: "Upload Limit Exceeded", description: `You can only upload a maximum of ${MAX_PHOTOS} photos.`, variant: "destructive" });
       return;
     }
 
     setUploading(true);
     try {
-      const uploadPromises = Array.from(files).map(file => UploadFile({ file }));
+      const uploadPromises = fileArray.map((file: File) => UploadFile({ file }));
       const uploadedFiles = await Promise.all(uploadPromises);
       const newImages = uploadedFiles.map(result => result.file_url);
 
@@ -57,7 +58,7 @@ export default function PhotosAndDocs({ data, onChange }) {
     onChange({ images: newImages, ...newHero });
   };
 
-  const onDragEnd = (result) => {
+  const onDragEnd = (result: any) => {
     if (!result.destination) return;
     const items = Array.from(images);
     const [reorderedItem] = items.splice(result.source.index, 1);
@@ -65,10 +66,10 @@ export default function PhotosAndDocs({ data, onChange }) {
     onChange({ images: items });
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-    if (files.length > 0) handleImageUpload(files);
+    const files = Array.from(e.dataTransfer.files).filter((file: File) => file.type.startsWith('image/'));
+    if (files.length > 0) handleImageUpload(files as File[]);
   };
 
   return (
@@ -86,7 +87,7 @@ export default function PhotosAndDocs({ data, onChange }) {
                 <ImageIcon className="w-12 h-12 text-slate-400 mx-auto" />
                 <p className="text-slate-600">Drag & drop images here, or</p>
                 <Button type="button" variant="outline" onClick={() => document.getElementById('image-upload-input')?.click()}><Camera className="w-4 h-4 mr-2" /> Choose Files</Button>
-                <input id="image-upload-input" type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e.target.files)} />
+                <input id="image-upload-input" type="file" multiple accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) handleImageUpload(e.target.files); }} />
               </div>
             )}
           </div>

@@ -163,7 +163,7 @@ export default function SystemHealthPanel({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Alert variant="warning">
+          <Alert variant="default" className="border-yellow-300 bg-yellow-50">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Maintenance Mode</AlertTitle>
             <AlertDescription>

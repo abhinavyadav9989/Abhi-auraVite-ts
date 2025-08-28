@@ -60,9 +60,9 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function DocumentManager({ vehicleId, onDocumentsChange }) {
-  const [documents, setDocuments] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const [extractedData, setExtractedData] = useState({});
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [extractedData, setExtractedData] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -75,8 +75,13 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
       const assets = await VehicleAsset.filter({ 
         vehicle_id: vehicleId, 
         asset_type: 'document' 
-      }, '-created_date');
-      setDocuments(assets || []);
+      } as any);
+      const sorted = (assets || []).slice().sort((a: any, b: any) => {
+        const aTime = a.created_date ? new Date(a.created_date).getTime() : 0;
+        const bTime = b.created_date ? new Date(b.created_date).getTime() : 0;
+        return bTime - aTime;
+      });
+      setDocuments(sorted);
     } catch (error) {
       console.error('Error loading documents:', error);
     } finally {
@@ -200,17 +205,17 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
     }
   };
 
-  const getDocumentStatus = (docType) => {
-    const docs = documents.filter(d => d.document_type === docType);
+  const getDocumentStatus = (docType: string) => {
+    const docs = documents.filter((d: any) => d.document_type === docType);
     if (docs.length === 0) return 'missing';
     
-    const latestDoc = docs[0];
+    const latestDoc = docs[0] as any;
     const extractedInfo = extractedData[latestDoc.id];
     
     // Check if document is expiring soon (for insurance, PUC)
     if (extractedInfo?.expiry_date) {
       const expiryDate = new Date(extractedInfo.expiry_date);
-      const daysToExpiry = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      const daysToExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       if (daysToExpiry < 30) return 'expiring';
       if (daysToExpiry < 0) return 'expired';
     }
@@ -218,7 +223,7 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
     return 'valid';
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'valid': return 'bg-green-100 text-green-700';
       case 'expiring': return 'bg-yellow-100 text-yellow-700';
@@ -228,7 +233,7 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'valid': return <CheckCircle className="w-4 h-4" />;
       case 'expiring': case 'expired': return <AlertTriangle className="w-4 h-4" />;
@@ -318,7 +323,7 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
                   </div>
 
                   {/* Upload Progress */}
-                  {Object.entries(uploadProgress)
+                  {Object.entries(uploadProgress as Record<string, number>)
                     .filter(([id]) => id.startsWith(docType.key))
                     .map(([id, progress]) => (
                       <div key={id} className="mb-3">
@@ -326,7 +331,7 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
                           <span>Uploading...</span>
                           <span>{progress}%</span>
                         </div>
-                        <Progress value={progress} className="h-2" />
+                        <Progress value={Number(progress)} className="h-2" />
                       </div>
                     ))}
 
@@ -335,12 +340,12 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
                     <div className="bg-blue-50 p-3 rounded border border-blue-200">
                       <h5 className="font-medium text-blue-900 mb-2">Extracted Information</h5>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        {Object.entries(extractedInfo).map(([key, value]) => (
+                        {(Object.entries(extractedInfo) as [string, unknown][]).map(([key, value]) => (
                           <div key={key}>
                             <span className="text-blue-700 font-medium">
                               {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
                             </span>
-                            <span className="text-blue-800 ml-1">{value}</span>
+                            <span className="text-blue-800 ml-1">{String(value)}</span>
                           </div>
                         ))}
                       </div>
@@ -364,8 +369,7 @@ export default function DocumentManager({ vehicleId, onDocumentsChange }) {
 // Helper component for expiry alerts
 function ExpiryAlert({ expiryDate, docType }) {
   const expiry = new Date(expiryDate);
-  const today = new Date();
-  const daysToExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+  const daysToExpiry = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
   if (daysToExpiry > 30) return null;
 

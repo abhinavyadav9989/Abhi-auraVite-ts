@@ -26,8 +26,8 @@ export default function DocumentsTab({ vehicleId }) {
   const loadDocuments = async () => {
     setIsLoading(true);
     try {
-      const fetchedAssets = await VehicleAsset.filter({ vehicle_id: vehicleId, asset_type: 'document' }, '-created_date');
-      setDocuments(fetchedAssets);
+      const fetchedAssets = await VehicleAsset.filter({ vehicle_id: vehicleId, asset_type: 'document' });
+      setDocuments((fetchedAssets as any[]).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
     } catch (error) {
       console.error("Failed to load documents:", error);
     } finally {

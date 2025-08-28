@@ -32,8 +32,9 @@ export default function AdminAuditLog() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const auditLogs = await AuditLog.list('-created_date', 50); // Fetch latest 50 logs
-        setLogs(auditLogs);
+        const auditLogs = await AuditLog.list();
+        const latest = (auditLogs as any[]).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()).slice(0, 50);
+        setLogs(latest);
       } catch (error) {
         console.error("Failed to fetch audit logs:", error);
       }

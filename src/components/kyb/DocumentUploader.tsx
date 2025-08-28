@@ -297,7 +297,11 @@ export default function DocumentUploader({ dealer, onComplete, onDataExtracted }
                       const input = document.createElement('input');
                       input.type = 'file';
                       input.accept = docType.formats.map(f => `.${f}`).join(',');
-                      input.onchange = (e) => handleFileUpload(e.target.files, docType.id);
+                      input.onchange = (e) => {
+                        const target = e.target as HTMLInputElement;
+                        const files = target.files ? Array.from(target.files) : [];
+                        handleFileUpload(files, docType.id);
+                      };
                       input.click();
                     }}
                   >
@@ -374,12 +378,12 @@ export default function DocumentUploader({ dealer, onComplete, onDataExtracted }
                               <span className="text-sm font-medium">Data extracted successfully</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                              {Object.entries(extractedInfo).map(([key, value]) => (
+                              {(Object.entries(extractedInfo) as [string, unknown][]).map(([key, value]) => (
                                 <div key={key} className="flex justify-between">
                                   <span className="text-slate-600 capitalize">
                                     {key.replace('_', ' ')}:
                                   </span>
-                                  <span className="font-medium">{value}</span>
+                                  <span className="font-medium">{String(value)}</span>
                                 </div>
                               ))}
                             </div>

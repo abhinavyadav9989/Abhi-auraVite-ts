@@ -52,7 +52,7 @@ const ASSET_TYPES = [
 ];
 
 export default function AssetsTab({ vehicleId }) {
-  const [assets, setAssets] = useState([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -139,7 +139,7 @@ export default function AssetsTab({ vehicleId }) {
         };
 
         // Mock creation - in real app, use VehicleAsset.create()
-        const createdAsset = await new Promise(resolve => {
+        const createdAsset: any = await new Promise<any>(resolve => {
           setTimeout(() => {
             resolve({ ...newAsset, id: Date.now().toString(), created_date: new Date() });
           }, 1000);
@@ -203,7 +203,7 @@ export default function AssetsTab({ vehicleId }) {
     toast({ title: 'Download Started', description: `Downloading ${asset.file_name}` });
   };
 
-  const renderAssetCard = (asset) => {
+  const renderAssetCard = (asset: any) => {
     const AssetIcon = ASSET_TYPES.find(type => type.value === asset.asset_type)?.icon || FileText;
     
     return (
@@ -294,10 +294,10 @@ export default function AssetsTab({ vehicleId }) {
     return <div className="p-8 text-center">Loading assets...</div>;
   }
 
-  const groupedAssets = ASSET_TYPES.reduce((acc, type) => {
-    acc[type.value] = assets.filter(asset => asset.asset_type === type.value);
+  const groupedAssets = ASSET_TYPES.reduce<Record<string, any[]>>((acc, type) => {
+    acc[type.value] = assets.filter((asset: any) => asset.asset_type === type.value);
     return acc;
-  }, {});
+  }, {} as Record<string, any[]>);
 
   return (
     <div className="space-y-6">

@@ -7,12 +7,19 @@ import { useToast } from '@/components/ui/use-toast';
 import { DealerInquiry } from '@/api/entities';
 import { X, Send, Heart } from 'lucide-react';
 
-export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClose }) {
+type ExpressInterestModalProps = {
+  vehicle?: any;
+  dealer?: any;
+  onClose: () => void;
+};
+
+export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClose }: ExpressInterestModalProps) {
+  const safeVehicle: any = vehicle || {};
   const [formData, setFormData] = useState({
-    message: `Hi, I'm interested in your ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}. Please share more details.`,
+    message: `Hi, I'm interested in your ${safeVehicle.year || ''} ${safeVehicle.make || ''} ${safeVehicle.model || ''}. Please share more details.`,
     timeline: 'within_week',
-    budgetMin: vehicle.asking_price ? Math.floor(vehicle.asking_price * 0.9) : 0,
-    budgetMax: vehicle.asking_price ? Math.floor(vehicle.asking_price * 1.1) : 0
+    budgetMin: safeVehicle.asking_price ? Math.floor(Number(safeVehicle.asking_price) * 0.9) : 0,
+    budgetMax: safeVehicle.asking_price ? Math.floor(Number(safeVehicle.asking_price) * 1.1) : 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -23,14 +30,14 @@ export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClos
 
     try {
       await DealerInquiry.create({
-        dealer_id: dealer.id || '',
+        dealer_id: (dealer as any).id || '',
         customer_name: 'Interested Dealer', // In real app, would be current user's name
         customer_phone: '', // Would be from user profile
         customer_email: '', // Would be from user profile
         message: formData.message,
         source: 'marketplace_express_interest',
         inquiry_type: 'vehicle_interest',
-        vehicle_interest: vehicle.id,
+        vehicle_interest: safeVehicle.id,
         budget_range: {
           min: formData.budgetMin,
           max: formData.budgetMax
@@ -57,7 +64,7 @@ export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClos
     }
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (price: number) => {
     if (!price) return '0';
     return `₹${(price / 100000).toFixed(1)}L`;
   };
@@ -78,10 +85,10 @@ export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClos
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Vehicle Info */}
           <div className="bg-slate-50 p-4 rounded-lg">
-            <h3 className="font-medium">{vehicle.year} {vehicle.make} {vehicle.model}</h3>
-            <p className="text-sm text-slate-600">{vehicle.variant}</p>
+            <h3 className="font-medium">{safeVehicle.year} {safeVehicle.make} {safeVehicle.model}</h3>
+            <p className="text-sm text-slate-600">{safeVehicle.variant}</p>
             <p className="text-lg font-bold text-blue-600 mt-1">
-              {formatPrice(vehicle.asking_price)}
+              {formatPrice(Number(safeVehicle.asking_price || 0))}
             </p>
           </div>
 

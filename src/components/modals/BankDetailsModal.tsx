@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, CreditCard, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dealer } from '@/api/entityAdapters';
+import { supabase } from '@/api/supabaseClient';
 
 interface BankDetailsModalProps {
   isOpen: boolean;
@@ -118,29 +119,42 @@ export default function BankDetailsModal({ isOpen, onClose, onBankDetailsAdded, 
       return;
     }
 
+    if (!dealerId) {
+      toast({
+        title: "Missing Dealer",
+        description: "Cannot add bank details without a dealer profile.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       
-      // In a real app, this would:
-      // 1. Verify the bank account via penny drop
-      // 2. Store encrypted bank details
-      // 3. Update dealer profile
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newBankDetails = {
-        id: Date.now().toString(),
+      // Persist to DB: upsert into public.bank_details (unique dealer_id)
+      const payload: any = {
         dealer_id: dealerId,
+        account_holder_name: bankData.beneficiaryName,
         account_number: bankData.accountNumber,
         ifsc_code: bankData.ifscCode,
-        beneficiary_name: bankData.beneficiaryName,
-        bank_name: bankData.bankName,
-        branch_name: bankData.branchName,
-        account_type: bankData.accountType,
-        verification_status: 'verified', // In real app, this would be 'pending'
-        created_at: new Date().toISOString()
+        bank_name: bankData.bankName || null,
+        cancelled_cheque_url: null,
+        is_verified: true,
+        updated_at: new Date().toISOString(),
       };
 
-      console.log('Adding bank details:', newBankDetails);
+      // If row doesn't exist, created_at will be set by default; include it for completeness
+      payload.created_at = new Date().toISOString();
+
+      const { data: saved, error } = await supabase
+        .from('bank_details')
+        .upsert(payload, { onConflict: 'dealer_id' })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
       
       // Update dealer's bank_details_added flag
       try {
@@ -151,7 +165,7 @@ export default function BankDetailsModal({ isOpen, onClose, onBankDetailsAdded, 
       }
       
       // Call the parent callback
-      onBankDetailsAdded(newBankDetails);
+      onBankDetailsAdded(saved);
       
       toast({
         title: "Bank Details Added Successfully!",

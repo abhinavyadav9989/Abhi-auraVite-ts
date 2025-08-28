@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button";
 
-const Pagination = ({
+const Pagination: React.FC<React.HTMLAttributes<HTMLElement>> = ({
   className,
   ...props
 }) => (
@@ -16,7 +16,7 @@ const Pagination = ({
 )
 Pagination.displayName = "Pagination"
 
-const PaginationContent = React.forwardRef(({ className, ...props }, ref) => (
+const PaginationContent = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(({ className, ...props }, ref) => (
   <ul
     ref={ref}
     className={cn("flex flex-row items-center gap-1", className)}
@@ -24,12 +24,19 @@ const PaginationContent = React.forwardRef(({ className, ...props }, ref) => (
 ))
 PaginationContent.displayName = "PaginationContent"
 
-const PaginationItem = React.forwardRef(({ className, ...props }, ref) => (
+const PaginationItem = React.forwardRef<HTMLLIElement, React.LiHTMLAttributes<HTMLLIElement>>(({ className, ...props }, ref) => (
   <li ref={ref} className={cn("", className)} {...props} />
 ))
 PaginationItem.displayName = "PaginationItem"
 
-const PaginationLink = ({
+type ButtonSize = "default" | "sm" | "lg" | "icon"
+type PaginationLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  className?: string
+  isActive?: boolean
+  size?: ButtonSize
+}
+
+const PaginationLink: React.FC<PaginationLinkProps> = ({
   className,
   isActive,
   size = "icon",
@@ -45,7 +52,7 @@ const PaginationLink = ({
 )
 PaginationLink.displayName = "PaginationLink"
 
-const PaginationPrevious = ({
+const PaginationPrevious: React.FC<PaginationLinkProps> = ({
   className,
   ...props
 }) => (
@@ -60,7 +67,7 @@ const PaginationPrevious = ({
 )
 PaginationPrevious.displayName = "PaginationPrevious"
 
-const PaginationNext = ({
+const PaginationNext: React.FC<PaginationLinkProps> = ({
   className,
   ...props
 }) => (
@@ -75,7 +82,7 @@ const PaginationNext = ({
 )
 PaginationNext.displayName = "PaginationNext"
 
-const PaginationEllipsis = ({
+const PaginationEllipsis: React.FC<React.HTMLAttributes<HTMLSpanElement>> = ({
   className,
   ...props
 }) => (
