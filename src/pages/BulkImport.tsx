@@ -22,19 +22,27 @@ import {
   ArrowLeft,
   Eye,
   Save,
-  X
+  X,
+  Building2,
+  MapPin
 } from 'lucide-react';
 import { ExtractDataFromUploadedFile, UploadFile } from '@/api/integrations';
+import { supabase } from '@/api/supabaseClient';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const CSV_TEMPLATE_HEADERS = [
-  'registration_number', 'make', 'model', 'variant', 'year', 'fuel_type',
-  'transmission', 'kilometers', 'ownership', 'color', 'asking_price',
-  'vehicle_category', 'inventory_type', 'description'
+  'make', 'model', 'variant', 'year', 'body_type', 'fuel_type', 'transmission', 'color',
+  'registration_number', 'kilometers', 'asking_price', 'inventory_type',
+  'location_city', 'location_state',
+  'features', 'images', 'videos', 'documents',
+  'ownership', 'engine_size', 'insurance_valid_until', 'rto_location',
+  'is_negotiable', 'is_featured', 'is_urgent', 'emi_available', 'exchange_available', 'test_drive_available',
+  'description', 'seller_notes', 'tags', 'custom_attributes'
 ];
 
 const SAMPLE_DATA = [
-  ['MH12AB1234', 'Maruti', 'Swift', 'VXI', '2020', 'petrol', 'manual', '25000', 'first', 'white', '550000', 'hatchback', 'public', 'Well maintained car'],
-  ['DL01CD5678', 'Hyundai', 'Creta', 'SX', '2021', 'diesel', 'automatic', '18000', 'first', 'red', '1250000', 'suv', 'public', 'Single owner, all records available']
+  ['Maruti', 'Suzuki Baleno', 'Alpha 1.2', '2022', 'Hatchback', 'petrol', 'manual', 'Blue', 'TS09AB1234', '18500', '785000', 'public', 'Hyderabad', 'Telangana', 'ABS;Airbags;Alloy Wheels', 'https://example.com/i1.jpg;https://example.com/i2.jpg', 'https://example.com/v1.mp4', 'https://example.com/rc.pdf', 'first', '1197cc', '2025-09-30', 'Hyderabad', 'true', 'false', 'false', 'true', 'true', 'true', 'Single owner, company serviced', 'Great condition, new tyres', 'Budget;City', '{"vin":"MBH1234567890","tyres":"new"}'],
+  ['Tata', 'Punch', 'Creative', '2021', 'Compact SUV', 'petrol', 'amt', 'Red', 'KA05CD9876', '23500', '695000', 'private', 'Bengaluru', 'Karnataka', 'ABS;Airbags', 'https://example.com/p1.jpg', '', '', 'first', '1199cc', '2024-12-31', 'Bengaluru', 'true', 'false', 'false', 'false', 'false', 'true', 'Internal stock for reconditioning', 'Minor scratches', 'Internal', '{"vin":"TAT9876543210"}']
 ];
 
 export default function BulkImport() {
@@ -49,12 +57,22 @@ export default function BulkImport() {
   const [importProgress, setImportProgress] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
   const [importAsLive, setImportAsLive] = useState(false);
-  const [step, setStep] = useState('upload'); // 'upload', 'preview', 'importing', 'complete'
+  const [step, setStep] = useState('branch-select'); // 'branch-select', 'upload', 'preview', 'importing', 'complete'
   const [importSummary, setImportSummary] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
 
   useEffect(() => {
     loadDealer();
   }, []);
+
+  useEffect(() => {
+    if (dealer?.id) {
+      loadBranches();
+    }
+  }, [dealer?.id]);
 
   const loadDealer = async () => {
     try {
@@ -72,7 +90,87 @@ export default function BulkImport() {
     setIsLoading(false);
   };
 
+  const loadBranches = async () => {
+    if (!dealer?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('dealer_id', dealer.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading branches:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load branches",
+          variant: "destructive"
+        });
+      } else {
+        setBranches(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading branches:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load branches",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleBranchSelect = (branch) => {
+    setSelectedBranch(branch);
+    setShowBranchModal(false);
+    setStep('upload');
+  };
+
+  const addNewBranch = async () => {
+    if (!newBranchName.trim() || !dealer?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .insert({
+          dealer_id: dealer.id,
+          name: newBranchName.trim(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setBranches([...branches, data]);
+      setNewBranchName('');
+      setShowBranchModal(false);
+      
+      toast({
+        title: 'Branch Added',
+        description: `Branch "${data.name}" created successfully.`
+      });
+    } catch (error) {
+      console.error('Error adding branch:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add branch.',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const generateTemplate = () => {
+    if (!selectedBranch) {
+      toast({ 
+        title: 'No Branch Selected', 
+        description: 'Please select a branch first.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     const csvContent = [
       CSV_TEMPLATE_HEADERS.join(','),
       ...SAMPLE_DATA.map(row => row.join(','))
@@ -82,11 +180,14 @@ export default function BulkImport() {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'vehicle_import_template.csv';
+    link.download = `vehicle_import_template_${selectedBranch.name.replace(/\s+/g, '_')}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
     
-    toast({ title: 'Template Downloaded', description: 'CSV template with sample data downloaded.' });
+    toast({ 
+      title: 'Template Downloaded', 
+      description: `CSV template for ${selectedBranch.name} branch downloaded.` 
+    });
   };
 
   const parseCSVLocally = (file: File): Promise<any[]> => {
@@ -274,7 +375,8 @@ export default function BulkImport() {
           location_city: dealer.city,
           location_state: dealer.state,
           images: [], // Start with empty images array
-          tags: normalized.inventory_type === 'specialised' ? ['Bulk Import'] : []
+          tags: normalized.inventory_type === 'specialised' ? ['Bulk Import'] : [],
+          branch_id: selectedBranch?.id // Assign to selected branch
         });
         
         successful++;
@@ -315,7 +417,7 @@ export default function BulkImport() {
     setValidationResults([]);
     setImportProgress(0);
     setImportSummary(null);
-    setStep('upload');
+    setStep('branch-select');
   };
 
   if (isLoading && !dealer) {
@@ -348,8 +450,8 @@ export default function BulkImport() {
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center space-x-4 py-6">
-          {['Upload', 'Preview', 'Import', 'Complete'].map((stepName, index) => {
-            const stepIndex = ['upload', 'preview', 'importing', 'complete'].indexOf(step);
+          {['Branch Select', 'Upload', 'Preview', 'Import', 'Complete'].map((stepName, index) => {
+            const stepIndex = ['branch-select', 'upload', 'preview', 'importing', 'complete'].indexOf(step);
             const isActive = index === stepIndex;
             const isCompleted = index < stepIndex;
             
@@ -374,6 +476,53 @@ export default function BulkImport() {
         </div>
 
         {/* Step Content */}
+        {step === 'branch-select' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Select Branch for Import
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center border-2 border-dashed border-slate-300 rounded-lg p-8">
+                <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">
+                  Choose a branch to import vehicles into
+                </h3>
+                <p className="text-slate-600 mb-4">
+                  Select the branch where you want to add these vehicles.
+                </p>
+                {branches.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {branches.map((branch) => (
+                      <Button
+                        key={branch.id}
+                        variant="outline"
+                        onClick={() => handleBranchSelect(branch)}
+                        className="justify-start"
+                      >
+                        <Building2 className="w-4 h-4 mr-2" />
+                        {branch.name}
+                        {branch.is_default && (
+                          <Badge variant="secondary" className="ml-2">Main</Badge>
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-slate-500 mb-4">No branches found. Create your first branch to get started.</p>
+                  </div>
+                )}
+                <Button variant="outline" onClick={() => setShowBranchModal(true)} className="mt-4">
+                  Add New Branch
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {step === 'upload' && (
           <Card>
             <CardHeader>
@@ -381,6 +530,12 @@ export default function BulkImport() {
                 <Upload className="w-5 h-5" />
                 Upload CSV File
               </CardTitle>
+              {selectedBranch && (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Building2 className="w-4 h-4" />
+                  Selected Branch: <Badge variant="outline">{selectedBranch.name}</Badge>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center border-2 border-dashed border-slate-300 rounded-lg p-8">
@@ -389,7 +544,7 @@ export default function BulkImport() {
                   Choose your CSV file
                 </h3>
                 <p className="text-slate-600 mb-4">
-                  Upload a CSV file with your vehicle data
+                  Upload a CSV file with your vehicle data for {selectedBranch?.name} branch
                 </p>
                 <input
                   type="file"
@@ -416,7 +571,7 @@ export default function BulkImport() {
                 <AlertTriangle className="w-4 h-4" />
                 <AlertDescription>
                   Make sure your CSV includes the required columns: registration_number, make, model, year, fuel_type.
-                  Use the template above for the correct format.
+                  Use the template above for the correct format. All vehicles will be imported to {selectedBranch?.name} branch.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -616,6 +771,36 @@ export default function BulkImport() {
           </Card>
         )}
       </div>
+
+      <Dialog open={showBranchModal} onOpenChange={setShowBranchModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Branch</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="branch-name" className="text-right">
+                Branch Name
+              </Label>
+              <Input
+                id="branch-name"
+                value={newBranchName}
+                onChange={(e) => setNewBranchName(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter branch name"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowBranchModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={addNewBranch} disabled={!newBranchName.trim()}>
+                Add Branch
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

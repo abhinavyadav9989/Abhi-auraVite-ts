@@ -25,7 +25,8 @@ export default function PricingStep({ data, updateData }) {
 
     const handleCostChange = (key, value) => {
         const numericValue = value === '' ? 0 : parseFloat(value);
-        updateData({ landed_cost_components: { ...data.landed_cost_components, [key]: numericValue }});
+        const currentComponents = data.landed_cost_components || {};
+        updateData({ landed_cost_components: { ...currentComponents, [key]: numericValue }});
     };
     
     const handlePriceChange = (value) => {
@@ -72,7 +73,7 @@ export default function PricingStep({ data, updateData }) {
                             <Label htmlFor={key} className="flex-1">{label}</Label>
                             <div className="relative w-32">
                                 <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input id={key} type="number" value={data.landed_cost_components[key] || ''} onChange={(e) => handleCostChange(key, e.target.value)} className="pl-7" />
+                                <Input id={key} type="number" value={(data.landed_cost_components && data.landed_cost_components[key]) || ''} onChange={(e) => handleCostChange(key, e.target.value)} className="pl-7" />
                             </div>
                         </div>
                     ))}
