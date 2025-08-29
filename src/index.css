@@ -109,6 +109,10 @@ button:focus-visible {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Motion tokens */
+    --ease-smooth: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -155,4 +159,35 @@ button:focus-visible {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* App gradients and premium animations */
+@layer utilities {
+  .app-gradient {
+    @apply bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 dark:from-slate-900 dark:via-indigo-900/20 dark:to-slate-950;
+  }
+  .sidebar-gradient {
+    @apply bg-gradient-to-b from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-900 dark:via-slate-900/60 dark:to-slate-950;
+  }
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-float { animation: float 3s var(--ease-smooth) infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
 }

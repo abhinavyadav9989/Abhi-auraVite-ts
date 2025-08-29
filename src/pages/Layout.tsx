@@ -153,11 +153,11 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div className="min-h-screen app-gradient text-slate-900">
         {/* Desktop Sidebar - Only show if authenticated and not on auth/onboarding routes */}
         {shouldShowSidebar && (
           <aside className={cn(
-            "hidden lg:block fixed top-0 left-0 h-full z-30 bg-white/70 backdrop-blur-sm border-r border-slate-200 transition-all duration-300",
+            "hidden lg:block fixed top-0 left-0 h-full z-30 sidebar-gradient/80 backdrop-blur-md border-r border-slate-200 transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}>
             <SidebarContent />
@@ -167,7 +167,7 @@ export default function Layout({ children, currentPageName }) {
         <div className={cn("transition-all duration-300", shouldShowSidebar ? (isCollapsed ? "lg:ml-20" : "lg:ml-64") : "lg:ml-0")}>
           {/* Mobile Header - Only show if authenticated and not on auth/onboarding routes */}
           {shouldShowSidebar && (
-            <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/70 backdrop-blur-sm border-b border-slate-200">
+            <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/70 backdrop-blur-md border-b border-slate-200">
               <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
                 <Car className="w-6 h-6 text-blue-600" />
                 <span className="font-bold">Aura</span>
@@ -186,7 +186,7 @@ export default function Layout({ children, currentPageName }) {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="lg:hidden fixed inset-0 z-40 h-screen bg-white"
+                className="lg:hidden fixed inset-0 z-40 h-screen sidebar-gradient"
               >
                 <SidebarContent />
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4">
@@ -196,7 +196,8 @@ export default function Layout({ children, currentPageName }) {
             )}
           </AnimatePresence>
 
-          <main>
+          <main className="relative">
+            <div className="pointer-events-none absolute inset-0 animate-shimmer opacity-10" />
             <ErrorBoundary>
               {children}
             </ErrorBoundary>

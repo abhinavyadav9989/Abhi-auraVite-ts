@@ -59,6 +59,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       // If authenticated and on a public route, redirect to dashboard
       if (isAuthenticated && user && isPublicRoute) {
         console.log('AuthGuard - User authenticated on public route, checking onboarding status...');
+        
         // Check onboarding status before redirecting
         setIsCheckingOnboarding(true);
         try {

@@ -89,58 +89,101 @@ export default function BulkImport() {
     toast({ title: 'Template Downloaded', description: 'CSV template with sample data downloaded.' });
   };
 
+  const parseCSVLocally = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result || '');
+          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          if (lines.length === 0) return resolve([]);
+          const headers = lines[0].split(',').map((h) => h.trim());
+          const rows = lines.slice(1);
+          const data = rows.map((row) => {
+            const values = row.split(',');
+            const obj: Record<string, any> = {};
+            headers.forEach((h, i) => {
+              const v = values[i];
+              obj[h] = v === undefined ? '' : v.trim();
+            });
+            // Coerce some common numeric fields
+            if (obj.year) obj.year = Number(obj.year);
+            if (obj.kilometers) obj.kilometers = Number(obj.kilometers);
+            if (obj.asking_price) obj.asking_price = Number(obj.asking_price);
+            return obj;
+          });
+          resolve(data);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       toast({ title: 'Invalid File', description: 'Please upload a CSV file.', variant: 'destructive' });
       return;
     }
 
     try {
       setIsLoading(true);
-      const uploadResult = await UploadFile({ file });
-      
-      const extractResult = await ExtractDataFromUploadedFile({
-        file_url: uploadResult.file_url,
-        json_schema: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              registration_number: { type: "string" },
-              make: { type: "string" },
-              model: { type: "string" },
-              variant: { type: "string" },
-              year: { type: "number" },
-              fuel_type: { type: "string" },
-              transmission: { type: "string" },
-              kilometers: { type: "number" },
-              ownership: { type: "string" },
-              color: { type: "string" },
-              asking_price: { type: "number" },
-              vehicle_category: { type: "string" },
-              inventory_type: { type: "string" },
-              description: { type: "string" }
-            }
-          }
-        }
-      });
-
-      if (extractResult.status === 'success') {
+      // Fast path: parse locally for immediate preview
+      const localData = await parseCSVLocally(file);
+      if (localData.length > 0) {
         setUploadedFile(file);
-        setPreviewData(extractResult.output);
-        validateData(extractResult.output);
+        setPreviewData(localData);
+        validateData(localData);
         setStep('preview');
       } else {
-        throw new Error(extractResult.details || 'Failed to extract data');
+        // Fallback to uploading + server extract if local parsing produced nothing
+        const uploadResult = await UploadFile({ file });
+        const extractResult = await ExtractDataFromUploadedFile(uploadResult.file_url, {
+          json_schema: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                registration_number: { type: "string" },
+                make: { type: "string" },
+                model: { type: "string" },
+                variant: { type: "string" },
+                year: { type: "number" },
+                fuel_type: { type: "string" },
+                transmission: { type: "string" },
+                kilometers: { type: "number" },
+                ownership: { type: "string" },
+                color: { type: "string" },
+                asking_price: { type: "number" },
+                vehicle_category: { type: "string" },
+                inventory_type: { type: "string" },
+                description: { type: "string" }
+              }
+            }
+          }
+        });
+        if ((extractResult as any)?.status === 'success') {
+          const output = (extractResult as any).output || [];
+          setUploadedFile(file);
+          setPreviewData(output);
+          validateData(output);
+          setStep('preview');
+        } else {
+          throw new Error((extractResult as any)?.details || 'Failed to extract data');
+        }
       }
     } catch (error) {
       console.error('Error processing file:', error);
       toast({ title: 'Error', description: 'Failed to process CSV file. Please check the format.', variant: 'destructive' });
     }
     setIsLoading(false);
+    // reset the input so selecting the same file again triggers onChange
+    try { (event.target as HTMLInputElement).value = ''; } catch {}
   };
 
   const validateData = (data) => {
@@ -197,18 +240,41 @@ export default function BulkImport() {
     let failed = 0;
     const failedRows = [];
 
+    const normalizeRow = (row: any) => {
+      const toStr = (v: any) => (v === undefined || v === null ? '' : String(v));
+      const lower = (v: any) => toStr(v).toLowerCase();
+      const arrayify = (v: any) => Array.isArray(v) ? v : (toStr(v) ? [toStr(v)] : []);
+      return {
+        registration_number: toStr(row.registration_number),
+        make: toStr(row.make),
+        model: toStr(row.model),
+        variant: toStr(row.variant),
+        year: Number(row.year),
+        fuel_type: lower(row.fuel_type),
+        transmission: lower(row.transmission),
+        kilometers: Number(row.kilometers),
+        ownership: lower(row.ownership),
+        color: toStr(row.color),
+        asking_price: Number(row.asking_price),
+        vehicle_category: arrayify(row.vehicle_category).map((x: any) => lower(x)),
+        inventory_type: lower(row.inventory_type || 'public'),
+        description: toStr(row.description),
+      };
+    };
+
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i];
       
       try {
+        const normalized = normalizeRow(row);
         await Vehicle.create({
-          ...row,
+          ...normalized,
           dealer_id: dealer.id,
           status: importAsLive ? 'live' : 'draft',
           location_city: dealer.city,
           location_state: dealer.state,
           images: [], // Start with empty images array
-          tags: row.inventory_type === 'specialised' ? ['Bulk Import'] : []
+          tags: normalized.inventory_type === 'specialised' ? ['Bulk Import'] : []
         });
         
         successful++;

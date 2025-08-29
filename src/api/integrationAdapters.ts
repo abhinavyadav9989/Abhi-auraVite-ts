@@ -10,11 +10,21 @@ class CoreAdapter {
       
       // Validate file type and prevent PDF conversion of images
       const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      const allowedDocumentTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes];
+      const allowedDocumentTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      // Bulk-import friendly formats
+      const allowedDataTypes = [
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes, ...allowedDataTypes];
       
       if (!allowedTypes.includes(file.type)) {
-        throw new Error(`File type ${file.type} is not supported. Please upload images (JPEG, PNG, GIF, WebP) or documents (PDF, DOC, DOCX).`);
+        throw new Error(`File type ${file.type} is not supported. Allowed: images (JPEG, PNG, GIF, WebP), documents (PDF, DOC, DOCX), and bulk data (CSV, XLS, XLSX).`);
       }
       
       // Generate default path if not provided, preserving original file extension

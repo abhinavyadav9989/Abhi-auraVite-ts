@@ -54,12 +54,15 @@ export default function EMICalculator({ vehiclePrice = 0, onClose }) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="emi-calculator-description">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <Calculator className="w-6 h-6 text-blue-600" />
             EMI Calculator
           </DialogTitle>
+          <p id="emi-calculator-description" className="text-sm text-gray-600">
+            Calculate your monthly EMI payments for this vehicle.
+          </p>
         </DialogHeader>
         
         <div className="space-y-6 p-1">

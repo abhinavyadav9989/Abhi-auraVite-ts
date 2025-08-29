@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   error: string | null;
+  // restored baseline (no team member context)
 }
 
 export function useAuth() {
@@ -57,6 +58,8 @@ export function useAuth() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // removed team member linking for now (restored baseline)
 
   // Sign in method
   const signIn = async (email: string, password: string) => {
@@ -283,12 +286,13 @@ export function useAuth() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       
-      setAuthState({
+      setAuthState(prev => ({
+        ...prev,
         user: user,
         session,
         loading: false,
         error: null
-      });
+      }));
       
       return { user, session };
     } catch (error) {

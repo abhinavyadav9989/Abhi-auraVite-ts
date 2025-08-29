@@ -322,6 +322,8 @@ export default function AddVehicle() {
         location_state: dealer.state
       };
       
+      console.log('AddVehicle - Dealer object:', dealer);
+      console.log('AddVehicle - Dealer ID being used:', dealer.id);
       console.log('AddVehicle - Final payload being sent to database:', finalPayload);
       
       if (isEditMode && vehicleId) {

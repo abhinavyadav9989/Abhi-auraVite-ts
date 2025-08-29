@@ -251,7 +251,7 @@ export default function Marketplace() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50">
+    <div className="p-4 md:p-8 bg-transparent">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* KYB Verification Banner for Unverified Users */}
         {!isUserVerified && currentDealer && (
@@ -342,7 +342,7 @@ export default function Marketplace() {
                 <X className="w-4 h-4" /> Clear Search
               </Button>
             )}
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md bg-white text-sm">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md bg-white/80 backdrop-blur focus-ring text-sm">
               <option value="newest">Newest First</option>
               <option value="price_low">Price: Low to High</option>
               <option value="price_high">Price: High to Low</option>

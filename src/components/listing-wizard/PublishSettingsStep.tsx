@@ -29,7 +29,7 @@ export default function PublishSettingsStep({ data, updateData }) {
                     >
                         {INVENTORY_TYPES.map((type) => (
                             <Label key={type.id} htmlFor={type.id} className={`flex flex-col items-center justify-center rounded-lg border-2 p-4 cursor-pointer hover:bg-slate-50 ${data.inventory_type === type.id ? 'border-blue-500' : ''}`}>
-                                {(RadioGroupItem as any)({ value: type.id, id: type.id, className: 'sr-only' })}
+                                <RadioGroupItem value={type.id} id={type.id} className="sr-only" />
                                 <type.icon className="w-8 h-8 mb-2" />
                                 <span className="font-bold">{type.title}</span>
                                 <span className="text-xs text-center text-slate-500">{type.description}</span>
