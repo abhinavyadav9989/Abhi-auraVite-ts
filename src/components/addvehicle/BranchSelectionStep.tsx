@@ -8,7 +8,7 @@ import { MapPin, Plus, Building2, Clock, ArrowRight, ArrowLeft } from 'lucide-re
 import { Dealer } from '@/api/entities';
 import { useToast } from '@/components/ui/use-toast';
 import BranchSetupModal from '@/components/modals/BranchSetupModal';
-import { supabase } from '@/api/supabaseClient';
+import { db } from '@/api/supabaseClient';
 
 interface BranchSelectionStepProps {
   selectedBranch: string | null;
@@ -17,6 +17,8 @@ interface BranchSelectionStepProps {
   onBack: () => void;
   dealer: any;
   onDealerUpdate: () => void;
+  isEditMode?: boolean; // Add edit mode flag
+  currentVehicleBranchId?: string; // Add current vehicle's branch ID for pre-selection
 }
 
 interface Branch {
@@ -27,6 +29,7 @@ interface Branch {
   address: string;
   is_default: boolean;
   is_active: boolean;
+  vehicle_count?: number;
 }
 
 export default function BranchSelectionStep({
@@ -35,7 +38,9 @@ export default function BranchSelectionStep({
   onNext,
   onBack,
   dealer,
-  onDealerUpdate
+  onDealerUpdate,
+  isEditMode = false,
+  currentVehicleBranchId
 }: BranchSelectionStepProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +51,13 @@ export default function BranchSelectionStep({
     loadBranches();
   }, [dealer]);
 
+  // Pre-select current branch when editing
+  useEffect(() => {
+    if (isEditMode && currentVehicleBranchId && !selectedBranch) {
+      onBranchSelect(currentVehicleBranchId);
+    }
+  }, [isEditMode, currentVehicleBranchId, selectedBranch, onBranchSelect]);
+
   const loadBranches = async () => {
     if (!dealer?.id) return;
     
@@ -53,35 +65,45 @@ export default function BranchSelectionStep({
     try {
       console.log('BranchSelectionStep - Loading real branches for dealer:', dealer.id);
       
-      // Load real branches from database (like in BranchesSection)
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('dealer_id', dealer.id)
-        .order('created_at', { ascending: true });
+             // Load real branches from database with vehicle counts
+       const { data: branchesData, error: branchesError } = await db
+         .from('branches')
+         .select('*')
+         .eq('dealer_id', dealer.id)
+         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Error loading branches:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load branches",
-          variant: "destructive"
-        });
-        setBranches([]);
-      } else {
-        console.log('BranchSelectionStep - Loaded branches:', data);
-        // Map database branches to our interface
-        const mappedBranches: Branch[] = (data || []).map(branch => ({
-          id: branch.id,
-          name: branch.name,
-          city: branch.city,
-          state: branch.state,
-          address: branch.address,
-          is_default: branch.is_default,
-          is_active: true // Assume active since there's no active field in schema
-        }));
-        setBranches(mappedBranches);
-      }
+       if (branchesError) throw branchesError;
+
+       // Get vehicle counts for each branch
+       const branchesWithCounts = await Promise.all((branchesData || []).map(async (branch) => {
+         const { count: vehicleCount, error: countError } = await db
+           .from('vehicles')
+           .select('*', { count: 'exact', head: true })
+           .eq('branch_id', branch.id);
+
+        if (countError) {
+          console.warn(`Failed to count vehicles for branch ${branch.id}:`, countError);
+        }
+
+        return {
+          ...branch,
+          vehicle_count: vehicleCount || 0
+        };
+      }));
+
+      console.log('BranchSelectionStep - Loaded branches with counts:', branchesWithCounts);
+      // Map database branches to our interface
+      const mappedBranches: Branch[] = (branchesWithCounts || []).map(branch => ({
+        id: branch.id,
+        name: branch.name,
+        city: branch.city,
+        state: branch.state,
+        address: branch.address,
+        is_default: branch.is_default,
+        is_active: true, // Assume active since there's no active field in schema
+        vehicle_count: branch.vehicle_count || 0
+      }));
+      setBranches(mappedBranches);
     } catch (error) {
       console.error('Error loading branches:', error);
       toast({
@@ -218,9 +240,14 @@ export default function BranchSelectionStep({
           <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
             <MapPin className="w-6 h-6 md:w-8 md:h-8 text-white" />
           </div>
-          <CardTitle className="text-xl md:text-2xl text-gray-900">Select Branch Location</CardTitle>
+          <CardTitle className="text-xl md:text-2xl text-gray-900">
+            {isEditMode ? 'Change Branch Location' : 'Select Branch Location'}
+          </CardTitle>
           <p className="text-gray-600 mt-2 text-sm md:text-base">
-            Choose which branch to add this vehicle to
+            {isEditMode 
+              ? 'Choose which branch this vehicle should be assigned to'
+              : 'Choose which branch to add this vehicle to'
+            }
           </p>
         </CardHeader>
         
@@ -260,6 +287,13 @@ export default function BranchSelectionStep({
                       <span className="truncate">{branch.city}, {branch.state}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{branch.address}</p>
+                    
+                    {/* Vehicle Count Display */}
+                    <div className="flex items-center gap-1 mt-2">
+                      <span className="text-xs font-medium text-gray-700">
+                        {branch.vehicle_count || 0} vehicles
+                      </span>
+                    </div>
                   </div>
                 </Label>
               </div>
@@ -291,7 +325,7 @@ export default function BranchSelectionStep({
               disabled={!selectedBranch}
               className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-sm md:text-base py-2.5 md:py-2"
             >
-              Continue
+              {isEditMode ? 'Update Branch' : 'Continue'}
               <ArrowRight className="w-4 h-4 ml-2 flex-shrink-0" />
             </Button>
           </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Vehicle } from '@/api/entities';
-import { Dealer } from '@/api/entities';
-import { User } from '@/api/entities';
+import { useDealerContext } from '@/contexts/DealerContext';
+import { useDealerActivationContext } from '@/contexts/DealerActivationContext';
+import { db } from '@/api/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,8 @@ import {
   X,
   Zap,
   Info,
-  Lock
+  Lock,
+  Building2
 } from 'lucide-react';
 import { ExtractDataFromUploadedFile, UploadFile } from '@/api/integrations';
 import {
@@ -73,9 +75,8 @@ const BULK_TEMPLATES = {
 export default function BulkImport() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { dealer, tier, isLoading: dealerLoading } = useDealerContext();
 
-  const [dealer, setDealer] = useState(null);
-  const [tier, setTier] = useState<TierLevel>('basic');
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -87,34 +88,55 @@ export default function BulkImport() {
   const [step, setStep] = useState('template'); // 'template', 'upload', 'preview', 'importing', 'complete'
   const [importSummary, setImportSummary] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState<'used' | 'new'>('used');
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [branches, setBranches] = useState<any[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
 
 
 
-  useEffect(() => {
-    loadDealer();
-  }, []);
-
-  const loadDealer = async () => {
+  // Load branches when dealer is available
+  const loadBranches = async () => {
+    if (!dealer?.id) return;
+    
     try {
-      const user = await User.me();
-      const dealerProfile = await Dealer.filter({ created_by: user.email });
+      setIsLoadingBranches(true);
+      const { data, error } = await db
+        .from('branches')
+        .select('id, name, city, state, is_default')
+        .eq('dealer_id', dealer.id);
 
-      if (dealerProfile.length > 0) {
-        const dealerData = dealerProfile[0];
-        setDealer(dealerData);
+      if (error) throw error;
 
-        // Set tier based on dealer data
-        const currentTier = getDealerTier(dealerData);
-        setTier(currentTier);
-      } else {
-        navigate(createPageUrl('Profile'));
+      const branchData = data || [];
+      setBranches(branchData);
+      
+      // Auto-select default branch or first available branch
+      if (branchData.length > 0) {
+        const defaultBranch = branchData.find(b => b.is_default) || branchData[0];
+        setSelectedBranchId(defaultBranch.id);
       }
     } catch (error) {
-      console.error('Error loading dealer:', error);
+      console.error('Error loading branches:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load branches",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingBranches(false);
     }
-    setIsLoading(false);
   };
+
+  useEffect(() => {
+    if (dealer && !dealerLoading) {
+      setIsLoading(false);
+      loadBranches(); // Load branches when dealer is available
+    } else if (!dealer && !dealerLoading) {
+      // No dealer found, redirect to profile
+      navigate(createPageUrl('Profile'));
+    }
+  }, [dealer, dealerLoading, navigate]);
 
   const handleUpgrade = () => {
     navigate(createPageUrl('settings?tab=subscription'));
@@ -293,6 +315,16 @@ export default function BulkImport() {
   };
 
   const startImport = async () => {
+    // Validate branch selection
+    if (!selectedBranchId) {
+      toast({ 
+        title: 'Branch Required', 
+        description: 'Please select a branch for importing vehicles.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     const validRows = previewData.filter((_, index) => validationResults[index]?.isValid);
     
     if (validRows.length === 0) {
@@ -337,6 +369,7 @@ export default function BulkImport() {
         await Vehicle.create({
           ...normalized,
           dealer_id: dealer.id,
+          branch_id: selectedBranchId, // Add branch_id to associate vehicles with selected branch
           status: importAsLive ? 'live' : 'draft',
           location_city: dealer.city,
           location_state: dealer.state,
@@ -369,9 +402,10 @@ export default function BulkImport() {
     setIsImporting(false);
     setStep('complete');
     
+    const branchName = branches.find(b => b.id === selectedBranchId)?.name || 'Unknown Branch';
     toast({
       title: 'Import Complete',
-      description: `Successfully imported ${successful} vehicles. ${failed} failed.`,
+      description: `Successfully imported ${successful} vehicles to ${branchName}. ${failed} failed.`,
       variant: failed > 0 ? 'destructive' : 'default'
     });
   };
@@ -573,6 +607,16 @@ export default function BulkImport() {
                       <div className="text-xs text-gray-500">
                         Perfect for: Dealerships, Used car lots, Individual sellers
                       </div>
+                      
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Info className="w-3 h-3 text-blue-600" />
+                          <span className="text-xs font-medium text-blue-800">Branch Selection</span>
+                        </div>
+                        <p className="text-xs text-blue-700">
+                          You'll be able to choose which branch to import vehicles to after uploading your CSV file.
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -620,6 +664,16 @@ export default function BulkImport() {
 
                       <div className="text-xs text-gray-500">
                         Perfect for: New car dealerships, Showrooms, OEM partners
+                      </div>
+                      
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Info className="w-3 h-3 text-blue-600" />
+                          <span className="text-xs font-medium text-blue-800">Branch Selection</span>
+                        </div>
+                        <p className="text-xs text-blue-700">
+                          You'll be able to choose which branch to import vehicles to after uploading your CSV file.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -705,6 +759,14 @@ export default function BulkImport() {
                   <AlertDescription>
                     Make sure your CSV includes the required columns: registration_number, make, model, year, fuel_type.
                     Use the template above for the correct format.
+                  </AlertDescription>
+                </Alert>
+
+                <Alert>
+                  <Info className="w-4 h-4" />
+                  <AlertDescription>
+                    <strong>Next Step:</strong> After uploading, you'll be able to select which branch to import the vehicles to. 
+                    This ensures all vehicles are properly organized in your inventory.
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -815,17 +877,88 @@ export default function BulkImport() {
                     </table>
                   </div>
 
+                  {/* Branch Selection */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Building2 className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <h4 className="font-medium text-blue-900">Select Branch for Import</h4>
+                        <p className="text-sm text-blue-700">
+                          All vehicles will be imported to the selected branch
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {isLoadingBranches ? (
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        Loading branches...
+                      </div>
+                    ) : branches.length === 0 ? (
+                      <div className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
+                        <AlertTriangle className="w-4 h-4 inline mr-2" />
+                        No branches found. Please create a branch first in your inventory.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {branches.map((branch) => (
+                          <div
+                            key={branch.id}
+                            onClick={() => setSelectedBranchId(branch.id)}
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                              selectedBranchId === branch.id
+                                ? 'border-blue-500 bg-blue-100'
+                                : 'border-gray-200 hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="branch-selection"
+                                checked={selectedBranchId === branch.id}
+                                onChange={() => setSelectedBranchId(branch.id)}
+                                className="text-blue-600"
+                              />
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {branch.name}
+                                  {branch.is_default && (
+                                    <Badge variant="secondary" className="ml-2 text-xs">
+                                      Default
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {branch.city}, {branch.state}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end gap-4">
                     <Button variant="outline" onClick={resetImport}>
                       Start Over
                     </Button>
                     <Button 
                       onClick={startImport}
-                      disabled={validationResults.filter(r => r.isValid).length === 0}
+                      disabled={
+                        validationResults.filter(r => r.isValid).length === 0 || 
+                        !selectedBranchId ||
+                        branches.length === 0
+                      }
                       className="gap-2"
                     >
                       <Save className="w-4 h-4" />
                       Import {validationResults.filter(r => r.isValid).length} Vehicles
+                      {selectedBranchId && branches.length > 0 && (
+                        <span className="text-xs">
+                          to {branches.find(b => b.id === selectedBranchId)?.name}
+                        </span>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
@@ -864,6 +997,19 @@ export default function BulkImport() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Branch Information */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-blue-900">Import Destination</span>
+                  </div>
+                  <div className="text-sm text-blue-700">
+                    <strong>Branch:</strong> {branches.find(b => b.id === selectedBranchId)?.name || 'Unknown'}
+                    <br />
+                    <strong>Location:</strong> {branches.find(b => b.id === selectedBranchId)?.city}, {branches.find(b => b.id === selectedBranchId)?.state}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-3xl font-bold text-green-600 mb-2">

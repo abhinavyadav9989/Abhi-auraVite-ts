@@ -152,9 +152,19 @@ export default function AddVehicle() {
     vehicle_category: [],
     custom_attributes: {},
     
-    // Auto-fill tracking
-    auto_filled_fields: {},
-  });
+         // Auto-fill tracking
+     auto_filled_fields: {},
+   });
+
+   // Update vehicleType when vehicleData changes (for edit mode)
+   useEffect(() => {
+     console.log('AddVehicle - vehicleData.vehicle_type changed:', vehicleData.vehicle_type);
+     if (vehicleData.vehicle_type) {
+       const newType = vehicleData.vehicle_type === 'new' ? 'new' : 'used';
+       console.log('AddVehicle - Updating vehicleType to:', newType);
+       setVehicleType(newType);
+     }
+   }, [vehicleData.vehicle_type]);
 
   // Check for edit mode parameters
   useEffect(() => {
@@ -167,16 +177,18 @@ export default function AddVehicle() {
     }
   }, [searchParams]);
 
-  // Update filtered steps when vehicle type changes
-  useEffect(() => {
-    const newFilteredSteps = getFilteredSteps(vehicleType);
-    setFilteredSteps(newFilteredSteps);
+     // Update filtered steps when vehicle type changes
+   useEffect(() => {
+     console.log('AddVehicle - vehicleType changed to:', vehicleType);
+     const newFilteredSteps = getFilteredSteps(vehicleType);
+     console.log('AddVehicle - New filtered steps:', newFilteredSteps.map(s => s.id));
+     setFilteredSteps(newFilteredSteps);
 
-    // Adjust current step if it's no longer valid after filtering
-    if (currentStep >= newFilteredSteps.length) {
-      setCurrentStep(Math.max(0, newFilteredSteps.length - 1));
-    }
-  }, [vehicleType, currentStep]);
+     // Adjust current step if it's no longer valid after filtering
+     if (currentStep >= newFilteredSteps.length) {
+       setCurrentStep(Math.max(0, newFilteredSteps.length - 1));
+     }
+   }, [vehicleType, currentStep]);
 
   useEffect(() => {
     loadDealer();
@@ -252,46 +264,62 @@ export default function AddVehicle() {
     }
   };
 
-  const loadExistingVehicle = async () => {
-    if (!vehicleId) return;
-    setIsLoading(true);
-    try {
-      const vehicle = await Vehicle.get(vehicleId);
-      setVehicleData(vehicle);
-      setIsEditMode(true);
-      toast({
-        title: "Editing Existing Vehicle",
-        description: `You are editing vehicle: ${vehicle.registration_number}`,
-      });
-    } catch (error) {
-      console.error('Error loading existing vehicle:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load vehicle details for editing.",
-        variant: "destructive",
-      });
-      navigate(createPageUrl('Inventory') + '?refresh=true');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+     const loadExistingVehicle = async () => {
+     if (!vehicleId) return;
+     setIsLoading(true);
+     try {
+       const vehicle = await Vehicle.get(vehicleId);
+       console.log('AddVehicle - Loaded existing vehicle:', vehicle);
+       setVehicleData(vehicle);
+       setIsEditMode(true);
+       
+       // Set the vehicle type based on the loaded data
+       if (vehicle.vehicle_type) {
+         const newType = vehicle.vehicle_type === 'new' ? 'new' : 'used';
+         console.log('AddVehicle - Setting vehicle type to:', newType);
+         setVehicleType(newType);
+       } else {
+         console.log('AddVehicle - No vehicle_type found in vehicle data');
+       }
+       
+       toast({
+         title: "Editing Existing Vehicle",
+         description: `You are editing vehicle: ${vehicle.registration_number}`,
+       });
+     } catch (error) {
+       console.error('Error loading existing vehicle:', error);
+       toast({
+         title: "Error",
+         description: "Failed to load vehicle details for editing.",
+         variant: "destructive",
+       });
+       navigate(createPageUrl('Inventory') + '?refresh=true');
+     } finally {
+       setIsLoading(false);
+     }
+   };
   
-  const updateVehicleData = (updates: any) => {
-    setVehicleData(prev => ({ ...prev, ...updates }));
-  };
+     const updateVehicleData = (updates: any) => {
+     setVehicleData(prev => ({ ...prev, ...updates }));
+   };
+
+   const updateVehicleType = (newType: 'new' | 'used') => {
+     setVehicleType(newType);
+     setVehicleData(prev => ({ ...prev, vehicle_type: newType }));
+   };
 
   const handleNext = async () => {
-    // Special validation for vehicle type step
-    if (filteredSteps[currentStep]?.id === 'vehicle_type') {
-      if (!vehicleData.vehicleType) {
-        toast({
-          title: "Vehicle Type Required",
-          description: "Please select whether you're adding a Used or New vehicle.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+         // Special validation for vehicle type step
+     if (filteredSteps[currentStep]?.id === 'vehicle_type') {
+       if (!vehicleType) {
+         toast({
+           title: "Vehicle Type Required",
+           description: "Please select whether you're adding a Used or New vehicle.",
+           variant: "destructive",
+         });
+         return;
+       }
+     }
 
     if (currentStep < filteredSteps.length - 1) {
       if (filteredSteps[currentStep]?.id === 'identify' && vehicleData.registration_number) {
@@ -447,26 +475,59 @@ export default function AddVehicle() {
     setIsSubmitting(true);
     try {
       // Clean the data before sending to database
-      const cleanData = { ...vehicleData };
+      const cleanData: any = { ...vehicleData };
+
+      // Helper coercers
+      const toNumber = (v: unknown) => v === '' || v === undefined || v === null ? undefined : Number(v);
+      const toInt = (v: unknown) => v === '' || v === undefined || v === null ? undefined : parseInt(String(v), 10);
+      const toStringOrUndefined = (v: unknown) => v === '' || v === null || v === undefined ? undefined : String(v);
+
+      // Number fields (coerce; omit if empty)
+      cleanData.kilometers = toInt(cleanData.kilometers);
+      cleanData.mileage = toInt(cleanData.mileage);
+      cleanData.year = toInt(cleanData.year);
+      cleanData.seating_capacity = toInt(cleanData.seating_capacity);
+      cleanData.condition_rating = toNumber(cleanData.condition_rating);
+      cleanData.price = toNumber(cleanData.price);
+      cleanData.asking_price = toNumber(cleanData.asking_price);
+      cleanData.market_price_min = toNumber(cleanData.market_price_min);
+      cleanData.market_price_max = toNumber(cleanData.market_price_max);
+      cleanData.listing_fee_value = toNumber(cleanData.listing_fee_value);
+      cleanData.dealer_net = toNumber(cleanData.dealer_net);
+      cleanData.base_cost = toNumber(cleanData.base_cost);
+      cleanData.dealer_price = toNumber(cleanData.dealer_price);
+      cleanData.dealer_margin_target = toNumber(cleanData.dealer_margin_target);
+
+      // Date fields: expect strings; omit if empty
+      cleanData.insurance_valid_until = toStringOrUndefined(cleanData.insurance_valid_until);
+      cleanData.puc_valid_until = toStringOrUndefined(cleanData.puc_valid_until);
+      cleanData.publish_at = toStringOrUndefined(cleanData.publish_at);
+      if (cleanData.publish_schedule === '') delete cleanData.publish_schedule;
+
+      // Ensure arrays are properly initialized
+      if (!cleanData.features) cleanData.features = [];
+      if (!cleanData.documents) cleanData.documents = [];
+      if (!cleanData.videos) cleanData.videos = [];
+      if (!cleanData.suggested_categories) cleanData.suggested_categories = [];
       
-      // Convert empty strings to null for integer fields
-      if (cleanData.kilometers === '') cleanData.kilometers = null;
-      if (cleanData.mileage === '') cleanData.mileage = null;
-      if (cleanData.year === '') cleanData.year = null;
-      if (cleanData.seating_capacity === '') cleanData.seating_capacity = null;
-      if (cleanData.condition_rating === '') cleanData.condition_rating = null;
+      // Ensure string fields are properly set
+      cleanData.condition_notes = toStringOrUndefined(cleanData.condition_notes);
+      cleanData.seller_notes = toStringOrUndefined(cleanData.seller_notes);
+      cleanData.identification_method = toStringOrUndefined(cleanData.identification_method);
+      cleanData.rto_location = toStringOrUndefined(cleanData.rto_location);
+      cleanData.ai_confidence = toStringOrUndefined(cleanData.ai_confidence);
+      cleanData.ai_reasoning = toStringOrUndefined(cleanData.ai_reasoning);
+      cleanData.inspection_report_url = toStringOrUndefined(cleanData.inspection_report_url);
       
-      // Convert empty strings to null for decimal fields
-      if (cleanData.price === '') cleanData.price = null;
-      if (cleanData.asking_price === '') cleanData.asking_price = null;
-      if (cleanData.market_price_min === '') cleanData.market_price_min = null;
-      if (cleanData.market_price_max === '') cleanData.market_price_max = null;
-      if (cleanData.listing_fee_value === '') cleanData.listing_fee_value = null;
+      // Convert insurance_status to string if it's boolean
+      if (typeof cleanData.insurance_status === 'boolean') {
+        cleanData.insurance_status = cleanData.insurance_status ? 'available' : 'not_available';
+      }
       
-      // Convert empty strings to null for date fields
-      if (cleanData.insurance_valid_until === '') cleanData.insurance_valid_until = null;
-      if (cleanData.publish_at === '') cleanData.publish_at = null;
-      if (cleanData.publish_schedule === '') cleanData.publish_schedule = null;
+      // Remove auto-generated fields that shouldn't be sent
+      delete cleanData.created_at;
+      delete cleanData.updated_at;
+      delete cleanData.created_by;
       
       const finalPayload = { 
         ...cleanData, 
@@ -664,6 +725,8 @@ export default function AddVehicle() {
                     onBack={() => navigate(createPageUrl('Dashboard'))}
                     dealer={dealer}
                     onDealerUpdate={loadDealer}
+                    isEditMode={isEditMode}
+                    currentVehicleBranchId={vehicleData?.branch_id}
                   />
                 ) : (
                   <CurrentStepComponent
@@ -671,6 +734,10 @@ export default function AddVehicle() {
                     updateData={updateVehicleData}
                     dealer={dealer}
                     vehicleType={vehicleType}
+                    updateVehicleType={updateVehicleType}
+                    isEditMode={isEditMode}
+                    onPublish={() => handleSubmit('live')}
+                    onSaveDraft={() => handleSubmit('draft')}
                   />
                 )}
               </>

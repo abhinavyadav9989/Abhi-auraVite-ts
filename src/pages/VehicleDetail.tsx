@@ -34,6 +34,7 @@ import MarketplaceMetrics from '@/components/vehicle-view/MarketplaceMetrics';
 import ShareModal from '@/components/vehicle-view/ShareModal';
 import OfferModal from '@/components/marketplace/OfferModal';
 // InspectorPanel removed during cleanup - will be replaced with new inspection system
+import { documentUploadService } from '@/api/services/documentUploadService';
 
 const CATEGORY_FIELD_LABELS = {
     engine_displacement: 'Engine (cc)',
@@ -69,6 +70,9 @@ export default function VehicleDetail() {
   
   // Inspections state
   const [inspections, setInspections] = useState([]);
+  // Documents state
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
   // const [showInspectorPanel, setShowInspectorPanel] = useState(false); // Temporarily disabled
   
   // Permissions & security
@@ -106,6 +110,7 @@ export default function VehicleDetail() {
       return;
     }
     fetchVehicleData();
+    fetchDocuments();
   }, [vehicleId]);
 
   const fetchVehicleData = async () => {
@@ -179,6 +184,18 @@ export default function VehicleDetail() {
       setError('Failed to load vehicle details.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      setLoadingDocuments(true);
+      const docs = await documentUploadService.getVehicleDocuments(vehicleId!);
+      setDocuments(docs || []);
+    } catch (e) {
+      console.error('VehicleDetail - Failed to load documents', e);
+    } finally {
+      setLoadingDocuments(false);
     }
   };
 
@@ -618,6 +635,21 @@ export default function VehicleDetail() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-slate-600">Transmission:</span><span className="font-medium capitalize">{vehicle.transmission}</span></div>
                     <div className="flex justify-between"><span className="text-slate-600">Fuel Type:</span><span className="font-medium capitalize">{vehicle.fuel_type}</span></div>
+                    {vehicle.kilometers !== undefined && (
+                      <div className="flex justify-between"><span className="text-slate-600">Mileage:</span><span className="font-medium">{formatKilometers(vehicle.kilometers)}</span></div>
+                    )}
+                    {vehicle.engine_capacity !== undefined && (
+                      <div className="flex justify-between"><span className="text-slate-600">Engine:</span><span className="font-medium">{vehicle.engine_capacity} cc</span></div>
+                    )}
+                    {vehicle.seating_capacity !== undefined && (
+                      <div className="flex justify-between"><span className="text-slate-600">Seating:</span><span className="font-medium">{vehicle.seating_capacity}</span></div>
+                    )}
+                    {vehicle.power !== undefined && (
+                      <div className="flex justify-between"><span className="text-slate-600">Power:</span><span className="font-medium">{vehicle.power} bhp</span></div>
+                    )}
+                    {vehicle.torque !== undefined && (
+                      <div className="flex justify-between"><span className="text-slate-600">Torque:</span><span className="font-medium">{vehicle.torque} Nm</span></div>
+                    )}
                     {renderCustomAttributes()}
                   </div>
                 </div>
@@ -625,7 +657,32 @@ export default function VehicleDetail() {
             </TabsContent>
 
             <TabsContent value="inspection" className="p-6">{renderInspectionHistory()}</TabsContent>
-            <TabsContent value="documents" className="p-6"><div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">Document management feature coming soon.</p></div></TabsContent>
+            <TabsContent value="documents" className="p-6">
+              {loadingDocuments ? (
+                <div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">Loading documents...</p></div>
+              ) : documents.length === 0 ? (
+                <div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">No documents uploaded for this vehicle.</p></div>
+              ) : (
+                <div className="space-y-3">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between border rounded p-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium capitalize">{doc.document_type}</div>
+                        <div className="text-xs text-slate-500">{formatDate(doc.uploaded_at || doc.created_at)}</div>
+                        {doc.file_name && (
+                          <div className="text-xs text-slate-600 truncate max-w-md">{doc.file_name}</div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {doc.file_url && (
+                          <Button variant="outline" size="sm" onClick={() => window.open(doc.file_url, '_blank')}>View</Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
             <TabsContent value="history" className="p-6"><div className="text-center py-8"><History className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">History tracking feature coming soon.</p></div></TabsContent>
             
             <TabsContent value="analytics" className="p-6">

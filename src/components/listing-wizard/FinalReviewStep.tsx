@@ -30,6 +30,7 @@ interface FinalReviewStepProps {
   dealer: any;
   onPublish: () => void;
   onSaveDraft: () => void;
+  isEditMode?: boolean; // Add edit mode flag
 }
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { 
@@ -38,7 +39,7 @@ const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
   minimumFractionDigits: 0 
 }).format(amount);
 
-export default function FinalReviewStep({ data, updateData, dealer, onPublish, onSaveDraft }: FinalReviewStepProps) {
+export default function FinalReviewStep({ data, updateData, dealer, onPublish, onSaveDraft, isEditMode = false }: FinalReviewStepProps) {
   const [showPrivateInfo, setShowPrivateInfo] = useState(false);
 
   // Validation checks
@@ -393,24 +394,26 @@ export default function FinalReviewStep({ data, updateData, dealer, onPublish, o
         )}
       </Card>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Button
-          variant="outline"
-          onClick={onSaveDraft}
-          className="flex-1"
-        >
-          Save as Draft
-        </Button>
-        
-        <Button
-          onClick={onPublish}
-          disabled={!validationChecks.canPublish}
-          className="flex-1"
-        >
-          {data.scheduled_publish ? 'Schedule for Later' : 'Publish Now'}
-        </Button>
-      </div>
+      {/* Action Buttons - Only show when not in edit mode to avoid duplication */}
+      {!isEditMode && (
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            variant="outline"
+            onClick={onSaveDraft}
+            className="flex-1"
+          >
+            Save as Draft
+          </Button>
+          
+          <Button
+            onClick={onPublish}
+            disabled={!validationChecks.canPublish}
+            className="flex-1"
+          >
+            {data.scheduled_publish ? 'Schedule for Later' : 'Publish Now'}
+          </Button>
+        </div>
+      )}
 
       {/* Publishing Info */}
       {data.scheduled_publish && (

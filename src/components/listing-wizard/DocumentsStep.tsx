@@ -54,6 +54,14 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
     updateData({ [field]: value });
   };
 
+  // Map any UI-specific field names to canonical document_type values used in DB
+  const toCanonicalDocumentType = (type: string): string => {
+    if (type.startsWith('rc')) return 'rc';
+    if (type.startsWith('insurance')) return 'insurance';
+    if (type.startsWith('puc')) return 'puc';
+    return 'other';
+  };
+
   // Handle OCR data extraction
   const handleRCDataExtracted = (extractedData: any) => {
     const updates: any = {};
@@ -194,10 +202,11 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
     setUploadProgress(0);
 
     try {
+      const canonicalType = toCanonicalDocumentType(documentType);
       const result = await documentUploadService.uploadVehicleDocument(
         data.id,
         file,
-        documentType as any,
+        canonicalType as any,
         (progress) => setUploadProgress(progress)
       );
 
@@ -205,7 +214,7 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
         // Update local documents list
         await loadExistingDocuments();
         
-        // Update form data with document status
+        // Update form data with document status (keep UI field keys for local state)
         updateData({
           ...data,
           [`${documentType}_uploaded`]: true,
@@ -215,7 +224,7 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
 
         toast({
           title: "Document Uploaded",
-          description: `${documentType.toUpperCase()} document uploaded successfully.`,
+          description: `${canonicalType.toUpperCase()} document uploaded successfully.`,
         });
       } else {
         toast({
@@ -358,7 +367,8 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const doc = documents.find(d => d.document_type === field);
+                        const canonicalType = toCanonicalDocumentType(field);
+                        const doc = documents.find(d => d.document_type === canonicalType);
                         if (doc) {
                           handleDeleteDocument(doc.id);
                         }
@@ -374,12 +384,20 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
                   <div className="mt-2 p-2 bg-white rounded border">
                     <p className="text-xs text-gray-600 mb-1">Auto-extracted data:</p>
                     <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                      {Object.entries(ocrData).map(([key, value]) => (
-                        <div key={key} className="flex justify-between">
-                          <span className="capitalize">{key.replace('_', ' ')}:</span>
-                          <span className="font-medium">{value as string}</span>
-                        </div>
-                      ))}
+                      {Object.entries(ocrData).map(([key, value]) => {
+                        const displayValue =
+                          value === null || value === undefined
+                            ? ''
+                            : typeof value === 'object'
+                              ? JSON.stringify(value)
+                              : String(value);
+                        return (
+                          <div key={key} className="flex justify-between">
+                            <span className="capitalize">{key.replace('_', ' ')}:</span>
+                            <span className="font-medium">{displayValue}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -432,7 +450,7 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
   };
 
   const getDocumentStats = () => {
-    const documents = ['rc_available', 'insurance_status', 'puc_valid_until', 'service_records_uploaded'];
+    const documents = ['rc_available', 'insurance_status', 'puc_available', 'service_records_uploaded'];
     const available = documents.filter(doc => data[doc] === true || (data[doc] && data[doc] !== '')).length;
     const total = documents.length;
     
@@ -624,7 +642,7 @@ export default function DocumentsStep({ data, updateData, dealer }: DocumentsSte
             </div>
           ) : (
             renderDocumentItem(
-              'puc_valid_until',
+              'puc_available',
               'PUC Certificate',
               'Pollution Under Control certificate',
               <Calendar className="w-5 h-5 text-orange-600" />,

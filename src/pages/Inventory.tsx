@@ -58,7 +58,8 @@ import {
 } from '@/lib/tierConfig';
 import { FeatureGate, useFeatureAccess } from '@/components/ui/FeatureGate';
 import UpgradeWizard from '@/components/ui/UpgradeWizard';
-import { useDealerActivationSettings } from '@/hooks/useDealerActivationSettings';
+import { useDealerActivationContext } from '@/contexts/DealerActivationContext';
+import { useDealerContext } from '@/contexts/DealerContext';
 import { db } from '@/api/supabaseClient';
 
 // Import enhanced components
@@ -94,29 +95,14 @@ export default function Inventory() {
     unlockedFeatures,
     refreshSettings,
     isLoading: activationLoading
-  } = useDealerActivationSettings();
+  } = useDealerActivationContext();
 
-  // Tier state (legacy support)
-  const [dealer, setDealer] = useState<any>(null);
-  const [tier, setTier] = useState<TierLevel>('basic');
+  // Use DealerContext for consistent dealer data
+  const { dealer, tier, isLoading: dealerLoading } = useDealerContext();
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
 
-  // Update tier when activation status changes
-  useEffect(() => {
-    if (dealer) {
-      const currentTier = getDealerTier(dealer);
-      if (currentTier !== tier) {
-        console.log('Tier updated from activation status:', {
-          oldTier: tier,
-          newTier: currentTier,
-          activation_completed: dealer.activation_completed,
-          dashboard_type: dealer.dashboard_type
-        });
-        setTier(currentTier);
-      }
-    }
-  }, [dealer, activationStatus, tier]);
+  // Note: Tier is now managed by DealerContext and updates automatically
 
   // Feature access hook with activation system
   const featureAccess = useFeatureAccess(dealer, true); // Enable activation system
@@ -174,13 +160,19 @@ export default function Inventory() {
   useEffect(() => {
     if (selectedBranchId) {
       loadVehicles();
-      loadStats();
     }
   }, [selectedBranchId]);
 
   useEffect(() => {
     filterVehicles();
   }, [vehicles, inventoryType, searchQuery, sortBy, priceRange, onlyMine]);
+
+  // Keep stats in sync with the latest loaded vehicles
+  useEffect(() => {
+    if (selectedBranchId) {
+      loadStats();
+    }
+  }, [vehicles, selectedBranchId]);
 
   // Keep selectedVehiclesArray in sync with selectedVehicles Set
   useEffect(() => {
@@ -242,44 +234,18 @@ export default function Inventory() {
     try {
       setIsLoading(true);
 
-      // First, get the current user's dealer record
-      let dealerData = null;
-      if (user?.email) {
-        const dealerResult = await Dealer.list({ created_by: user.email });
-        if (dealerResult && dealerResult.length > 0) {
-          dealerData = dealerResult[0];
-          setDealer(dealerData);
-
-          // Set tier based on dealer data
-          const currentTier = getDealerTier(dealerData);
-          console.log('Inventory - Tier detection:', {
-            dealerId: dealerData.id,
-            activation_completed: dealerData.activation_completed,
-            dashboard_type: dealerData.dashboard_type,
-            detectedTier: currentTier
-          });
-          setTier(currentTier);
-
-          // Check if KYC was just completed (show bulk publish option)
-          if (dealerData.verification_status === 'verified') {
-            // Could check if there are unpublished public vehicles here
-            setShowKycPublishPrompt(true);
-          }
-        }
+      // Check if KYC was just completed (show bulk publish option)
+      if (dealer?.verification_status === 'verified') {
+        setShowKycPublishPrompt(true);
       }
 
       // Load branches for the current dealer
       const branchesResult = await loadBranches();
 
-      if (!dealerData) {
-        console.warn('No dealer found for current user:', user?.email);
-      }
-
       if (branchesResult && branchesResult.length > 0) {
-        // Branches already loaded by loadBranches
-        console.log('Loaded branches for dealer:', dealerData?.id, branchesResult.length);
+        console.log('Loaded branches for dealer:', dealer?.id, branchesResult.length);
       } else {
-        console.log('No branches found for dealer:', dealerData?.id);
+        console.log('No branches found for dealer:', dealer?.id);
       }
 
     } catch (error) {
@@ -317,9 +283,8 @@ export default function Inventory() {
           })
           .eq('id', dealer.id);
 
-        // Update local state immediately
-        setDealer(prev => prev ? { ...prev, activation_completed: true, dashboard_type: 'customised' } : prev);
-        setTier('advanced');
+        // Note: Dealer state is now managed by DealerContext
+        console.log('✅ Customised mode activated: activation_completed set to true');
 
         console.log('✅ Customised mode activated: activation_completed set to true');
       }
@@ -354,8 +319,7 @@ export default function Inventory() {
       await loadVehicles();
       await loadStats();
       
-      // Force re-render of feature gates
-      setTier('advanced');
+      // Note: Tier state is now managed by DealerContext
       
       console.log('✅ Force refresh completed after activation');
     } catch (error) {
@@ -858,6 +822,9 @@ export default function Inventory() {
             selectedBranchId={selectedBranchId}
             onBranchChange={setSelectedBranchId}
             showCreateButton={featureAccess.canCreateBranch(branches.length)}
+            dealer={dealer}
+            tier={tier}
+            onRefresh={loadBranches}
           />
         </CardContent>
       </Card>

@@ -56,7 +56,7 @@ export function useDealerActivationSettings(): UseDealerActivationSettingsReturn
 
   // Load settings on mount and when user changes
   const loadSettings = useCallback(async () => {
-    if (!user) {
+    if (!user?.email) {
       setIsLoading(false);
       return;
     }
@@ -511,8 +511,10 @@ export function useDealerActivationSettings(): UseDealerActivationSettingsReturn
 
   // Load settings on mount and when user changes
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    if (user?.email) {
+      loadSettings();
+    }
+  }, [user?.email]); // Only depend on user.email, not the entire loadSettings function
 
   return {
     // State

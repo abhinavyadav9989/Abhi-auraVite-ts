@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
-import { Building2, ChevronDown, Plus, Settings, Users, TrendingUp, Lock, Zap, Store, Wrench, Warehouse, MapPin, ChevronRight, ChevronsDown } from 'lucide-react';
+import { Building2, ChevronDown, Plus, Settings, Users, TrendingUp, Lock, Zap, Store, Wrench, Warehouse, MapPin, ChevronRight, ChevronsDown, RefreshCw } from 'lucide-react';
 import { Dealer } from '@/api/entities';
 import { db } from '@/api/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +30,7 @@ import {
   type TierLevel
 } from '@/lib/tierConfig';
 import { FeatureGate, useFeatureAccess } from '@/components/ui/FeatureGate';
-import { useDealerActivationSettings } from '@/hooks/useDealerActivationSettings';
+import { useDealerActivationContext } from '@/contexts/DealerActivationContext';
 
 
 interface Branch {
@@ -53,6 +53,9 @@ interface BranchSwitcherProps {
   selectedBranchId: string;
   onBranchChange: (branchId: string) => void;
   showCreateButton?: boolean;
+  dealer?: any; // Add dealer prop
+  tier?: TierLevel; // Add tier prop
+  onRefresh?: () => void; // Add refresh callback
 }
 
 // Branch type configurations
@@ -124,16 +127,18 @@ const flattenBranchesForDisplay = (
 export default function BranchSwitcher({
   selectedBranchId,
   onBranchChange,
-  showCreateButton = true
+  showCreateButton = true,
+  dealer, // Use passed dealer prop
+  tier: parentTier // Use passed tier prop
 }: BranchSwitcherProps) {
   // Activation system hooks
-  const { checkFeatureAccess, activationStatus } = useDealerActivationSettings();
+  const { checkFeatureAccess, activationStatus } = useDealerActivationContext();
   const featureAccess = useFeatureAccess();
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dealer, setDealer] = useState<any>(null);
-  const [tier, setTier] = useState<TierLevel>('basic');
+  const [localDealer, setLocalDealer] = useState<any>(dealer);
+  const [localTier, setLocalTier] = useState<TierLevel>(parentTier || 'basic');
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [hierarchicalView, setHierarchicalView] = useState(false);
@@ -141,72 +146,87 @@ export default function BranchSwitcher({
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Update local state when props change
+  useEffect(() => {
+    if (dealer) {
+      setLocalDealer(dealer);
+      const currentTier = getDealerTier(dealer);
+      setLocalTier(currentTier);
+    }
+  }, [dealer]);
+
   // Check advanced features availability
   // Check if user has unlimited branches (either through tier or activation)
-  const hasUnlimitedBranches = tier === 'advanced' || checkFeatureAccess('unlimited_branches');
+  const hasUnlimitedBranches = localTier === 'advanced' || checkFeatureAccess('unlimited_branches');
   const hasBranchHierarchy = checkFeatureAccess('branch_hierarchy');
   const hasAdvancedAnalytics = checkFeatureAccess('analytics');
 
   // Debug logging
   console.log('BranchSwitcher - Tier check:', {
-    tier,
+    tier: localTier,
     hasUnlimitedBranches,
-    dealerId: dealer?.id,
-    activation_completed: dealer?.activation_completed,
-    dashboard_type: dealer?.dashboard_type
+    dealerId: localDealer?.id,
+    activation_completed: localDealer?.activation_completed,
+    dashboard_type: localDealer?.dashboard_type
   });
 
   useEffect(() => {
-    loadBranches();
-  }, []);
+    if (localDealer?.id) {
+      loadBranches();
+    }
+  }, [localDealer?.id]);
 
   const loadBranches = async () => {
+    if (!localDealer?.id) return;
+    
     try {
       setIsLoading(true);
-      // Get current user's dealer profile
-      const { User } = await import('@/api/entities');
-      const currentUser = await User.me();
-      const dealerProfiles = await Dealer.filter({ created_by: currentUser.email });
-
-      if (dealerProfiles.length === 0) {
-        setBranches([]);
-        setDealer(null);
-        setTier('basic');
-        return;
-      }
-
-      const dealerProfile = dealerProfiles[0];
-      setDealer(dealerProfile);
-
-      // Determine tier
-      const currentTier = getDealerTier(dealerProfile);
-      setTier(currentTier);
-
-      const dealerId = dealerProfile.id;
-      const { data, error } = await db
+      const dealerId = localDealer.id;
+      
+      // First, get all branches
+      const { data: branchesData, error: branchesError } = await db
         .from('branches')
         .select('id, name, city, state, is_default, created_at')
         .eq('dealer_id', dealerId);
 
-      if (error) throw error;
+      if (branchesError) throw branchesError;
 
-      // Transform data to match Branch interface
-      const branchData = (data || []).map(branch => ({
-        id: branch.id,
-        name: branch.name,
-        city: branch.city,
-        state: branch.state,
-        is_default: branch.is_default,
-        branch_type: 'showroom' as const, // Default branch type since column doesn't exist yet
-        parent_branch_id: null, // Default since column doesn't exist yet
-        hierarchy_level: 0, // Will be set by hierarchy builder
-        vehicle_count: 0, // Default value - would be calculated from vehicle counts
-        status: 'active' as const // Default value
+      // Then, get vehicle counts for each branch
+      const branchData = await Promise.all((branchesData || []).map(async (branch) => {
+        // Count vehicles for this branch
+        const { count: vehicleCount, error: countError } = await db
+          .from('vehicles')
+          .select('*', { count: 'exact', head: true })
+          .eq('branch_id', branch.id);
+
+        if (countError) {
+          console.warn(`Failed to count vehicles for branch ${branch.id}:`, countError);
+        }
+
+        return {
+          id: branch.id,
+          name: branch.name,
+          city: branch.city,
+          state: branch.state,
+          is_default: branch.is_default,
+          branch_type: 'showroom' as const,
+          parent_branch_id: null,
+          hierarchy_level: 0,
+          vehicle_count: vehicleCount || 0, // Real vehicle count
+          status: 'active' as const
+        };
       }));
 
       // Build hierarchical structure
       const hierarchicalBranches = buildBranchHierarchy(branchData);
       setBranches(hierarchicalBranches);
+
+      // Debug logging
+      console.log('BranchSwitcher - Loaded branches with vehicle counts:', branchData.map(b => ({
+        name: b.name,
+        id: b.id,
+        vehicle_count: b.vehicle_count
+      })));
 
       // Auto-select default branch if none selected
       if (!selectedBranchId && branchData.length > 0) {
@@ -244,7 +264,7 @@ export default function BranchSwitcher({
       // Create the branch using Dealer entity
       const newBranch = await Dealer.createBranch({
         ...branchData,
-        dealer_id: dealer?.id,
+        dealer_id: localDealer?.id,
         is_default: branches.length === 0, // First branch is default
         branch_type: branchData.branch_type || 'showroom'
       });
@@ -307,7 +327,7 @@ export default function BranchSwitcher({
     return (
       <FeatureGate
         feature="branch_hierarchy"
-        dealer={dealer}
+        dealer={localDealer}
         upgradeContext={{ attemptingBranchCreation: true }}
         className="w-full"
       >
@@ -340,12 +360,12 @@ export default function BranchSwitcher({
                   Default
                 </Badge>
               )}
-              {tier === 'basic' && (
+              {localTier === 'basic' && (
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-200">
                   Basic ({branches.length}/2)
                 </Badge>
               )}
-              {tier === 'advanced' && (
+              {localTier === 'advanced' && (
                 <Badge variant="outline" className="text-xs text-green-600 border-green-200">
                   Advanced
                 </Badge>
@@ -354,6 +374,17 @@ export default function BranchSwitcher({
             <ChevronDown className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
+
+        {/* Refresh Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={loadBranches}
+          className="ml-2"
+          title="Refresh branch data"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </Button>
 
         <DropdownMenuContent className="w-80">
           {/* View Mode Toggle */}
@@ -614,7 +645,7 @@ export default function BranchSwitcher({
       )}
 
       {/* Show activation hint for basic users nearing limit */}
-      {tier === 'basic' && !hasUnlimitedBranches && branches.length >= 1 && (
+      {localTier === 'basic' && !hasUnlimitedBranches && branches.length >= 1 && (
         <div className="ml-4 p-2 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-600" />

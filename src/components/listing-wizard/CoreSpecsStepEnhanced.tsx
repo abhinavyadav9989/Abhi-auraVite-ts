@@ -68,6 +68,12 @@ export default function CoreSpecsStepEnhanced({
   dealer,
   vehicleType = 'used'
 }: CoreSpecsStepEnhancedProps) {
+  // Note: This component handles core specifications EXCEPT for:
+  // - make, model, year (handled in IdentifyStep)
+  // - variant, body_type (handled in IdentifyStep)
+  // - fuel_type, transmission (handled in IdentifyStep)
+  // - engine_capacity (handled in IdentifyStep)
+  // This prevents duplication and ensures data consistency
   const [activeCategory, setActiveCategory] = useState('basic');
   const [selectedAttributeSet, setSelectedAttributeSet] = useState<string>('');
   const [attributeSets, setAttributeSets] = useState<any[]>([]);
@@ -85,107 +91,8 @@ export default function CoreSpecsStepEnhanced({
   const hasInspectionWorkflows = checkFeatureAccess('inspections');
 
   // Define basic fields that are always available
+  // Note: make, model, year, fuel_type, and transmission are handled in the IdentifyStep, so we don't duplicate them here
   const baseBasicFields: AttributeField[] = [
-    {
-      id: 'make',
-      name: 'make',
-      label: 'Make',
-      type: 'select',
-      placeholder: 'Select vehicle make',
-      options: [
-        { label: 'Maruti Suzuki', value: 'maruti' },
-        { label: 'Hyundai', value: 'hyundai' },
-        { label: 'Honda', value: 'honda' },
-        { label: 'Toyota', value: 'toyota' },
-        { label: 'Mahindra', value: 'mahindra' },
-        { label: 'Tata', value: 'tata' },
-        { label: 'Ford', value: 'ford' },
-        { label: 'Volkswagen', value: 'volkswagen' },
-        { label: 'Renault', value: 'renault' },
-        { label: 'Nissan', value: 'nissan' },
-        { label: 'Kia', value: 'kia' },
-        { label: 'MG', value: 'mg' },
-        { label: 'Skoda', value: 'skoda' },
-        { label: 'Jeep', value: 'jeep' },
-        { label: 'Audi', value: 'audi' },
-        { label: 'BMW', value: 'bmw' },
-        { label: 'Mercedes-Benz', value: 'mercedes' },
-        { label: 'Other', value: 'other' }
-      ],
-      validation: { required: true },
-      order: 1,
-      isRequired: true,
-      isVisible: true,
-      category: 'basic'
-    },
-    {
-      id: 'model',
-      name: 'model',
-      label: 'Model',
-      type: 'select',
-      placeholder: 'Select vehicle model',
-      options: [], // Will be populated based on make selection
-      validation: { required: true },
-      order: 2,
-      isRequired: true,
-      isVisible: true,
-      category: 'basic'
-    },
-    {
-      id: 'year',
-      name: 'year',
-      label: 'Manufacturing Year',
-      type: 'select',
-      placeholder: 'Select year',
-      options: Array.from({ length: 30 }, (_, i) => ({
-        label: (2024 - i).toString(),
-        value: (2024 - i).toString()
-      })),
-      validation: { required: true },
-      order: 3,
-      isRequired: true,
-      isVisible: true,
-      category: 'basic'
-    },
-    {
-      id: 'fuel_type',
-      name: 'fuel_type',
-      label: 'Fuel Type',
-      type: 'select',
-      placeholder: 'Select fuel type',
-      options: [
-        { label: 'Petrol', value: 'petrol' },
-        { label: 'Diesel', value: 'diesel' },
-        { label: 'Electric', value: 'electric' },
-        { label: 'Hybrid', value: 'hybrid' },
-        { label: 'CNG', value: 'cng' },
-        { label: 'LPG', value: 'lpg' }
-      ],
-      validation: { required: true },
-      order: 4,
-      isRequired: true,
-      isVisible: true,
-      category: 'engine'
-    },
-    {
-      id: 'transmission',
-      name: 'transmission',
-      label: 'Transmission',
-      type: 'select',
-      placeholder: 'Select transmission',
-      options: [
-        { label: 'Manual', value: 'manual' },
-        { label: 'Automatic', value: 'automatic' },
-        { label: 'CVT', value: 'cvt' },
-        { label: 'AMT', value: 'amt' },
-        { label: 'DCT', value: 'dct' }
-      ],
-      validation: { required: true },
-      order: 5,
-      isRequired: true,
-      isVisible: true,
-      category: 'engine'
-    },
     {
       id: 'mileage',
       name: 'mileage',
@@ -194,7 +101,7 @@ export default function CoreSpecsStepEnhanced({
       placeholder: vehicleType === 'new' ? 'Expected km/l' : 'Current mileage',
       unit: vehicleType === 'new' ? 'km/l' : 'km',
       validation: { required: true, min: 0 },
-      order: 6,
+      order: 1,
       isRequired: true,
       isVisible: true,
       category: 'performance'
@@ -207,7 +114,7 @@ export default function CoreSpecsStepEnhanced({
       placeholder: 'Engine capacity in CC',
       unit: 'cc',
       validation: { required: false, min: 500, max: 10000 },
-      order: 7,
+      order: 2,
       isRequired: false,
       isVisible: true,
       category: 'engine'
@@ -220,7 +127,7 @@ export default function CoreSpecsStepEnhanced({
       placeholder: 'Power in bhp',
       unit: 'bhp',
       validation: { required: false, min: 20, max: 2000 },
-      order: 8,
+      order: 3,
       isRequired: false,
       isVisible: true,
       category: 'performance'
@@ -233,7 +140,7 @@ export default function CoreSpecsStepEnhanced({
       placeholder: 'Torque in Nm',
       unit: 'Nm',
       validation: { required: false, min: 50, max: 2000 },
-      order: 9,
+      order: 4,
       isRequired: false,
       isVisible: true,
       category: 'performance'
@@ -253,7 +160,7 @@ export default function CoreSpecsStepEnhanced({
         { label: '8+ Seater', value: '8+' }
       ],
       validation: { required: true },
-      order: 10,
+      order: 5,
       isRequired: true,
       isVisible: true,
       category: 'interior'
@@ -277,7 +184,7 @@ export default function CoreSpecsStepEnhanced({
         { label: 'Other', value: 'other' }
       ],
       validation: { required: true },
-      order: 11,
+      order: 6,
       isRequired: true,
       isVisible: true,
       category: 'exterior'
@@ -300,7 +207,7 @@ export default function CoreSpecsStepEnhanced({
         { label: 'Full Inspection', value: 'full' }
       ],
       validation: { required: false },
-      order: 12,
+      order: 7,
       isRequired: false,
       isVisible: true,
       category: 'inspection',
