@@ -73,7 +73,7 @@ export default function AdminUsers() {
       setIsLoading(true);
       
       // Check if user is admin
-      const currentUser = await User.me();
+              const currentUser = await User.meWithRole();
       if (currentUser.role !== 'admin') {
         toast({
           title: "Access Denied",

@@ -63,6 +63,8 @@ import DataMigrationPanel from "./DataMigrationPanel";
 
 import Authentication from "./Authentication";
 import BusinessVerification from "./BusinessVerification";
+import BranchFirst from "./BranchFirst";
+import BranchManagement from "./BranchManagement";
 
 import { Route, Routes, useLocation } from 'react-router-dom';
 
@@ -128,6 +130,10 @@ const PAGES = {
     OnboardingWizard: OnboardingWizard,
     
     DataMigrationPanel: DataMigrationPanel,
+    
+    BranchFirst: BranchFirst,
+    
+    BranchManagement: BranchManagement,
     
     Authentication: Authentication,
     
@@ -222,6 +228,10 @@ function PagesContent() {
                 <Route path="/DataMigrationPanel" element={<DataMigrationPanel />} />
                 
                 <Route path="/Authentication" element={<Authentication />} />
+                
+                <Route path="/inventory/branch-first" element={<BranchFirst />} />
+                
+                <Route path="/inventory/branches" element={<BranchManagement />} />
                 
                 {/* Catch-all route - redirect to Authentication */}
                 <Route path="*" element={<Authentication />} />

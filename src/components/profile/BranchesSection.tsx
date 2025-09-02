@@ -276,6 +276,7 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
         onBranchAdded={handleBranchAdded}
         onBranchUpdated={async () => { await loadBranches(); setShowBranchModal(false); setEditingBranch(null); }}
         branch={editingBranch || undefined}
+        currentBranchCount={branches.length}
       />
     </div>
   );

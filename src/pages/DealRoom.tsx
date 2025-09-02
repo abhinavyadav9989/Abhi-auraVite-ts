@@ -28,6 +28,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
+
 import ChatMessages from "../components/deal-room/ChatMessages";
 import VehicleSidebar from "../components/deal-room/VehicleSidebar";
 import ActionPanel from "../components/deal-room/ActionPanel";
@@ -300,243 +301,243 @@ export default function DealRoom() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to={createPageUrl("Deals")}>
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
+        {/* Header */}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link to={createPageUrl("Deals")}>
+                <Button variant="outline" size="icon">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              </Link>
 
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-                {vehicle && `${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-              </h1>
-              <div className="flex items-center gap-3 mt-1">
-                <Badge
-                  variant="secondary"
-                  className={`${getStatusColor(transaction.status)} font-medium`}
-                >
-                  {transaction.status.replace('_', ' ').toUpperCase()}
-                </Badge>
-                <span className="text-slate-600">
-                  {vehicle?.registration_number}
-                </span>
-                {/* Price display moved to DealRoomPricingRibbon */}
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                  {vehicle && `${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                </h1>
+                <div className="flex items-center gap-3 mt-1">
+                  <Badge
+                    variant="secondary"
+                    className={`${getStatusColor(transaction.status)} font-medium`}
+                  >
+                    {transaction.status.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                  <span className="text-slate-600">
+                    {vehicle?.registration_number}
+                  </span>
+                  {/* Price display moved to DealRoomPricingRibbon */}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshData}
-              disabled={isRefreshing}
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshData}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* New Pricing Ribbon */}
-          <div className="mb-6">
-            <DealRoomPricingRibbon
-              transaction={transaction}
-              vehicle={vehicle}
-              userRole={userRole}
-            />
-          </div>
-          
-          <div className="grid lg:grid-cols-4 gap-6">
-            {/* Left Sidebar - Vehicle & Party Details */}
-            <div className="lg:col-span-1 space-y-6">
-              <VehicleSidebar vehicle={vehicle} />
+        {/* Main Content */}
+        <div className="p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            {/* New Pricing Ribbon */}
+            <div className="mb-6">
+              <DealRoomPricingRibbon
+                transaction={transaction}
+                vehicle={vehicle}
+                userRole={userRole}
+              />
+            </div>
+            
+            <div className="grid lg:grid-cols-4 gap-6">
+              {/* Left Sidebar - Vehicle & Party Details */}
+              <div className="lg:col-span-1 space-y-6">
+                <VehicleSidebar vehicle={vehicle} />
 
-              {/* Add Share to Customer button for buyer */}
-              {userRole === 'buyer' && transaction.status === 'paid' && (
-                  <Button 
-                    className="w-full gap-2"
-                    onClick={() => setShowRetailShareModal(true)}
-                  >
-                    <Share2 className="w-4 h-4"/>
-                    Share to Customer
-                  </Button>
-              )}
-              {/* Counter Party Info */}
-              {counterParty && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      {userRole === 'buyer' ? 'Seller' : 'Buyer'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {counterParty.business_name?.[0]?.toUpperCase() || 'D'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{counterParty.business_name}</div>
-                        <div className="flex items-center gap-1 text-sm text-slate-600">
-                          <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                          <span>{counterParty.rating || '4.2'}</span>
+                {/* Add Share to Customer button for buyer */}
+                {userRole === 'buyer' && transaction.status === 'paid' && (
+                    <Button 
+                      className="w-full gap-2"
+                      onClick={() => setShowRetailShareModal(true)}
+                    >
+                      <Share2 className="w-4 h-4"/>
+                      Share to Customer
+                    </Button>
+                )}
+                {/* Counter Party Info */}
+                {counterParty && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {userRole === 'buyer' ? 'Seller' : 'Buyer'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {counterParty.business_name?.[0]?.toUpperCase() || 'D'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{counterParty.business_name}</div>
+                          <div className="flex items-center gap-1 text-sm text-slate-600">
+                            <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                            <span>{counterParty.rating || '4.2'}</span>
+                          </div>
                         </div>
                       </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-400" />
+                          <span>{counterParty.phone}</span>
+                        </div>
+                        <div className="text-slate-600">
+                          {counterParty.city}, {counterParty.state}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1 gap-2">
+                          <Phone className="w-4 h-4" />
+                          Call
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 gap-2">
+                          <MessageCircle className="w-4 h-4" />
+                          WhatsApp
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Center - Chat & Timeline */}
+              <div className="lg:col-span-2">
+                <Card className="h-[600px] flex flex-col">
+                  <CardHeader className="border-b">
+                    <CardTitle className="text-base">Negotiation & Updates</CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="p-0 flex-1 flex flex-col">
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                      <ChatMessages
+                        messages={transaction.messages || []}
+                        timeline={transaction.timeline || []}
+                        currentUserId={currentDealer?.id}
+                        dealers={{ [buyer?.id]: buyer, [seller?.id]: seller }}
+                      />
                     </div>
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-slate-400" />
-                        <span>{counterParty.phone}</span>
+                    {/* Message Input */}
+                    <div className="border-t p-4">
+                      <div className="flex gap-2">
+                        <Textarea
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type your message..."
+                          className="resize-none"
+                          rows={2}
+                        />
+                        <Button
+                          onClick={sendMessage}
+                          disabled={!newMessage.trim()}
+                          className="self-end"
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <div className="text-slate-600">
-                        {counterParty.city}, {counterParty.state}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 gap-2">
-                        <Phone className="w-4 h-4" />
-                        Call
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1 gap-2">
-                        <MessageCircle className="w-4 h-4" />
-                        WhatsApp
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
-              )}
-            </div>
+              </div>
 
-            {/* Center - Chat & Timeline */}
-            <div className="lg:col-span-2">
-              <Card className="h-[600px] flex flex-col">
-                <CardHeader className="border-b">
-                  <CardTitle className="text-base">Negotiation & Updates</CardTitle>
-                </CardHeader>
-
-                <CardContent className="p-0 flex-1 flex flex-col">
-                  {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-4">
-                    <ChatMessages
-                      messages={transaction.messages || []}
-                      timeline={transaction.timeline || []}
-                      currentUserId={currentDealer?.id}
-                      dealers={{ [buyer?.id]: buyer, [seller?.id]: seller }}
-                    />
-                  </div>
-
-                  {/* Message Input */}
-                  <div className="border-t p-4">
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your message..."
-                        className="resize-none"
-                        rows={2}
-                      />
-                      <Button
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim()}
-                        className="self-end"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right - Action Panel */}
-            <div className="lg:col-span-1">
-              <ActionPanel
-                transaction={transaction}
-                userRole={userRole}
-                currentDealer={currentDealer}
-                onUpdate={refreshData}
-                onBookTransport={() => setShowLogisticsModal(true)}
-                onStartRTO={() => setShowRTOModal(true)}
-                onRateDeal={() => setShowRatingModal(true)}
-                onRaiseDispute={() => setShowDisputeModal(true)}
-                onInitiatePayment={handleInitiatePayment}
-              />
+              {/* Right - Action Panel */}
+              <div className="lg:col-span-1">
+                <ActionPanel
+                  transaction={transaction}
+                  userRole={userRole}
+                  currentDealer={currentDealer}
+                  onUpdate={refreshData}
+                  onBookTransport={() => setShowLogisticsModal(true)}
+                  onStartRTO={() => setShowRTOModal(true)}
+                  onRateDeal={() => setShowRatingModal(true)}
+                  onRaiseDispute={() => setShowDisputeModal(true)}
+                  onInitiatePayment={handleInitiatePayment}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Modals */}
-      {showLogisticsModal && (
-        <LogisticsBookingModal
-          transaction={transaction}
-          vehicle={vehicle}
-          buyer={buyer}
-          seller={seller}
-          onClose={() => setShowLogisticsModal(false)}
-          onComplete={handleLogisticsBooked}
-        />
-      )}
-
-      {showRTOModal && (
-        <RTOApplicationModal
-          transaction={transaction}
-          buyer={buyer}
-          seller={seller}
-          onClose={() => setShowRTOModal(false)}
-          onComplete={handleRTOSubmitted}
-        />
-      )}
-
-      {showRatingModal && (
-        <DealerRatingSystem
-          dealerId={counterParty?.id}
-          dealerName={counterParty?.business_name}
-          transactionId={transaction.id}
-          userRole={userRole}
-          onSubmitRating={handleRatingSubmitted}
-        />
-      )}
-
-      {showDisputeModal && (
-        <DisputeModal
-          onClose={() => setShowDisputeModal(false)}
-          onSubmit={handleRaiseDispute}
-        />
-      )}
-
-      {showPaymentModal && (
-        <PaymentBreakdownModal
-          amount={paymentAmount}
-          finalPrice={transaction.final_price}
-          onClose={() => setShowPaymentModal(false)}
-          onConfirm={handlePaymentComplete}
-        />
-      )}
-      
-      {showRetailShareModal && (
-          <RetailShareModal
-              vehicle={vehicle}
-              transaction={transaction}
-              onClose={() => setShowRetailShareModal(false)}
+        {/* Modals */}
+        {showLogisticsModal && (
+          <LogisticsBookingModal
+            transaction={transaction}
+            vehicle={vehicle}
+            buyer={buyer}
+            seller={seller}
+            onClose={() => setShowLogisticsModal(false)}
+            onComplete={handleLogisticsBooked}
           />
-      )}
+        )}
 
-    </div>
+        {showRTOModal && (
+          <RTOApplicationModal
+            transaction={transaction}
+            buyer={buyer}
+            seller={seller}
+            onClose={() => setShowRTOModal(false)}
+            onComplete={handleRTOSubmitted}
+          />
+        )}
+
+        {showRatingModal && (
+          <DealerRatingSystem
+            dealerId={counterParty?.id}
+            dealerName={counterParty?.business_name}
+            transactionId={transaction.id}
+            userRole={userRole}
+            onSubmitRating={handleRatingSubmitted}
+          />
+        )}
+
+        {showDisputeModal && (
+          <DisputeModal
+            onClose={() => setShowDisputeModal(false)}
+            onSubmit={handleRaiseDispute}
+          />
+        )}
+
+        {showPaymentModal && (
+          <PaymentBreakdownModal
+            amount={paymentAmount}
+            finalPrice={transaction.final_price}
+            onClose={() => setShowPaymentModal(false)}
+            onConfirm={handlePaymentComplete}
+          />
+        )}
+        
+        {showRetailShareModal && (
+            <RetailShareModal
+                vehicle={vehicle}
+                transaction={transaction}
+                onClose={() => setShowRetailShareModal(false)}
+            />
+        )}
+
+      </div>
   );
 }
 

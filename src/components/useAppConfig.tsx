@@ -29,8 +29,8 @@ export const useAppConfig = (configType = null) => {
         const configMap = {};
         if (Array.isArray(configData)) {
             configData.forEach(config => {
-                if (config.config_key && config.config_value) {
-                    configMap[config.config_key] = config.config_value;
+                if (config.key && config.value) {
+                    configMap[config.key] = config.value;
                 }
             });
         }

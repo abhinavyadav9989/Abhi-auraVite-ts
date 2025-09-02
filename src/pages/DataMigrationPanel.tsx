@@ -131,8 +131,8 @@ export default function DataMigrationPanel() {
                       // Clean vehicle_assets
                       const assets = await VehicleAsset.filter({});
                       for (const a of assets) {
-                        if (a.original_url?.startsWith?.('blob:')) {
-                          await VehicleAsset.update(a.id, { original_url: null, status: 'pending' });
+                        if (a.file_url?.startsWith?.('blob:')) {
+                          await VehicleAsset.update(a.id, { file_url: null, status: 'pending' });
                         }
                       }
                       alert('Blob URL cleanup completed. Some items may need re-upload.');

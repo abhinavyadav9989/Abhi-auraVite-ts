@@ -120,26 +120,47 @@ export default function OnboardingWizard() {
         }));
 
         // Check if user already has a COMPLETE dealer profile
-        const existingDealers = await Dealer.filter({ created_by: currentUser.email });
+        // First try by created_by, then by email to handle existing dealers with null created_by
+        let existingDealers = await Dealer.filter({ created_by: currentUser.email });
+
+        // If no dealers found by created_by, try by email
+        if (existingDealers.length === 0) {
+          console.log('OnboardingWizard - No dealers found by created_by, checking by email...');
+          existingDealers = await Dealer.filter({ email: currentUser.email });
+        }
+
         if (existingDealers.length > 0) {
           const dealerProfile = existingDealers[0];
           
           // Check if dealer has complete minimal required information
-          const hasMinimalProfile = !!(
-            dealerProfile.business_name && 
-            dealerProfile.business_type && 
-            dealerProfile.email && 
+          // OR if user metadata shows onboarding is completed
+          const dealerHasMinimalProfile = !!(
+            dealerProfile.business_name &&
+            dealerProfile.business_type &&
+            dealerProfile.email &&
             dealerProfile.onboarding_completed === true
           );
-          
+
+          // Also check user metadata for onboarding completion
+          const userHasCompletedOnboarding = !!(
+            currentUser?.user_metadata?.onboarding_completed === true ||
+            currentUser?.user_metadata?.dealer_profile_created === true
+          );
+
+          const hasMinimalProfile = dealerHasMinimalProfile || userHasCompletedOnboarding;
+
           console.log('OnboardingWizard - Checking existing dealer profile:', {
             business_name: dealerProfile.business_name,
             business_type: dealerProfile.business_type,
             email: dealerProfile.email,
             onboarding_completed: dealerProfile.onboarding_completed,
+            dealerHasMinimalProfile,
+            user_metadata_onboarding: currentUser?.user_metadata?.onboarding_completed,
+            user_metadata_dealer_created: currentUser?.user_metadata?.dealer_profile_created,
+            userHasCompletedOnboarding,
             hasMinimalProfile
           });
-          
+
           if (hasMinimalProfile) {
             // User has complete profile, redirect to dashboard
             console.log('OnboardingWizard - User has complete dealer profile, redirecting to dashboard');
@@ -282,7 +303,12 @@ export default function OnboardingWizard() {
         kyc_completed: false,               // KYC pending (for price viewing)
         bank_details_added: false,         // Bank details pending (for deals)
         branches_added: false,             // Branches pending (for adding vehicles)
-        
+
+        // Ensure required fields are present
+        user_type: 'individual_org',
+        access_level: 'L1',
+        verification_status_new: 'pending',
+
         // Store additional data and kyb_completed (since that column doesn't exist)
         onboarding_data: {
           ...organizationData,
@@ -293,25 +319,43 @@ export default function OnboardingWizard() {
       };
 
       let dealerResult;
-      
+
       if (existingDealerId) {
         // Update existing dealer profile
         console.log('OnboardingWizard - Updating existing dealer profile:', existingDealerId);
         dealerResult = await Dealer.update(existingDealerId, dealerData);
         console.log('OnboardingWizard - Dealer profile updated:', dealerResult);
       } else {
-        // Create new dealer profile
-        console.log('OnboardingWizard - Creating new dealer profile with data:', dealerData);
-        dealerResult = await Dealer.create(dealerData);
-        console.log('OnboardingWizard - Dealer profile created:', dealerResult);
+        // Check if dealer already exists with this email before creating
+        console.log('OnboardingWizard - Checking for existing dealer by email:', dealerData.email);
+        const existingByEmail = await Dealer.filter({ email: dealerData.email });
+
+        if (existingByEmail.length > 0) {
+          // Update existing dealer found by email
+          const existingDealer = existingByEmail[0];
+          console.log('OnboardingWizard - Found existing dealer by email, updating:', existingDealer.id);
+          console.log('OnboardingWizard - Update data:', dealerData);
+          dealerResult = await Dealer.update(existingDealer.id, dealerData);
+          console.log('OnboardingWizard - Existing dealer profile updated:', dealerResult);
+        } else {
+          // Create new dealer profile
+          console.log('OnboardingWizard - Creating new dealer profile with data:', dealerData);
+          dealerResult = await Dealer.create(dealerData);
+          console.log('OnboardingWizard - Dealer profile created:', dealerResult);
+        }
+
+        // Verify the dealer was updated/created correctly
+        console.log('OnboardingWizard - Final dealer result:', dealerResult);
       }
       
       // Update user profile with onboarding completion
       console.log('OnboardingWizard - Updating user metadata...');
       await User.updateMyUserData({
-        onboarding_completed: true,
-        dealer_profile_created: true,
-        dealer_id: dealerResult.id
+        data: {
+          onboarding_completed: true,
+          dealer_profile_created: true,
+          dealer_id: dealerResult.id
+        }
       });
       console.log('OnboardingWizard - User metadata updated');
 
@@ -325,10 +369,11 @@ export default function OnboardingWizard() {
         description: "Your organization is set up. Complete verification steps as needed to unlock features."
       });
       
-      // Redirect to dashboard immediately
+      // Force refresh and redirect to dashboard
       setTimeout(() => {
         console.log('OnboardingWizard - Redirecting to dashboard...');
-        navigate(createPageUrl('Dashboard'));
+        // Force a page reload to ensure auth state is refreshed
+        window.location.href = createPageUrl('Dashboard');
       }, 1000);
       
     } catch (error) {

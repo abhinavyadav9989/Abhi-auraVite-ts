@@ -71,21 +71,21 @@ export default function AssetsTab({ vehicleId }) {
           id: '1',
           vehicle_id: vehicleId,
           asset_type: 'image',
-          original_url: 'https://images.unsplash.com/photo-1549824024-0b70d52ba35d?w=800',
+          file_url: 'https://images.unsplash.com/photo-1549824024-0b70d52ba35d?w=800',
           status: 'ready',
           is_hero: true,
           order_index: 0,
-          created_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
         },
         {
           id: '2',
           vehicle_id: vehicleId,
           asset_type: 'document',
           document_type: 'rc',
-          original_url: '/mock-rc.pdf',
+          file_url: '/mock-rc.pdf',
           status: 'ready',
           file_name: 'RC_Certificate.pdf',
-          created_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
           version_history: [
             { version: 1, url: '/mock-rc-v1.pdf', timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) },
             { version: 2, url: '/mock-rc.pdf', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }
@@ -95,19 +95,19 @@ export default function AssetsTab({ vehicleId }) {
           id: '3',
           vehicle_id: vehicleId,
           asset_type: '360_spin',
-          original_url: '/mock-360.mp4',
+          file_url: '/mock-360.mp4',
           status: 'processing',
-          created_date: new Date(Date.now() - 30 * 60 * 1000)
+          created_at: new Date(Date.now() - 30 * 60 * 1000)
         },
         {
           id: '4',
           vehicle_id: vehicleId,
           asset_type: 'document',
           document_type: 'insurance',
-          original_url: '/mock-insurance.pdf',
+          file_url: '/mock-insurance.pdf',
           status: 'failed',
           file_name: 'Insurance_Policy.pdf',
-          created_date: new Date(Date.now() - 60 * 60 * 1000)
+          created_at: new Date(Date.now() - 60 * 60 * 1000)
         }
       ];
       
@@ -130,7 +130,7 @@ export default function AssetsTab({ vehicleId }) {
           vehicle_id: vehicleId,
           asset_type: assetType,
           document_type: documentType,
-          original_url: uploadResult.file_url,
+          file_url: uploadResult.file_url,
           file_name: file.name,
           file_size: file.size,
           mime_type: file.type,
@@ -141,7 +141,7 @@ export default function AssetsTab({ vehicleId }) {
         // Mock creation - in real app, use VehicleAsset.create()
         const createdAsset: any = await new Promise<any>(resolve => {
           setTimeout(() => {
-            resolve({ ...newAsset, id: Date.now().toString(), created_date: new Date() });
+            resolve({ ...newAsset, id: Date.now().toString(), created_at: new Date() });
           }, 1000);
         });
 
@@ -196,7 +196,7 @@ export default function AssetsTab({ vehicleId }) {
   const handleDownload = (asset) => {
     // Mock download - in real app, this would trigger actual file download
     const link = document.createElement('a');
-    link.href = asset.original_url;
+            link.href = asset.file_url;
     link.download = asset.file_name || `asset_${asset.id}`;
     link.click();
     
@@ -390,14 +390,14 @@ export default function AssetsTab({ vehicleId }) {
             <div className="flex-1 flex items-center justify-center bg-slate-100 rounded-lg">
               {selectedAsset.asset_type === 'image' ? (
                 <img 
-                  src={selectedAsset.original_url} 
+                  src={selectedAsset.file_url} 
                   alt="Asset preview"
                   className="max-w-full max-h-full object-contain"
                 />
               ) : selectedAsset.asset_type === 'document' ? (
                 <div className="w-full h-full">
                   <iframe 
-                    src={selectedAsset.original_url + '#toolbar=1'}
+                    src={selectedAsset.file_url + '#toolbar=1'}
                     className="w-full h-full border-0"
                     title="Document preview"
                   />

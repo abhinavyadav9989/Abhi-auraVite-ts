@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@/api/entities';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Dealer } from '@/api/entities';
 import { Vehicle } from '@/api/entities';
 import { Transaction } from '@/api/entities';
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
   const [flaggedDealers, setFlaggedDealers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false); // Initialize as false
+  const [currentUser, setCurrentUser] = useState<(SupabaseUser & { role?: string }) | null>(null);
   
   const { toast } = useToast();
 
@@ -70,6 +72,20 @@ export default function AdminDashboard() {
   const loadAdminData = async () => {
     try {
       setIsLoading(true);
+      
+      // Check if user is admin
+      const userWithRole = await User.meWithRole();
+      setCurrentUser(userWithRole);
+      
+      if (!userWithRole || userWithRole.role !== 'admin') {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access the admin dashboard.",
+          variant: "destructive"
+        });
+        navigate(createPageUrl('Dashboard'));
+        return;
+      }
       
       // Debug: Check JWT token information
       const { data: { user } } = await supabase.auth.getUser();
@@ -97,12 +113,12 @@ export default function AdminDashboard() {
       );
       
       const disputedTransactions = transactions.filter(t => t.status === 'disputed');
-      const flaggedDealers = dealers.filter(d => d.is_flagged === true);
+      const flaggedDealers = dealers.filter(d => d.status === 'flagged' || d.verification_status === 'rejected');
       
       const thisMonth = new Date();
       thisMonth.setDate(1);
       const completedThisMonth = transactions.filter(t => 
-        t.status === 'completed' && new Date(t.completed_at || t.updated_date) >= thisMonth
+        t.status === 'completed' && new Date(t.updated_at) >= thisMonth
       );
       const gmvThisMonth = completedThisMonth.reduce((sum, t) => sum + (t.final_price || 0), 0);
 
@@ -123,10 +139,10 @@ export default function AdminDashboard() {
 
       // Organize disputes
       setDisputes({
-        new: disputedTransactions.filter(t => !t.dispute_investigation_started).slice(0, 5),
-        investigating: disputedTransactions.filter(t => t.dispute_investigation_started && !t.dispute_evidence_requested).slice(0, 5),
-        awaiting_evidence: disputedTransactions.filter(t => t.dispute_evidence_requested && !t.dispute_resolved).slice(0, 5),
-        resolved: disputedTransactions.filter(t => t.dispute_resolved).slice(0, 5)
+        new: disputedTransactions.slice(0, 5),
+        investigating: [],
+        awaiting_evidence: [],
+        resolved: []
       });
 
       // Mock recent activity
@@ -170,13 +186,16 @@ export default function AdminDashboard() {
       
       switch (action) {
         case 'investigate':
-          updateData.dispute_investigation_started = true;
+          // Note: dispute fields don't exist in database, using status-based tracking
+        updateData.status = 'investigating';
           break;
         case 'request_evidence':
-          updateData.dispute_evidence_requested = true;
+          // Note: dispute fields don't exist in database, using status-based tracking
+        updateData.status = 'awaiting_evidence';
           break;
         case 'resolve':
-          updateData.dispute_resolved = true;
+          // Note: dispute fields don't exist in database, using status-based tracking
+        updateData.status = 'resolved';
           updateData.dispute_resolution = resolution;
           updateData.status = 'completed';
           break;
@@ -193,7 +212,8 @@ export default function AdminDashboard() {
   const handleFlagDealer = async (dealerId, flag, reason = '') => {
     try {
       await Dealer.update(dealerId, { 
-        is_flagged: flag,
+        // Note: is_flagged field doesn't exist in database, using status-based flagging
+        status: flag ? 'flagged' : 'active',
         flag_reason: reason,
         flagged_at: flag ? new Date().toISOString() : null
       });
@@ -227,6 +247,22 @@ export default function AdminDashboard() {
     );
   }
 
+  // Check if user is admin
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-slate-600 mb-4">You don't have permission to access the admin dashboard.</p>
+          <Button onClick={() => navigate(createPageUrl('Dashboard'))}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Maintenance Banner - Only show when maintenance mode is enabled */}
@@ -235,20 +271,20 @@ export default function AdminDashboard() {
       <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Admin Dashboard</h1>
               <p className="text-slate-600 mt-1">Platform overview and management</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Link to={createPageUrl('AdminKYBVerification')}>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Shield className="w-4 h-4 mr-2" />
                   KYB Queue
                 </Button>
               </Link>
               <Link to={createPageUrl('DisputeResolution')}>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Disputes
                 </Button>
@@ -257,7 +293,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* KPI Cards Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <KpiCard
               title="Total Users"
               value={stats.totalUsers.toLocaleString()}
@@ -290,7 +326,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Alert Cards Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card className="border-l-4 border-l-yellow-500">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">

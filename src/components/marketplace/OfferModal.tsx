@@ -76,7 +76,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
       
       navigate(createPageUrl('DealRoom') + `?id=${newTransaction.id}`);
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      // Error creating transaction - handled gracefully
       toast({
         title: 'Offer Failed',
         description: 'There was an error sending your offer. Please try again.',

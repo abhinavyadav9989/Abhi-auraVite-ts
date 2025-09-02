@@ -68,7 +68,7 @@ export default function AdminKYBVerification() {
           return;
       }
       
-      const currentUser = await User.me();
+      const currentUser = await User.meWithRole();
 
       // Use SECURITY DEFINER function instead of regular update
       const { data: success, error } = await supabase
@@ -113,7 +113,7 @@ export default function AdminKYBVerification() {
     const checkAdminAndLoad = async () => {
       setIsLoading(true);
       try {
-        const user = await User.me();
+        const user = await User.meWithRole();
         if (user.role !== 'admin') {
           toast({
             title: "Access Denied",
@@ -192,7 +192,7 @@ export default function AdminKYBVerification() {
         console.error('Error calling get_pending_kyb_dealers:', error);
         // Fallback to regular filter if function doesn't exist
         const fallbackDealers = await Dealer.filter({
-          verification_status: ['documents_submitted', 'pending']
+          verification_status: 'documents_submitted'
         });
         setKybQueue(fallbackDealers);
       } else {

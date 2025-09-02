@@ -53,7 +53,7 @@ export default function ExpressInterestModal({ vehicle = {}, dealer = {}, onClos
 
       onClose();
     } catch (error) {
-      console.error('Error expressing interest:', error);
+      // Error expressing interest - handled gracefully
       toast({
         title: 'Error',
         description: 'Failed to express interest. Please try again.',

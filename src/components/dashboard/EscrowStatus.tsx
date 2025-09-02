@@ -12,18 +12,15 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function EscrowStatus({ data, dealer }) {
   const { amount, pending } = data;
-  const progressValue = 65; // Mock progress percentage
+  const progressValue = amount > 0 ? 100 : 0; // Real progress based on actual data
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleDrillDown = async () => {
     try {
-      const recentEscrowDeals = await Transaction.filter({
-        $or: [
-          { seller_id: dealer.id, status: 'paid' },
-          { buyer_id: dealer.id, status: 'payment_pending' }
-        ]
-      }, '-created_date', 1);
+      const sellerDeals = await Transaction.filter({ seller_id: dealer.id, status: 'paid' });
+      const buyerDeals = await Transaction.filter({ buyer_id: dealer.id, status: 'payment_pending' });
+      const recentEscrowDeals = [...sellerDeals, ...buyerDeals];
 
       if (recentEscrowDeals.length > 0) {
         navigate(createPageUrl('DealRoom') + `?id=${recentEscrowDeals[0].id}`);

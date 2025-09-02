@@ -19,12 +19,12 @@ export default function AdminFeeKpiTile() {
         // This is a simplification. A real app would use a more efficient backend query.
         const allTransactions = await Transaction.filter({ status: 'completed' });
 
-        const completedToday = allTransactions.filter(t => t.updated_date >= todayStartISO);
+        const completedToday = allTransactions.filter(t => t.updated_at >= todayStartISO);
 
-        const totalFee = completedToday.reduce((sum, t) => sum + (t.platform_fee_amount || 0), 0);
+        const totalFee = completedToday.reduce((sum, t) => sum + ((t.amount * 0.05) || 0), 0); // 5% platform fee
         setFeeToday(totalFee);
 
-        const margins = completedToday.map(t => t.buyer_margin_estimate || 0).filter(m => m > 0);
+        const margins = completedToday.map(t => ((t.final_price || t.amount) - (t.initial_offer || t.amount)) || 0).filter(m => m > 0);
         const average = margins.length ? margins.reduce((sum, m) => sum + m, 0) / margins.length : 0;
         setAvgMargin(average);
 

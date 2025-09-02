@@ -8,7 +8,7 @@ const useVoiceSearch = (onResult) => {
   const recognitionRef = useRef(null);
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       console.warn("Speech recognition not supported in this browser.");
       return;
@@ -72,7 +72,7 @@ export default function GlobalSearch({ onSearch }) {
         placeholder="Search vehicles, deals, or say '2022 Swift Dzire'"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-10 pr-12 bg-slate-50 border-slate-200 focus:bg-white"
+                        className="pl-10 pr-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:bg-slate-100 dark:focus:bg-slate-800"
       />
       <Button 
         type="button" 

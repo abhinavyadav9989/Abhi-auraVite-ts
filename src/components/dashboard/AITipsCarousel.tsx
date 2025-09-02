@@ -44,10 +44,10 @@ export default function AITipsCarousel({ dealer }) {
   const [aiTips, setAiTips] = useState(fallbackTips);
 
   useEffect(() => {
-    // Only try to load AI tips if dealer is verified (to reduce API calls)
-    if (dealer?.verification_status === 'verified') {
-      loadAITips();
-    }
+    // TEMPORARILY DISABLED: Only try to load AI tips if dealer is verified (to reduce API calls)
+    // if (dealer?.verification_status === 'verified') {
+    //   loadAITips();
+    // }
 
     const interval = setInterval(() => {
       setCurrentTip((prev) => (prev + 1) % aiTips.length);
@@ -133,7 +133,7 @@ export default function AITipsCarousel({ dealer }) {
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span>
-            {hasError ? "Business Tips" : "AI Market Insights"}
+            Business Tips
           </span>
           {isLoading &&
           <Loader2 className="w-4 h-4 animate-spin text-slate-400" />

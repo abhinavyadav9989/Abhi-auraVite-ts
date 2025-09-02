@@ -1,125 +1,164 @@
 import React from 'react';
-import { User } from '@/api/entities';
-import { Dealer } from '@/api/entities';
-import { Lock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-
-// Permission definitions
-const PERMISSIONS = {
-  // Vehicle permissions
-  'vehicle.create': ['owner', 'staff'],
-  'vehicle.edit': ['owner', 'staff'],
-  'vehicle.delete': ['owner'],
-  'vehicle.view': ['owner', 'staff', 'viewer'],
-  'vehicle.publish': ['owner', 'staff'],
-  
-  // Deal permissions
-  'deal.create': ['owner', 'staff'],
-  'deal.manage': ['owner', 'staff'],
-  'deal.view': ['owner', 'staff', 'viewer'],
-  
-  // Analytics permissions
-  'analytics.view': ['owner'],
-  'metrics.view': ['owner'],
-  
-  // Team permissions
-  'team.manage': ['owner'],
-  'team.invite': ['owner'],
-  
-  // Admin permissions
-  'admin.access': ['admin'],
-  'admin.kyb': ['admin'],
-  'admin.disputes': ['admin'],
-  'admin.audit': ['admin'],
-  
-  // Profile permissions
-  'profile.edit': ['owner'],
-  'profile.view': ['owner', 'staff', 'viewer']
-};
-
-// Check if user has permission
-export const hasPermission = (userRole, dealerRole, permission) => {
-  // Admin users have all permissions
-  if (userRole === 'admin') return true;
-  
-  // Check if permission exists
-  if (!PERMISSIONS[permission]) return false;
-  
-  // For admin permissions, only admins are allowed
-  if (permission.startsWith('admin.') && userRole !== 'admin') {
-    return false;
-  }
-  
-  // Check dealer-level permissions
-  return PERMISSIONS[permission].includes(dealerRole);
-};
+import { Lock, Shield, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  hasPermission, 
+  hasAllPermissions, 
+  hasAnyPermission, 
+  getMissingPermissions,
+  getUserRoles,
+  type PermissionContext 
+} from '@/lib/permissions';
 
 // Permission Guard Component
 type PermissionGuardProps = {
-  permission: string
-  children?: React.ReactNode
-  fallback?: React.ReactNode
-  showMessage?: boolean
-}
+  permission: keyof typeof import('@/lib/permissions').PERMISSIONS;
+  permissions?: Array<keyof typeof import('@/lib/permissions').PERMISSIONS>;
+  requireAll?: boolean; // true = all permissions required, false = any permission
+  children?: React.ReactNode;
+  fallback?: React.ReactNode;
+  showMessage?: boolean;
+  showUpgradePrompt?: boolean;
+  customMessage?: string;
+  actionButton?: {
+    text: string;
+    onClick: () => void;
+    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  };
+};
 
-export default function PermissionGuard({ 
-  permission, 
-  children = null, 
-  fallback = null, 
-  showMessage = false 
+export default function PermissionGuard({
+  permission,
+  permissions = [],
+  requireAll = true,
+  children = null,
+  fallback = null,
+  showMessage = false,
+  showUpgradePrompt = false,
+  customMessage,
+  actionButton
 }: PermissionGuardProps) {
-  const [user, setUser] = React.useState(null);
-  const [dealerRole, setDealerRole] = React.useState(null);
+  const [userData, setUserData] = React.useState<{
+    userRole: string | null;
+    dealerRole: string | null;
+    verificationStatus: string | null;
+    permissions: string[];
+  }>({
+    userRole: null,
+    dealerRole: null,
+    verificationStatus: null,
+    permissions: []
+  });
   const [isLoading, setIsLoading] = React.useState(true);
-  
+  const [hasAccess, setHasAccess] = React.useState(false);
+
   React.useEffect(() => {
     loadUserPermissions();
   }, []);
-  
+
   const loadUserPermissions = async () => {
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
-      
-      // For admin users, they have all permissions
-      if (currentUser.role === 'admin') {
-        setDealerRole('admin');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Load dealer role for regular users
-      const dealers = await Dealer.filter({ created_by: currentUser.email });
-      if (dealers.length > 0) {
-        // For now, assuming the first dealer profile determines the role
-        setDealerRole('owner'); // Default to owner for main dealer profile
-      }
+      const userInfo = await getUserRoles();
+      setUserData(userInfo);
+
+      // Check permissions based on loaded data
+      const allPermissions = permissions.length > 0 ? permissions : [permission];
+      const accessGranted = requireAll
+        ? allPermissions.every(perm => userInfo.permissions.includes(perm))
+        : allPermissions.some(perm => userInfo.permissions.includes(perm));
+
+      setHasAccess(accessGranted);
     } catch (error) {
       console.error('Error loading user permissions:', error);
+      setHasAccess(false);
     }
     setIsLoading(false);
   };
   
   if (isLoading) {
-    return <div className="animate-pulse bg-slate-200 rounded h-8" />;
+    return (
+      <div className="animate-pulse bg-slate-200 rounded h-8 w-full" />
+    );
   }
-  
-  const hasAccess = hasPermission(user?.role, dealerRole, permission);
-  
+
   if (!hasAccess) {
     if (showMessage) {
+      const allPermissions = permissions.length > 0 ? permissions : [permission];
+      const missingPermissions = allPermissions.filter(perm => !userData.permissions.includes(perm));
+
       return (
         <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="p-4">
+          <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <Lock className="w-5 h-5 text-orange-600" />
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Lock className="w-5 h-5 text-orange-600" />
+              </div>
               <div>
-                <h4 className="font-medium text-orange-900">Access Restricted</h4>
+                <CardTitle className="text-orange-900 text-lg">Access Restricted</CardTitle>
                 <p className="text-sm text-orange-700">
-                  You don&apos;t have permission to access this feature.
+                  {customMessage || `You don't have permission to access this feature.`}
                 </p>
               </div>
             </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            {/* Missing Permissions */}
+            {missingPermissions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-orange-800">Required Permissions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {missingPermissions.map((perm) => (
+                    <Badge key={perm} variant="outline" className="text-orange-700 border-orange-300">
+                      {perm}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Current Role Info */}
+            <div className="bg-white rounded-lg p-3 border border-orange-200">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-orange-800">Current Role:</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-orange-700">
+                    {userData.userRole || 'No Role'}
+                  </Badge>
+                  {userData.dealerRole && userData.dealerRole !== userData.userRole && (
+                    <Badge variant="outline" className="text-orange-600">
+                      {userData.dealerRole}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Upgrade Prompt */}
+            {showUpgradePrompt && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Upgrade Available</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Contact your administrator to request additional permissions or upgrade your account.
+                </p>
+              </div>
+            )}
+            
+            {/* Action Button */}
+            {actionButton && (
+              <Button 
+                variant={actionButton.variant || "outline"}
+                onClick={actionButton.onClick}
+                className="w-full"
+              >
+                {actionButton.text}
+              </Button>
+            )}
           </CardContent>
         </Card>
       );
@@ -127,15 +166,19 @@ export default function PermissionGuard({
     return fallback;
   }
   
-  return children;
+  return <>{children}</>;
 }
 
 // Hook for checking permissions
-export const usePermissions = () => {
-  const [permissions, setPermissions] = React.useState({
+export const usePermissions = (): PermissionContext => {
+  const [permissions, setPermissions] = React.useState<PermissionContext>({
     userRole: null,
     dealerRole: null,
-    isLoading: true
+    isLoading: true,
+    hasPermission: () => false,
+    hasAllPermissions: () => false,
+    hasAnyPermission: () => false,
+    getMissingPermissions: () => []
   });
   
   React.useEffect(() => {
@@ -144,22 +187,16 @@ export const usePermissions = () => {
   
   const loadPermissions = async () => {
     try {
-      const currentUser = await User.me();
+      const { userRole, dealerRole } = await getUserRoles();
       
-      if (currentUser.role === 'admin') {
-        setPermissions({
-          userRole: 'admin',
-          dealerRole: 'admin',
-          isLoading: false
-        });
-        return;
-      }
-      
-      const dealers = await Dealer.filter({ created_by: currentUser.email });
       setPermissions({
-        userRole: currentUser.role,
-        dealerRole: dealers.length > 0 ? 'owner' : null,
-        isLoading: false
+        userRole,
+        dealerRole,
+        isLoading: false,
+        hasPermission: (permission) => hasPermission(userRole, dealerRole, permission),
+        hasAllPermissions: (permissions) => hasAllPermissions(userRole, dealerRole, permissions),
+        hasAnyPermission: (permissions) => hasAnyPermission(userRole, dealerRole, permissions),
+        getMissingPermissions: (permissions) => getMissingPermissions(userRole, dealerRole, permissions)
       });
     } catch (error) {
       console.error('Error loading permissions:', error);
@@ -167,12 +204,107 @@ export const usePermissions = () => {
     }
   };
   
-  const checkPermission = (permission) => {
-    return hasPermission(permissions.userRole, permissions.dealerRole, permission);
-  };
-  
-  return {
-    ...permissions,
-    hasPermission: checkPermission
-  };
+  return permissions;
 };
+
+// Higher-order component for permission-based rendering
+export function withPermissionGuard<P extends object>(
+  Component: React.ComponentType<P>,
+  permission: keyof typeof import('@/lib/permissions').PERMISSIONS,
+  options?: {
+    fallback?: React.ReactNode;
+    showMessage?: boolean;
+    showUpgradePrompt?: boolean;
+  }
+) {
+  return function PermissionGuardedComponent(props: P) {
+    return (
+      <PermissionGuard 
+        permission={permission}
+        showMessage={options?.showMessage}
+        showUpgradePrompt={options?.showUpgradePrompt}
+        fallback={options?.fallback}
+      >
+        <Component {...props} />
+      </PermissionGuard>
+    );
+  };
+}
+
+// Utility component for showing permission requirements
+export function PermissionRequirements({ 
+  permissions, 
+  showCurrentRole = true 
+}: { 
+  permissions: Array<keyof typeof import('@/lib/permissions').PERMISSIONS>;
+  showCurrentRole?: boolean;
+}) {
+  const { userRole, dealerRole, hasPermission, getMissingPermissions } = usePermissions();
+  const missingPermissions = getMissingPermissions(permissions);
+  
+  return (
+    <Card className="border-blue-200 bg-blue-50">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <CardTitle className="text-blue-900 text-lg">Permission Requirements</CardTitle>
+            <p className="text-sm text-blue-700">
+              The following permissions are required to access this feature.
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Required Permissions */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-blue-800">Required Permissions:</p>
+          <div className="flex flex-wrap gap-2">
+            {permissions.map((perm) => (
+              <Badge 
+                key={perm} 
+                variant={hasPermission(perm) ? "default" : "outline"}
+                className={hasPermission(perm) ? "bg-green-100 text-green-800" : "text-blue-700 border-blue-300"}
+              >
+                {perm}
+                {hasPermission(perm) && <span className="ml-1">✓</span>}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        
+        {/* Current Role */}
+        {showCurrentRole && (
+          <div className="bg-white rounded-lg p-3 border border-blue-200">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-blue-800">Current Role:</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-blue-700">
+                  {userRole || 'No Role'}
+                </Badge>
+                {dealerRole && dealerRole !== userRole && (
+                  <Badge variant="outline" className="text-blue-600">
+                    {dealerRole}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Missing Permissions Summary */}
+        {missingPermissions.length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <p className="text-sm text-orange-800">
+              <strong>{missingPermissions.length}</strong> permission(s) missing. 
+              Contact your administrator to request access.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

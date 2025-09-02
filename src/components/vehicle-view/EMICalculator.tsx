@@ -155,23 +155,23 @@ export default function EMICalculator({ vehiclePrice = 0, onClose }) {
             <h3 className="font-semibold text-lg text-slate-800 mb-4">EMI Calculation Results</h3>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                <p className="text-sm text-slate-600">Monthly EMI</p>
+              <div className="text-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg shadow-sm">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Monthly EMI</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {formatCurrency(emi)}
                 </p>
               </div>
               
-              <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                <p className="text-sm text-slate-600">Total Amount</p>
-                <p className="text-lg font-semibold text-slate-800">
+              <div className="text-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg shadow-sm">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Amount</p>
+                <p className="text-lg font-semibold text-slate-800 dark:text-white">
                   {formatCurrency(totalPayment)}
                 </p>
               </div>
             </div>
             
-            <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-              <p className="text-sm text-slate-600">Total Interest Payable</p>
+            <div className="text-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg shadow-sm">
+              <p className="text-sm text-slate-600 dark:text-slate-400">Total Interest Payable</p>
               <p className="text-lg font-semibold text-orange-600">
                 {formatCurrency(totalInterest)}
               </p>

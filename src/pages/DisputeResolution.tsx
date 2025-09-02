@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Transaction, Dealer, Vehicle, Payment } from '@/api/entities';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Transaction, Dealer, Vehicle, Payment, User } from '@/api/entities';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,52 +31,82 @@ const EvidenceViewer = ({ evidence, partyName }) => (
 
 export default function DisputeResolution() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [transaction, setTransaction] = useState(null);
   // buyer and seller states are not used with the mock data, but keeping structure for future integration
   const [buyer, setBuyer] = useState(null);
   const [seller, setSeller] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<(SupabaseUser & { role?: string }) | null>(null);
   const { toast } = useToast();
 
   const transactionId = new URLSearchParams(location.search).get('id');
 
   useEffect(() => {
-    // Mock fetching transaction data
-    const fetchTransaction = async () => {
-      // In a real application, you would fetch from your backend:
-      // const data = await Transaction.get(transactionId);
-      const data = {
-        id: transactionId,
-        status: 'disputed',
-        dispute_reason: 'Vehicle has engine noise not mentioned in listing.',
-        // Mock evidence (not in outline, but needed for UI)
-        dispute_evidence: ['/path/to/buyer_evidence1.pdf'],
-        messages: [{
-          id: 'msg1', type: 'system', content: 'Dispute opened by buyer.', timestamp: new Date().toISOString()
-        }]
-        // Mock buyer/seller IDs if needed for UI, but the outline removed buyer/seller state updates
-        // buyer_id: 'buyer123',
-        // seller_id: 'seller456'
-      };
-      setTransaction(data);
-      setIsLoading(false);
+    const checkAdminAndLoadData = async () => {
+      setIsLoading(true);
+      try {
+        // Check if user is admin
+        const userWithRole = await User.meWithRole();
+        setCurrentUser(userWithRole);
+        
+        if (!userWithRole || userWithRole.role !== 'admin') {
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access dispute resolution.",
+            variant: "destructive"
+          });
+          navigate('/dashboard');
+          return;
+        }
 
-      // Note: The outline removed buyer/seller fetching. 
-      // If needed for UI, they would be fetched here based on transaction.buyer_id/seller_id.
-      // Example:
-      // const [b, s] = await Promise.all([
-      //   Dealer.get(data.buyer_id),
-      //   Dealer.get(data.seller_id)
-      // ]);
-      // setBuyer(b);
-      // setSeller(s);
+        // Mock fetching transaction data
+        const fetchTransaction = async () => {
+          // In a real application, you would fetch from your backend:
+          // const data = await Transaction.get(transactionId);
+          const data = {
+            id: transactionId,
+            status: 'disputed',
+            dispute_reason: 'Vehicle has engine noise not mentioned in listing.',
+            // Mock evidence (not in outline, but needed for UI)
+            dispute_evidence: ['/path/to/buyer_evidence1.pdf'],
+            messages: [{
+              id: 'msg1', type: 'system', content: 'Dispute opened by buyer.', timestamp: new Date().toISOString()
+            }]
+            // Mock buyer/seller IDs if needed for UI, but the outline removed buyer/seller state updates
+            // buyer_id: 'buyer123',
+            // seller_id: 'seller456'
+          };
+          setTransaction(data);
+
+          // Note: The outline removed buyer/seller fetching. 
+          // If needed for UI, they would be fetched here based on transaction.buyer_id/seller_id.
+          // Example:
+          // const [b, s] = await Promise.all([
+          //   Dealer.get(data.buyer_id),
+          //   Dealer.get(data.seller_id)
+          // ]);
+          // setBuyer(b);
+          // setSeller(s);
+        };
+        
+        if (transactionId) {
+          await fetchTransaction();
+        }
+      } catch (error) {
+        console.error('Error checking admin permissions or loading data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load dispute resolution data.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
-    if (transactionId) {
-      fetchTransaction();
-    } else {
-      setIsLoading(false);
-    }
-  }, [transactionId]);
+    
+    checkAdminAndLoadData();
+  }, [transactionId, navigate, toast]);
 
   const handleResolve = async (resolution, message) => {
     // isProcessing state and logic removed as per outline for simplified mock

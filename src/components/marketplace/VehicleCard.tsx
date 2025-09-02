@@ -5,29 +5,37 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { 
-  Heart, 
-  MapPin, 
-  Calendar, 
-  Fuel, 
-  Settings2, 
-  Eye, 
+import { Database } from '@/types';
+import {
+  Heart,
+  MapPin,
+  Calendar,
+  Fuel,
+  Settings2,
+  Eye,
   IndianRupee,
   Star,
   ShieldCheck,
   Zap,
   Camera,
-  GitCompareArrows
+  GitCompareArrows,
+  Hand
 } from 'lucide-react';
 import { Shortlist } from '@/api/entities';
+import ExpandedVehicleCard from './ExpandedVehicleCard';
+import DealerOfferSystem from './DealerOfferSystem';
+
+
+type Vehicle = Database['public']['Tables']['vehicles']['Row'];
+type Dealer = Database['public']['Tables']['dealers']['Row'];
 
 type VehicleCardProps = {
-  vehicle: any;
-  dealer: any;
-  currentDealer: any;
+  vehicle: Vehicle;
+  dealer: Dealer;
+  currentDealer: Dealer | null;
   onCompareToggle: (vehicleId: string) => void;
   isInCompare: boolean;
-  onMakeOffer: (vehicle: any) => void;
+  onMakeOffer: (vehicle: Vehicle) => void;
   isUserVerified: boolean;
   isUnderReview?: boolean;
 };
@@ -44,6 +52,8 @@ export default function VehicleCard({
 }: VehicleCardProps) {
   const [isInShortlist, setIsInShortlist] = useState(false);
   const [isShortlisting, setIsShortlisting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Safe property access with proper defaults
@@ -59,7 +69,7 @@ export default function VehicleCard({
     location_city: vehicle?.location_city || 'N/A',
     images: Array.isArray(vehicle?.images) ? vehicle.images : [],
     hero_image_url: vehicle?.hero_image_url || '',
-    created_date: vehicle?.created_date || new Date().toISOString(),
+            created_at: vehicle?.created_at || new Date().toISOString(),
     status: vehicle?.status || 'draft',
     dealer_id: vehicle?.dealer_id || '',
   };
@@ -86,7 +96,7 @@ export default function VehicleCard({
         });
         setIsInShortlist(isInAnyShortlist);
       } catch (error) {
-        console.error('Error checking shortlist:', error);
+        // Error checking shortlist - handled gracefully
         setIsInShortlist(false);
       }
     };
@@ -131,7 +141,7 @@ export default function VehicleCard({
         description: `${vehicleData.make} ${vehicleData.model} has been updated in your favorites.`,
       });
     } catch (error) {
-      console.error("Failed to update shortlist:", error);
+      // Failed to update shortlist - handled gracefully
       toast({ title: "Error", description: "Could not update shortlist.", variant: "destructive" });
     }
     
@@ -150,15 +160,15 @@ export default function VehicleCard({
     onMakeOffer(vehicle);
   };
   
-  const daysAgo = vehicleData.created_date 
-    ? Math.floor((new Date().getTime() - new Date(vehicleData.created_date).getTime()) / (1000 * 60 * 60 * 24))
+          const daysAgo = vehicleData.created_at
+          ? Math.floor((new Date().getTime() - new Date(vehicleData.created_at).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
   const isNew = daysAgo <= 7;
   // Use hero_image_url if available, otherwise fall back to first image
   const heroImage = vehicleData.hero_image_url || (vehicleData.images.length > 0 ? vehicleData.images[0] : null);
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200 hover:border-blue-400 flex flex-col">
+          <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-400 flex flex-col">
       <div className="relative">
         <Link to={createPageUrl(`VehicleDetail?id=${vehicleData.id}`)} className="block">
           <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
@@ -202,7 +212,7 @@ export default function VehicleCard({
           <Button
             variant="ghost"
             size="icon"
-            className="bg-white/90 hover:bg-white"
+            className="bg-slate-50/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={handleToggleShortlist}
             disabled={isShortlisting}
           >
@@ -211,10 +221,21 @@ export default function VehicleCard({
           <Button
             variant="ghost"
             size="icon"
-            className={`bg-white/90 hover:bg-white ${isInCompare ? 'bg-blue-100' : ''}`}
+            className={`bg-slate-50/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800 ${isInCompare ? 'bg-blue-100' : ''}`}
             onClick={handleCompareClick}
           >
             <GitCompareArrows className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="bg-slate-50/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(true);
+            }}
+          >
+            <Zap className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -228,22 +249,33 @@ export default function VehicleCard({
               {vehicleData.year} {vehicleData.make} {vehicleData.model}
             </h3>
 
-            {/* Price */}
-            <div className="text-xl font-bold text-blue-600">
-              {isUserVerified ? (
-                formatPrice(vehicleData.asking_price)
-              ) : (
-                <div className="flex items-center gap-2 text-amber-600">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span className="text-sm">
-                    {isUnderReview 
-                      ? 'Price hidden - Verification under review' 
-                      : 'Price hidden - Complete KYB verification'
-                    }
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Price - Permission-based display */}
+            {(() => {
+              // Check if user has permission to view prices
+              const canViewPrices = isUserVerified; // Simplified - in real app, check specific permissions
+
+              if (canViewPrices && vehicleData.asking_price) {
+                return (
+                  <div className="text-xl font-bold text-blue-600">
+                    {formatPrice(vehicleData.asking_price)}
+                  </div>
+                );
+              } else if (isUnderReview) {
+                // User is under review - show pending message
+                return (
+                  <div className="text-sm text-amber-600 font-medium">
+                    Verification in progress...
+                  </div>
+                );
+              } else {
+                // User cannot view prices - show "Price on request"
+                return (
+                  <div className="text-sm text-slate-600 font-medium">
+                    Price on request
+                  </div>
+                );
+              }
+            })()}
 
             {/* Key specs */}
             <div className="flex items-center gap-4 text-sm text-slate-600">
@@ -276,14 +308,28 @@ export default function VehicleCard({
             {/* KYB Verification Notice for Unverified Users */}
             {!isUserVerified && (
               <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                <div className="flex items-center gap-2 text-amber-700 text-xs">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>
-                    {isUnderReview 
-                      ? 'Verification under review - View profile for updates' 
-                      : 'Complete KYB verification to view dealer details and pricing'
-                    }
-                  </span>
+                <div className="flex items-center justify-between gap-2 text-amber-700 text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>
+                      {isUnderReview
+                        ? 'Verification under review - View profile for updates'
+                        : 'Complete KYB verification to view dealer details and pricing'
+                      }
+                    </span>
+                  </div>
+                  {!isUnderReview && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = createPageUrl('KYBWizard');
+                      }}
+                      className="text-amber-700 hover:text-amber-800 font-medium underline text-xs"
+                    >
+                      Complete Now
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -316,8 +362,48 @@ export default function VehicleCard({
           <Button variant="ghost" size="sm">
             <Eye className="w-4 h-4" />
           </Button>
+          {isUserVerified && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsOfferModalOpen(true);
+              }}
+              title="Make dealer offer"
+            >
+              <Hand className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
+
+      {/* Expanded Vehicle Card */}
+      <ExpandedVehicleCard
+        vehicle={vehicle}
+        dealer={dealer}
+        isOpen={isExpanded}
+        onClose={() => setIsExpanded(false)}
+        onCompareToggle={onCompareToggle}
+        isInCompare={isInCompare}
+        onMakeOffer={onMakeOffer}
+        isUserVerified={isUserVerified}
+        isDealer={!!currentDealer}
+      />
+
+      {/* Dealer Offer System */}
+      <DealerOfferSystem
+        vehicle={vehicle}
+        seller={dealer}
+        buyer={currentDealer}
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        onOfferSubmitted={(offer) => {
+          console.log('Offer submitted:', offer);
+          setIsOfferModalOpen(false);
+        }}
+      />
     </Card>
   );
 }

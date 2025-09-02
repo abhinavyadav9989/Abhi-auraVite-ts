@@ -1,525 +1,753 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
-  Package,
-  ArrowUpDown,
-  Edit3,
-  Archive,
-  Tag,
-  DollarSign,
-  Calendar,
-  AlertTriangle,
+  Loader2,
   CheckCircle,
-  Loader2
+  AlertCircle,
+  Download,
+  Upload,
+  DollarSign,
+  Truck,
+  Tag,
+  Settings,
+  Users,
+  Eye,
+  EyeOff,
+  Car,
+  Building2
 } from 'lucide-react';
+import { bulkOperationsService } from '@/api/services/bulkOperationsService';
+import { useDealerActivationSettings } from '@/hooks/useDealerActivationSettings';
 import { useToast } from '@/components/ui/use-toast';
-import { Vehicle } from '@/api/entities';
 
-type BulkOperationId =
-  | 'change_status'
-  | 'change_inventory_type'
-  | 'adjust_pricing'
-  | 'add_tags'
-  | 'schedule_actions'
-  | 'archive_old';
+interface BulkOperationsPanelProps {
+  selectedVehicles: string[];
+  onSelectionChange: (vehicleIds: string[]) => void;
+  dealerId: string;
+  dealerKycStatus?: 'none' | 'basic' | 'full';
+  availableVehicles: Array<{
+    id: string;
+    registration_number: string;
+    make: string;
+    model: string;
+    year: number;
+    asking_price: number;
+    status: string;
+    branch_id: string;
+    exposure_mode: string;
+  }>;
+  availableBranches: Array<{
+    id: string;
+    name: string;
+    type: string;
+  }>;
+}
 
-type OperationConfig = {
-  new_status?: string;
-  new_inventory_type?: string;
-  adjustment_type?: 'percentage' | 'fixed';
-  adjustment_direction?: 'increase' | 'decrease';
-  adjustment_value?: number;
-  tags?: string;
-  action?: 'schedule_publish' | 'schedule_archive';
-  schedule_date?: string; // ISO datetime-local string
-  days_threshold?: number;
-};
+type BulkOperationType = 'publish' | 'transfer' | 'price_update' | 'export' | 'tag_update';
 
-type BulkOperationDef = {
-  id: BulkOperationId;
-  label: string;
-  icon: any;
-  description: string;
-  options: string[];
-};
+interface OperationState {
+  type: BulkOperationType | null;
+  isProcessing: boolean;
+  progress: number;
+  result: any;
+}
 
-const BULK_OPERATIONS: BulkOperationDef[] = [
-  {
-    id: 'change_status',
-    label: 'Change Status',
-    icon: ArrowUpDown,
-    description: 'Update status for multiple vehicles',
-    options: ['draft', 'live', 'archived', 'under_service']
-  },
-  {
-    id: 'change_inventory_type',
-    label: 'Change Inventory Type',
-    icon: Package,
-    description: 'Move vehicles between inventory types',
-    options: ['public', 'private', 'service', 'specialised']
-  },
-  {
-    id: 'adjust_pricing',
-    label: 'Bulk Price Adjustment',
-    icon: DollarSign,
-    description: 'Apply percentage increase/decrease to prices',
-    options: []
-  },
-  {
-    id: 'add_tags',
-    label: 'Add Tags',
-    icon: Tag,
-    description: 'Add tags to multiple vehicles',
-    options: []
-  },
-  {
-    id: 'schedule_actions',
-    label: 'Schedule Actions',
-    icon: Calendar,
-    description: 'Schedule future actions on vehicles',
-    options: []
-  },
-  {
-    id: 'archive_old',
-    label: 'Archive Old Listings',
-    icon: Archive,
-    description: 'Archive vehicles older than specified days',
-    options: []
-  }
-];
+export default function BulkOperationsPanel({
+  selectedVehicles,
+  onSelectionChange,
+  dealerId,
+  dealerKycStatus = 'none',
+  availableVehicles,
+  availableBranches
+}: BulkOperationsPanelProps) {
+  const [operationState, setOperationState] = useState<OperationState>({
+    type: null,
+    isProcessing: false,
+    progress: 0,
+    result: null
+  });
 
-export default function BulkOperationsPanel({ selectedVehicles, vehicles, onComplete }) {
-  const initialConfig: OperationConfig = {};
-  const [selectedOperation, setSelectedOperation] = useState<BulkOperationId | ''>('');
-  const [operationConfig, setOperationConfig] = useState<OperationConfig>(initialConfig);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState(null);
+  const [publishOptions, setPublishOptions] = useState({
+    exposureMode: 'masked' as 'masked' | 'public' | 'b2b'
+  });
+
+  const [transferOptions, setTransferOptions] = useState({
+    toBranchId: '',
+    assignDriver: false,
+    driverId: '',
+    checklistRequired: false,
+    notes: ''
+  });
+
+  const [priceOptions, setPriceOptions] = useState({
+    updateType: 'percentage' as 'percentage' | 'absolute' | 'fixed',
+    value: 0,
+    operation: 'increase' as 'increase' | 'decrease' | 'set',
+    respectApprovalBands: true
+  });
+
+  const [exportOptions, setExportOptions] = useState({
+    format: 'csv' as 'csv' | 'excel',
+    includeFields: [
+      'registration_number', 'make', 'model', 'year', 'asking_price',
+      'status', 'branch_id', 'exposure_mode'
+    ]
+  });
+
+  const [tagOptions, setTagOptions] = useState({
+    operation: 'add' as 'add' | 'remove' | 'replace',
+    tags: [] as string[]
+  });
+
+  const { checkFeatureAccess } = useDealerActivationSettings();
   const { toast } = useToast();
 
-  const selectedVehicleData = vehicles.filter((v: any) => selectedVehicles.has(v.id));
+  // Check if advanced bulk features are available
+  const hasAdvancedBulk = checkFeatureAccess('bulk_operations');
+  const hasDriverAssignment = checkFeatureAccess('logistics');
+  const hasApprovalBands = checkFeatureAccess('approval_workflows');
 
-  const handleOperationChange = (operationId: BulkOperationId) => {
-    setSelectedOperation(operationId);
-    setOperationConfig(initialConfig);
-    setResults(null);
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      onSelectionChange(availableVehicles.map(v => v.id));
+    } else {
+      onSelectionChange([]);
+    }
   };
 
-  const handleConfigChange = (key: keyof OperationConfig, value: OperationConfig[typeof key]) => {
-    setOperationConfig((prev) => ({ ...prev, [key]: value }));
+  const handleVehicleToggle = (vehicleId: string, checked: boolean) => {
+    if (checked) {
+      onSelectionChange([...selectedVehicles, vehicleId]);
+    } else {
+      onSelectionChange(selectedVehicles.filter(id => id !== vehicleId));
+    }
   };
 
-  const executeOperation = async () => {
-    if (!selectedOperation || selectedVehicles.size === 0) return;
-
-    setIsProcessing(true);
-    setProgress(0);
-    const results = { success: [], failed: [] };
+  const executeBulkOperation = async (operationType: BulkOperationType) => {
+    setOperationState({
+      type: operationType,
+      isProcessing: true,
+      progress: 0,
+      result: null
+    });
 
     try {
-      const totalVehicles = selectedVehicles.size;
-      let processed = 0;
+      let result;
 
-      for (const vehicleId of selectedVehicles) {
-        try {
-          await executeSingleOperation(vehicleId, selectedOperation, operationConfig);
-          results.success.push(vehicleId);
-        } catch (error) {
-          console.error(`Failed to process vehicle ${vehicleId}:`, error);
-          results.failed.push({ vehicleId, error: error.message });
-        }
-        
-        processed++;
-        setProgress(Math.round((processed / totalVehicles) * 100));
+      switch (operationType) {
+        case 'publish':
+          result = await bulkOperationsService.bulkPublish({
+            vehicleIds: selectedVehicles,
+            exposureMode: publishOptions.exposureMode,
+            dealerId,
+            dealerKycStatus
+          });
+          break;
+
+        case 'transfer':
+          result = await bulkOperationsService.bulkTransfer({
+            vehicleIds: selectedVehicles,
+            fromBranchId: availableVehicles.find(v => selectedVehicles.includes(v.id))?.branch_id || '',
+            toBranchId: transferOptions.toBranchId,
+            assignDriver: transferOptions.assignDriver,
+            driverId: transferOptions.driverId,
+            checklistRequired: transferOptions.checklistRequired,
+            notes: transferOptions.notes
+          });
+          break;
+
+        case 'price_update':
+          result = await bulkOperationsService.bulkPriceUpdate({
+            vehicleIds: selectedVehicles,
+            updateType: priceOptions.updateType,
+            value: priceOptions.value,
+            operation: priceOptions.operation,
+            respectApprovalBands: priceOptions.respectApprovalBands,
+            dealerId
+          });
+          break;
+
+        case 'export':
+          result = await bulkOperationsService.bulkExport({
+            filters: {},
+            includeFields: exportOptions.includeFields,
+            format: exportOptions.format,
+            dealerId
+          });
+          break;
+
+        case 'tag_update':
+          result = await bulkOperationsService.bulkTagUpdate({
+            vehicleIds: selectedVehicles,
+            tagOperation: tagOptions.operation,
+            tags: tagOptions.tags,
+            dealerId
+          });
+          break;
       }
 
-      setResults(results);
-      
-      toast({
-        title: "Bulk Operation Completed",
-        description: `Successfully processed ${results.success.length}/${totalVehicles} vehicles.`,
-        variant: results.failed.length > 0 ? "destructive" : "default"
-      });
+      setOperationState(prev => ({
+        ...prev,
+        isProcessing: false,
+        progress: 100,
+        result
+      }));
 
-      onComplete?.();
+      // Show success/error message
+      if (result.success) {
+        toast({
+          title: 'Bulk Operation Completed',
+          description: `Successfully processed ${result.successful} of ${result.processed} vehicles`,
+        });
+      } else {
+        toast({
+          title: 'Bulk Operation Partially Failed',
+          description: `${result.successful} successful, ${result.failed} failed`,
+          variant: 'destructive'
+        });
+      }
 
     } catch (error) {
+      console.error('Bulk operation failed:', error);
+      setOperationState(prev => ({
+        ...prev,
+        isProcessing: false,
+        result: { success: false, error: error.message }
+      }));
+
       toast({
-        title: "Bulk Operation Failed",
-        description: "An unexpected error occurred during processing.",
-        variant: "destructive"
+        title: 'Bulk Operation Failed',
+        description: error.message,
+        variant: 'destructive'
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const executeSingleOperation = async (vehicleId: string, operation: BulkOperationId, config: OperationConfig) => {
-    switch (operation) {
-      case 'change_status':
-        await Vehicle.update(vehicleId, { status: config.new_status });
-        break;
-        
-      case 'change_inventory_type':
-        await Vehicle.update(vehicleId, { inventory_type: config.new_inventory_type });
-        break;
-        
-      case 'adjust_pricing': {
-        const vehicle = vehicles.find((v: any) => v.id === vehicleId);
-        const currentAsking: number = Number(vehicle?.asking_price ?? 0);
-        const baseAdjustment: number = Number(config.adjustment_value ?? 0);
-        const adjustment = config.adjustment_type === 'percentage'
-          ? (currentAsking * baseAdjustment) / 100
-          : baseAdjustment;
-        const newPrice = (config.adjustment_direction ?? 'increase') === 'increase'
-          ? currentAsking + adjustment
-          : Math.max(0, currentAsking - adjustment);
-        await Vehicle.update(vehicleId, { asking_price: Math.round(newPrice) });
-        break;
-      }
-        
-      case 'add_tags': {
-        const currentTags = vehicles.find(v => v.id === vehicleId)?.tags || [];
-        const newTags = [...new Set([...currentTags, ...config.tags.split(',').map(t => t.trim())])];
-        await Vehicle.update(vehicleId, { tags: newTags });
-        break;
-      }
-        
-      case 'schedule_actions': {
-        // For now, just update the publish_at field
-        if (config.action === 'schedule_publish') {
-          await Vehicle.update(vehicleId, { 
-            publish_at: config.schedule_date,
-            status: 'draft' // Keep as draft until scheduled time
-          });
-        }
-        break;
-      }
-        
-      case 'archive_old': {
-        const created = vehicles.find((v: any) => v.id === vehicleId)?.created_date;
-        const createdMs = created ? new Date(created).getTime() : Date.now();
-        const nowMs = Date.now();
-        const daysOld = Math.floor((nowMs - createdMs) / (1000 * 60 * 60 * 24));
-        if (daysOld >= (config.days_threshold ?? Number.POSITIVE_INFINITY)) {
-          await Vehicle.update(vehicleId, { status: 'archived' });
-        }
-        break;
-      }
-        
-      default:
-        throw new Error(`Unknown operation: ${operation}`);
+  const getOperationIcon = (type: BulkOperationType) => {
+    switch (type) {
+      case 'publish': return publishOptions.exposureMode === 'public' ? <Eye /> : <EyeOff />;
+      case 'transfer': return <Truck />;
+      case 'price_update': return <DollarSign />;
+      case 'export': return <Download />;
+      case 'tag_update': return <Tag />;
+      default: return <Settings />;
     }
   };
 
-  const renderOperationConfig = () => {
-    const operation = BULK_OPERATIONS.find(op => op.id === selectedOperation);
-    if (!operation) return null;
-
-    switch (selectedOperation) {
-      case 'change_status':
-        return (
-          <div className="space-y-3">
-            <Label>New Status</Label>
-            <Select 
-              value={operationConfig.new_status || ''} 
-              onValueChange={(value) => handleConfigChange('new_status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {operation.options.map(option => (
-                  <SelectItem key={option} value={option}>
-                    {option.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-        
-      case 'change_inventory_type':
-        return (
-          <div className="space-y-3">
-            <Label>New Inventory Type</Label>
-            <Select 
-              value={operationConfig.new_inventory_type || ''} 
-              onValueChange={(value) => handleConfigChange('new_inventory_type', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select inventory type" />
-              </SelectTrigger>
-              <SelectContent>
-                {operation.options.map(option => (
-                  <SelectItem key={option} value={option}>
-                    {option.replace(/\b\w/g, l => l.toUpperCase())}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-        
-      case 'adjust_pricing':
-        return (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Adjustment Type</Label>
-                <Select 
-                  value={operationConfig.adjustment_type || 'percentage'} 
-                  onValueChange={(value) => handleConfigChange('adjustment_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Direction</Label>
-                <Select 
-                  value={operationConfig.adjustment_direction || 'increase'} 
-                  onValueChange={(value) => handleConfigChange('adjustment_direction', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="increase">Increase</SelectItem>
-                    <SelectItem value="decrease">Decrease</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>
-                Adjustment Value ({operationConfig.adjustment_type === 'percentage' ? '%' : '₹'})
-              </Label>
-              <Input
-                type="number"
-                placeholder={operationConfig.adjustment_type === 'percentage' ? 'e.g., 5' : 'e.g., 50000'}
-                value={operationConfig.adjustment_value || ''}
-                onChange={(e) => handleConfigChange('adjustment_value', parseFloat(e.target.value))}
-              />
-            </div>
-          </div>
-        );
-        
-      case 'add_tags':
-        return (
-          <div className="space-y-3">
-            <Label>Tags to Add</Label>
-            <Input
-              placeholder="Enter tags separated by commas"
-              value={operationConfig.tags || ''}
-              onChange={(e) => handleConfigChange('tags', e.target.value)}
-            />
-            <p className="text-sm text-slate-500">
-              Example: premium, certified, warranty-available
-            </p>
-          </div>
-        );
-        
-      case 'schedule_actions':
-        return (
-          <div className="space-y-3">
-            <Label>Action to Schedule</Label>
-            <Select 
-              value={operationConfig.action || ''} 
-              onValueChange={(value) => handleConfigChange('action', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select action" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="schedule_publish">Schedule Publish</SelectItem>
-                <SelectItem value="schedule_archive">Schedule Archive</SelectItem>
-              </SelectContent>
-            </Select>
-            {operationConfig.action && (
-              <>
-                <Label>Schedule Date & Time</Label>
-                <Input
-                  type="datetime-local"
-                  value={operationConfig.schedule_date || ''}
-                  onChange={(e) => handleConfigChange('schedule_date', e.target.value)}
-                />
-              </>
-            )}
-          </div>
-        );
-        
-      case 'archive_old':
-        return (
-          <div className="space-y-3">
-            <Label>Archive vehicles older than (days)</Label>
-            <Input
-              type="number"
-              placeholder="e.g., 60"
-              value={operationConfig.days_threshold || ''}
-              onChange={(e) => handleConfigChange('days_threshold', parseInt(e.target.value))}
-            />
-            <p className="text-sm text-slate-500">
-              Vehicles older than this number of days will be archived
-            </p>
-          </div>
-        );
-        
-      default:
-        return null;
+  const getOperationTitle = (type: BulkOperationType) => {
+    switch (type) {
+      case 'publish': return 'Bulk Publish';
+      case 'transfer': return 'Bulk Transfer';
+      case 'price_update': return 'Bulk Price Update';
+      case 'export': return 'Bulk Export';
+      case 'tag_update': return 'Bulk Tag Update';
+      default: return 'Bulk Operation';
     }
   };
 
-  const canExecute = () => {
-    if (!selectedOperation || selectedVehicles.size === 0) return false;
-    
-    switch (selectedOperation) {
-      case 'change_status':
-        return !!operationConfig.new_status;
-      case 'change_inventory_type':
-        return !!operationConfig.new_inventory_type;
-      case 'adjust_pricing':
-        return operationConfig.adjustment_value > 0;
-      case 'add_tags':
-        return !!operationConfig.tags?.trim();
-      case 'schedule_actions':
-        return !!operationConfig.action && !!operationConfig.schedule_date;
-      case 'archive_old':
-        return operationConfig.days_threshold > 0;
-      default:
-        return false;
-    }
-  };
+  if (selectedVehicles.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Vehicles Selected</h3>
+          <p className="text-gray-600">
+            Select vehicles from the list above to perform bulk operations
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Edit3 className="w-5 h-5" />
-          Bulk Operations
-          <Badge variant="secondary">{selectedVehicles.size} selected</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Operation Selection */}
-        <div>
-          <Label className="text-base font-medium">Choose Operation</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-            {BULK_OPERATIONS.map(operation => {
-              const Icon = operation.icon;
-              return (
-                <button
-                  key={operation.id}
-                  type="button"
-                  onClick={() => handleOperationChange(operation.id as BulkOperationId)}
-                  className={`p-3 text-left border rounded-lg transition-all hover:border-blue-300 ${
-                    selectedOperation === operation.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Icon className="w-4 h-4" />
-                    <span className="font-medium">{operation.label}</span>
+    <div className="space-y-6">
+      {/* Selection Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            {selectedVehicles.length} Vehicle{selectedVehicles.length !== 1 ? 's' : ''} Selected
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 mb-4">
+            <Checkbox
+              checked={selectedVehicles.length === availableVehicles.length}
+              onCheckedChange={handleSelectAll}
+            />
+            <Label>Select All ({availableVehicles.length})</Label>
+          </div>
+
+          {/* Selected Vehicles List */}
+          <div className="max-h-32 overflow-y-auto space-y-2">
+            {availableVehicles
+              .filter(vehicle => selectedVehicles.includes(vehicle.id))
+              .map(vehicle => (
+                <div key={vehicle.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                  <Checkbox
+                    checked={true}
+                    onCheckedChange={(checked) => handleVehicleToggle(vehicle.id, checked as boolean)}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {vehicle.registration_number} - {vehicle.make} {vehicle.model} ({vehicle.year})
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      ₹{vehicle.asking_price?.toLocaleString()} • {vehicle.status}
+                    </div>
                   </div>
-                  <p className="text-sm text-slate-500">{operation.description}</p>
-                </button>
-              );
-            })}
+                  <Badge variant="outline">{vehicle.exposure_mode}</Badge>
+                </div>
+              ))}
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Operation Configuration */}
-        {selectedOperation && (
-          <div className="border-t pt-6">
-            <Label className="text-base font-medium">Configure Operation</Label>
-            <div className="mt-3">
-              {renderOperationConfig()}
+      {/* Bulk Operations */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Publish/Unpublish */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              {getOperationIcon('publish')}
+              <span className="font-medium">Publish</span>
+              <span className="text-xs text-gray-500">Change visibility</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Publish Vehicles</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="exposure_mode">Exposure Mode</Label>
+                <Select
+                  value={publishOptions.exposureMode}
+                  onValueChange={(value: any) => setPublishOptions(prev => ({ ...prev, exposureMode: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="masked">Masked (Price on Request)</SelectItem>
+                    <SelectItem value="public">Public (Full Details)</SelectItem>
+                    <SelectItem value="b2b">B2B (Dealer Only)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {publishOptions.exposureMode === 'public' && dealerKycStatus !== 'full' && (
+                <Alert>
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription>
+                    Public listings will be queued until Full KYC completion.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={() => executeBulkOperation('publish')}
+                disabled={operationState.isProcessing}
+                className="w-full"
+              >
+                {operationState.isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Publish {selectedVehicles.length} Vehicles
+              </Button>
             </div>
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
 
-        {/* Progress */}
-        {isProcessing && (
-          <div className="border-t pt-6">
-            <div className="flex justify-between text-sm mb-2">
-              <span>Processing vehicles...</span>
-              <span>{progress}%</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-        )}
-
-        {/* Results */}
-        {results && (
-          <div className="border-t pt-6 space-y-3">
-            <Label className="text-base font-medium">Operation Results</Label>
-            
-            {results.success.length > 0 && (
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="w-4 h-4" />
-                <AlertDescription className="text-green-700">
-                  Successfully processed {results.success.length} vehicle(s)
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {results.failed.length > 0 && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertTriangle className="w-4 h-4" />
-                <AlertDescription className="text-red-700">
-                  Failed to process {results.failed.length} vehicle(s):
-                  <ul className="mt-2 list-disc list-inside text-sm">
-                    {results.failed.slice(0, 5).map((failure, index) => (
-                      <li key={index}>{failure.error}</li>
+        {/* Transfer */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              {getOperationIcon('transfer')}
+              <span className="font-medium">Transfer</span>
+              <span className="text-xs text-gray-500">Move between branches</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Transfer Vehicles</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="to_branch">Destination Branch</Label>
+                <Select
+                  value={transferOptions.toBranchId}
+                  onValueChange={(value) => setTransferOptions(prev => ({ ...prev, toBranchId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableBranches.map(branch => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name} ({branch.type})
+                      </SelectItem>
                     ))}
-                    {results.failed.length > 5 && (
-                      <li>...and {results.failed.length - 5} more</li>
-                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasDriverAssignment && (
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="assign_driver"
+                      checked={transferOptions.assignDriver}
+                      onCheckedChange={(checked) =>
+                        setTransferOptions(prev => ({ ...prev, assignDriver: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="assign_driver">Assign Driver</Label>
+                  </div>
+
+                  {transferOptions.assignDriver && (
+                    <div className="space-y-2">
+                      <Label htmlFor="driver_id">Driver ID</Label>
+                      <Input
+                        id="driver_id"
+                        value={transferOptions.driverId}
+                        onChange={(e) => setTransferOptions(prev => ({ ...prev, driverId: e.target.value }))}
+                        placeholder="Enter driver ID"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="checklist_required"
+                      checked={transferOptions.checklistRequired}
+                      onCheckedChange={(checked) =>
+                        setTransferOptions(prev => ({ ...prev, checklistRequired: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="checklist_required">Require Photo Checklist</Label>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="transfer_notes">Notes (Optional)</Label>
+                <Input
+                  id="transfer_notes"
+                  value={transferOptions.notes}
+                  onChange={(e) => setTransferOptions(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Transfer notes..."
+                />
+              </div>
+
+              <Button
+                onClick={() => executeBulkOperation('transfer')}
+                disabled={operationState.isProcessing || !transferOptions.toBranchId}
+                className="w-full"
+              >
+                {operationState.isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Truck className="w-4 h-4 mr-2" />
+                )}
+                Transfer {selectedVehicles.length} Vehicles
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Price Update */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              {getOperationIcon('price_update')}
+              <span className="font-medium">Price Update</span>
+              <span className="text-xs text-gray-500">Change pricing</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Price Update</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="update_type">Update Type</Label>
+                  <Select
+                    value={priceOptions.updateType}
+                    onValueChange={(value: any) => setPriceOptions(prev => ({ ...prev, updateType: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage</SelectItem>
+                      <SelectItem value="absolute">Absolute Amount</SelectItem>
+                      <SelectItem value="fixed">Fixed Price</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="operation">Operation</Label>
+                  <Select
+                    value={priceOptions.operation}
+                    onValueChange={(value: any) => setPriceOptions(prev => ({ ...prev, operation: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="increase">Increase</SelectItem>
+                      <SelectItem value="decrease">Decrease</SelectItem>
+                      <SelectItem value="set">Set To</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="value">
+                  {priceOptions.updateType === 'percentage' ? 'Percentage (%)' :
+                   priceOptions.updateType === 'absolute' ? 'Amount (₹)' : 'New Price (₹)'}
+                </Label>
+                <Input
+                  id="value"
+                  type="number"
+                  value={priceOptions.value}
+                  onChange={(e) => setPriceOptions(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
+                  placeholder={priceOptions.updateType === 'percentage' ? '10' : '50000'}
+                />
+              </div>
+
+              {hasApprovalBands && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="respect_bands"
+                    checked={priceOptions.respectApprovalBands}
+                    onCheckedChange={(checked) =>
+                      setPriceOptions(prev => ({ ...prev, respectApprovalBands: checked as boolean }))
+                    }
+                  />
+                  <Label htmlFor="respect_bands">Require approval for price changes outside bands</Label>
+                </div>
+              )}
+
+              <Button
+                onClick={() => executeBulkOperation('price_update')}
+                disabled={operationState.isProcessing || priceOptions.value <= 0}
+                className="w-full"
+              >
+                {operationState.isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <DollarSign className="w-4 h-4 mr-2" />
+                )}
+                Update Prices for {selectedVehicles.length} Vehicles
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Export */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              {getOperationIcon('export')}
+              <span className="font-medium">Export</span>
+              <span className="text-xs text-gray-500">Download data</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Vehicles</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="export_format">Export Format</Label>
+                <Select
+                  value={exportOptions.format}
+                  onValueChange={(value: any) => setExportOptions(prev => ({ ...prev, format: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="csv">CSV</SelectItem>
+                    <SelectItem value="excel">Excel</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={() => executeBulkOperation('export')}
+                disabled={operationState.isProcessing}
+                className="w-full"
+              >
+                {operationState.isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Export {selectedVehicles.length} Vehicles
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Tag Management */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              {getOperationIcon('tag_update')}
+              <span className="font-medium">Tags</span>
+              <span className="text-xs text-gray-500">Manage tags</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Tag Management</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="tag_operation">Operation</Label>
+                <Select
+                  value={tagOptions.operation}
+                  onValueChange={(value: any) => setTagOptions(prev => ({ ...prev, operation: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="add">Add Tags</SelectItem>
+                    <SelectItem value="remove">Remove Tags</SelectItem>
+                    <SelectItem value="replace">Replace All Tags</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Input
+                  id="tags"
+                  value={tagOptions.tags.join(', ')}
+                  onChange={(e) => setTagOptions(prev => ({
+                    ...prev,
+                    tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
+                  }))}
+                  placeholder="urgent, featured, low_mileage"
+                />
+              </div>
+
+              <Button
+                onClick={() => executeBulkOperation('tag_update')}
+                disabled={operationState.isProcessing || tagOptions.tags.length === 0}
+                className="w-full"
+              >
+                {operationState.isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Tag className="w-4 h-4 mr-2" />
+                )}
+                Update Tags for {selectedVehicles.length} Vehicles
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Operation Progress */}
+      {operationState.isProcessing && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <h3 className="font-medium">
+                  Processing {getOperationTitle(operationState.type!)}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {operationState.progress}% complete
+                </p>
+              </div>
+            </div>
+            <Progress value={operationState.progress} className="w-full" />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Operation Results */}
+      {operationState.result && !operationState.isProcessing && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {operationState.result.success ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              )}
+              Operation Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{operationState.result.successful}</div>
+                <div className="text-sm text-gray-600">Successful</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{operationState.result.failed}</div>
+                <div className="text-sm text-gray-600">Failed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{operationState.result.processed}</div>
+                <div className="text-sm text-gray-600">Total</div>
+              </div>
+            </div>
+
+            {/* Warnings */}
+            {operationState.result.warnings?.length > 0 && (
+              <Alert className="mb-4">
+                <AlertCircle className="w-4 h-4" />
+                <AlertDescription>
+                  <strong>Warnings:</strong>
+                  <ul className="mt-2 list-disc list-inside">
+                    {operationState.result.warnings.map((warning: any, index: number) => (
+                      <li key={index}>{warning.warning}</li>
+                    ))}
                   </ul>
                 </AlertDescription>
               </Alert>
             )}
-          </div>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-between pt-4 border-t">
-          <div className="text-sm text-slate-500">
-            {selectedVehicleData.length > 0 && (
-              <span>
-                Selected: {selectedVehicleData.map(v => `${v.make} ${v.model}`).join(', ').slice(0, 50)}
-                {selectedVehicleData.length > 2 ? '...' : ''}
-              </span>
+            {/* Errors */}
+            {operationState.result.errors?.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="w-4 h-4" />
+                <AlertDescription>
+                  <strong>Errors:</strong>
+                  <ul className="mt-2 list-disc list-inside">
+                    {operationState.result.errors.map((error: any, index: number) => (
+                      <li key={index}>{error.error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
-          <Button
-            onClick={executeOperation}
-            disabled={!canExecute() || isProcessing}
-            className="min-w-[120px]"
-          >
-            {isProcessing ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing</>
-            ) : (
-              'Execute Operation'
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

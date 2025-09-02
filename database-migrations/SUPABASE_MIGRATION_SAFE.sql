@@ -324,8 +324,14 @@ CREATE POLICY "Dealers can view own data" ON dealers
 CREATE POLICY "Dealers can update own data" ON dealers
   FOR UPDATE USING (created_by = auth.jwt() ->> 'email');
 
+-- More permissive policy for dealer creation - allows authenticated users to create dealers
 CREATE POLICY "Dealers can insert own data" ON dealers
-  FOR INSERT WITH CHECK (created_by = auth.jwt() ->> 'email');
+  FOR INSERT WITH CHECK (
+    -- Allow if user is authenticated and created_by matches their email
+    (auth.role() = 'authenticated' AND created_by = auth.jwt() ->> 'email')
+    -- OR allow if user is authenticated and no created_by is set (fallback)
+    OR (auth.role() = 'authenticated' AND created_by IS NULL)
+  );
 
 -- Vehicles
 CREATE POLICY "Dealers can manage own vehicles" ON vehicles

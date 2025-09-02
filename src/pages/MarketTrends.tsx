@@ -14,6 +14,7 @@ import TrendingKeywords from '@/components/market-trends/TrendingKeywords';
 import SpecialisedSegment from '@/components/market-trends/SpecialisedSegment';
 import AIForecastCard from '@/components/market-trends/AIForecastCard';
 
+
 // --- MOCK DATA GENERATION ---
 const getMockMarketTrendsData = () => {
   return {

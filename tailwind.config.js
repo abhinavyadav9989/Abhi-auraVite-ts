@@ -84,6 +84,15 @@ module.exports = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
+  		},
+  		utilities: {
+  			'.scrollbar-hide': {
+  				'-ms-overflow-style': 'none',
+  				'scrollbar-width': 'none',
+  				'&::-webkit-scrollbar': {
+  					display: 'none'
+  				}
+  			}
   		}
   	}
   },

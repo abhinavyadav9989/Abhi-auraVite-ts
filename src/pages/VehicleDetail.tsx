@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Vehicle } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Transaction } from '@/api/entities';
 import { Shortlist } from '@/api/entities';
 import { VehicleInspection } from '@/api/entities';
@@ -16,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatDate, formatKilometers, ensureArray, safeGet } from '@/components/formatters';
+import { usePermissions } from '@/components/security/PermissionGuard';
 import {
   ArrowLeft, Edit, Share2, Handshake, Loader2, Ban, Star, ShieldCheck,
   IndianRupee, MapPin, Calendar, Fuel, Settings, Users, Palette, Gauge, Phone, MessageCircle,
@@ -31,7 +33,7 @@ import FullScreenGallery from '@/components/vehicle-view/FullScreenGallery';
 import MarketplaceMetrics from '@/components/vehicle-view/MarketplaceMetrics';
 import ShareModal from '@/components/vehicle-view/ShareModal';
 import OfferModal from '@/components/marketplace/OfferModal';
-import InspectorPanel from '@/components/inventory/InspectorPanel';
+// InspectorPanel removed during cleanup - will be replaced with new inspection system
 
 const CATEGORY_FIELD_LABELS = {
     engine_displacement: 'Engine (cc)',
@@ -58,7 +60,7 @@ export default function VehicleDetail() {
   // Core state
   const [vehicle, setVehicle] = useState(null);
   const [dealer, setDealer] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<(SupabaseUser & { role?: string }) | null>(null);
   const [currentDealer, setCurrentDealer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +69,7 @@ export default function VehicleDetail() {
   
   // Inspections state
   const [inspections, setInspections] = useState([]);
-  const [showInspectorPanel, setShowInspectorPanel] = useState(false);
+  // const [showInspectorPanel, setShowInspectorPanel] = useState(false); // Temporarily disabled
   
   // Permissions & security
   const [permissions, setPermissions] = useState({ 
@@ -78,6 +80,7 @@ export default function VehicleDetail() {
     canViewFinancials: false,
     canInspect: false
   });
+  const { hasPermission } = usePermissions();
   
   // UI state
   const [activeTab, setActiveTab] = useState('overview');
@@ -109,7 +112,7 @@ export default function VehicleDetail() {
     try {
       setIsLoading(true);
       
-      const [currentUser] = await Promise.all([User.me().catch(() => null)]);
+      const [currentUser] = await Promise.all([User.meWithRole().catch(() => null)]);
       
       const vehicleData = await Vehicle.get(vehicleId);
       if (!vehicleData) {
@@ -194,7 +197,7 @@ export default function VehicleDetail() {
       const related = await Vehicle.filter({ make: vehicleData.make, status: 'live' });
       const pruned = (related || []).filter(v => v.id !== vehicleData.id);
       // Optional: sort newest first and limit 4
-      const sorted = pruned.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      const sorted = pruned.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setRelatedVehicles(sorted.slice(0, 4));
     } catch (error) { console.error('Error loading related vehicles:', error); }
   };
@@ -202,7 +205,7 @@ export default function VehicleDetail() {
   const loadDealHistory = async (vehicleData) => {
     try {
       const deals = await Transaction.filter({ vehicle_id: vehicleData.id });
-      const sortedDeals = (deals || []).sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      const sortedDeals = (deals || []).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setDealHistory(sortedDeals);
     } catch (error) { console.error('Error loading deal history:', error); }
   };
@@ -270,7 +273,7 @@ export default function VehicleDetail() {
   };
 
   const handleInspectionComplete = (inspectionData) => {
-    setShowInspectorPanel(false);
+    // setShowInspectorPanel(false); // Temporarily disabled
     loadInspections(vehicle.id);
     toast({ title: "Inspection Completed", description: "Vehicle inspection has been recorded successfully." });
   };
@@ -305,7 +308,7 @@ export default function VehicleDetail() {
         <div className="text-center py-8">
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-500">No inspection reports available.</p>
-          {permissions.canInspect && <Button onClick={() => setShowInspectorPanel(true)} className="mt-4">Start New Inspection</Button>}
+          {/* {permissions.canInspect && <Button onClick={() => setShowInspectorPanel(true)} className="mt-4">Start New Inspection</Button>} */}
         </div>
       );
     }
@@ -314,7 +317,7 @@ export default function VehicleDetail() {
       <div className="space-y-4">
         {permissions.canInspect && (
           <div className="mb-4 text-right">
-            <Button onClick={() => setShowInspectorPanel(true)}>New Inspection</Button>
+            {/* <Button onClick={() => setShowInspectorPanel(true)}>New Inspection</Button> */}
           </div>
         )}
         
@@ -434,9 +437,23 @@ export default function VehicleDetail() {
               <div className="flex items-center gap-1 text-sm text-slate-500"><Eye className="w-4 h-4" />{viewCount} views</div>
               <Button variant="outline" size="sm" onClick={handleToggleShortlist} className={isInShortlist ? 'text-red-500 border-red-300' : ''}><Heart className={`w-4 h-4 mr-2 ${isInShortlist ? 'fill-current' : ''}`} />{isInShortlist ? 'Saved' : 'Save'}</Button>
               <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)}><Share2 className="w-4 h-4 mr-2" />Share</Button>
-              {permissions.canInspect && <Button variant="outline" size="sm" onClick={() => setShowInspectorPanel(true)} className="gap-2"><FileText className="w-4 h-4" />Inspect</Button>}
-              {permissions.canEdit && <Link to={createPageUrl(`EditVehicle?id=${vehicle.id}`)}><Button variant="outline" size="sm" className="gap-2"><Edit className="w-4 h-4" />Edit</Button></Link>}
-              {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="gap-2"><Handshake className="w-4 h-4" />Make Offer</Button>}
+                                              {permissions.canInspect && (
+                  <Button variant="outline" size="sm" className="gap-2" disabled>
+                    <FileText className="w-4 h-4" />Inspect (Coming Soon)
+                  </Button>
+                )}
+                {permissions.canEdit && (
+                  <Link to={createPageUrl(`EditVehicle?id=${vehicle.id}`)}>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Edit className="w-4 h-4" />Edit
+                    </Button>
+                  </Link>
+                )}
+                {permissions.canMakeOffer && (
+                  <Button onClick={() => setShowOfferModal(true)} className="gap-2">
+                    <Handshake className="w-4 h-4" />Make Offer
+                  </Button>
+                )}
             </div>
           </div>
         </div>
@@ -612,15 +629,13 @@ export default function VehicleDetail() {
             <TabsContent value="history" className="p-6"><div className="text-center py-8"><History className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">History tracking feature coming soon.</p></div></TabsContent>
             
             <TabsContent value="analytics" className="p-6">
-              {permissions.canViewFinancials ? (
-                <MarketplaceMetrics viewCount={viewCount} isOwner={permissions.isOwner} />
-              ) : (
-                <div className="text-center py-12">
-                  <AlertTriangle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-600 mb-2">Access Restricted</h3>
-                  <p className="text-slate-500">Analytics are only available to vehicle owners and administrators.</p>
-                </div>
-              )}
+                    {permissions.canViewFinancials ? (
+        <MarketplaceMetrics viewCount={viewCount} isOwner={permissions.isOwner} />
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-slate-500">Analytics data not available</p>
+        </div>
+      )}
             </TabsContent>
           </Tabs>
         </Card>
@@ -670,7 +685,8 @@ export default function VehicleDetail() {
       )}
       {showShareModal && <ShareModal vehicle={vehicle} onClose={() => setShowShareModal(false)} />}
       {showEMICalculator && <EMICalculator vehiclePrice={vehicle?.asking_price || 0} onClose={() => setShowEMICalculator(false)} />}
-      {showInspectorPanel && (
+      {/* Inspection Panel - Temporarily disabled during component cleanup */}
+      {/* {showInspectorPanel && (
         <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
           <div className="min-h-screen px-4 py-8 flex items-center justify-center">
             <div className="max-w-4xl mx-auto w-full">
@@ -686,7 +702,7 @@ export default function VehicleDetail() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

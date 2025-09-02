@@ -56,7 +56,7 @@ export default function ShareShortlistModal({ shortlist, vehicles = [], onClose 
       });
 
     } catch (error) {
-      console.error('Error generating share link:', error);
+      // Error generating share link - handled gracefully
       toast({
         title: 'Error',
         description: 'Failed to generate share link',

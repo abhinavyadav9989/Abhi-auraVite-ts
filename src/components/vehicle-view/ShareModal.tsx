@@ -76,7 +76,7 @@ export default function ShareModal({ vehicle, onClose }) {
                 <Checkbox 
                   id="hidePrice" 
                   checked={hidePrice}
-                  onCheckedChange={setHidePrice}
+                  onCheckedChange={(checked) => setHidePrice(checked === true)}
                 />
                 <Label htmlFor="hidePrice" className="text-sm">
                   Hide price in shared link

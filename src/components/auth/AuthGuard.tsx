@@ -78,30 +78,18 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           if (location.pathname === '/OnboardingWizard') {
             console.log('AuthGuard - User on OnboardingWizard, checking if they should stay here...');
             
-            // If user metadata shows completed but they're on OnboardingWizard, clear the metadata
-            if (hasOnboardingCompleted || hasDealerProfileCreated) {
-              console.log('AuthGuard - User metadata shows completed but on OnboardingWizard, clearing metadata...');
-              try {
-                await supabase.auth.updateUser({
-                  data: {
-                    onboarding_completed: false,
-                    dealer_profile_created: false,
-                    dealer_id: null
-                  }
-                });
-                console.log('AuthGuard - User metadata cleared successfully');
-                // Let them stay on OnboardingWizard
-                setOnboardingStatus('incomplete');
-                return;
-              } catch (clearError) {
-                console.error('AuthGuard - Error clearing user metadata:', clearError);
-              }
+            // Only clear metadata if onboarding is actually incomplete
+            // Don't clear just because user is on OnboardingWizard page
+            if (!hasOnboardingCompleted && !hasDealerProfileCreated) {
+              console.log('AuthGuard - User metadata shows incomplete onboarding, allowing to stay on OnboardingWizard');
+              setOnboardingStatus('incomplete');
+              return;
+            } else {
+              console.log('AuthGuard - User metadata shows completed onboarding, but on OnboardingWizard - this might be a redirect issue');
+              // Don't clear metadata, let the OnboardingWizard component handle the redirect
+              setOnboardingStatus('completed');
+              return;
             }
-            
-            // If onboarding is not completed, let them stay on OnboardingWizard
-            console.log('AuthGuard - Onboarding not completed, allowing user to stay on OnboardingWizard');
-            setOnboardingStatus('incomplete');
-            return;
           }
           
           // For other public routes (like /Authentication), redirect based on onboarding status
@@ -149,13 +137,21 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         
         // If user metadata shows onboarding is complete, verify by checking dealer profile
         if (hasOnboardingCompleted && hasDealerProfileCreated) {
-          // Double-check by verifying dealer profile exists
-          const dealerProfiles = await Dealer.filter({ created_by: user.email });
+          // Double-check by verifying dealer profile exists (search by both created_by and email)
+          let dealerProfiles = await Dealer.filter({ created_by: user.email });
+
+          // If no dealers found by created_by, try by email
+          if (dealerProfiles.length === 0) {
+            console.log('AuthGuard - No dealers found by created_by, checking by email...');
+            dealerProfiles = await Dealer.filter({ email: user.email });
+          }
+
           const hasDealerProfile = dealerProfiles.length > 0;
-          
+
           console.log('AuthGuard - Dealer profile check:', {
             dealerProfilesCount: dealerProfiles.length,
-            hasDealerProfile
+            hasDealerProfile,
+            searchMethod: dealerProfiles.length > 0 ? 'created_by' : 'email'
           });
           
           if (hasDealerProfile) {
@@ -169,8 +165,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         console.log('AuthGuard - Checking more thoroughly...');
         const currentUser = await User.me();
         
-        // Check if user has a dealer profile
-        const dealerProfiles = await Dealer.filter({ created_by: currentUser.email });
+        // Check if user has a dealer profile (search by both created_by and email)
+        let dealerProfiles = await Dealer.filter({ created_by: currentUser.email });
+
+        // If no dealers found by created_by, try by email
+        if (dealerProfiles.length === 0) {
+          dealerProfiles = await Dealer.filter({ email: currentUser.email });
+        }
+
         const hasDealerProfile = dealerProfiles.length > 0;
         
         // Progressive Disclosure: Check for minimal profile completion

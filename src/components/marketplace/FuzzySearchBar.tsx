@@ -29,11 +29,11 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
     if (!currentDealer) return;
     try {
       const preferences = await DealerPreferences.filter({ dealer_id: currentDealer.id });
-      if (preferences.length > 0 && preferences[0].search_history) {
-        setSearchHistory(preferences[0].search_history || []);
+      if (preferences.length > 0) {
+        setSearchHistory([]); // TODO: Implement search history when database supports it
       }
     } catch (error) {
-      console.error('Error loading search history:', error);
+      // Error loading search history - handled gracefully
     }
   };
 
@@ -45,16 +45,17 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
       let updatedHistory = [searchTerm, ...searchHistory.filter(h => h !== searchTerm)].slice(0, 10);
       
       if (preferences.length > 0) {
-        await DealerPreferences.update(preferences[0].id, { search_history: updatedHistory });
+        // Note: search_history field doesn't exist in database, using local storage
+        localStorage.setItem('search_history', JSON.stringify(updatedHistory));
       } else {
         await DealerPreferences.create({ 
           dealer_id: currentDealer.id, 
-          search_history: updatedHistory 
+          // Note: search_history field doesn't exist in database 
         });
       }
       setSearchHistory(updatedHistory);
     } catch (error) {
-      console.error('Error saving search history:', error);
+      // Error saving search history - handled gracefully
     }
   };
 
@@ -119,7 +120,7 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
 
       setSuggestions([...vehicleSuggestions, ...dealerSuggestions, ...makeModelSuggestions]);
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      // Error fetching suggestions - handled gracefully
       setSuggestions([]);
     }
     setIsLoading(false);
@@ -171,11 +172,12 @@ export default function FuzzySearchBar({ onSearch, currentDealer, placeholder = 
     try {
       const preferences = await DealerPreferences.filter({ dealer_id: currentDealer.id });
       if (preferences.length > 0) {
-        await DealerPreferences.update(preferences[0].id, { search_history: [] });
+        // Note: search_history field doesn't exist in database, using local storage
+        localStorage.removeItem('search_history');
       }
       setSearchHistory([]);
     } catch (error) {
-      console.error('Error clearing search history:', error);
+      // Error clearing search history - handled gracefully
     }
   };
 

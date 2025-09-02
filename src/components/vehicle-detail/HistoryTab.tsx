@@ -58,7 +58,7 @@ export default function HistoryTab({ vehicleId }) {
     setIsLoading(true);
     try {
       const logs = await AuditLog.filter({ target_id: vehicleId });
-      setActivities((logs as any[]).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
+              setActivities((logs as any[]).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     } catch (error) {
       console.error("Failed to load history: -", error);
     } finally {
@@ -104,12 +104,12 @@ export default function HistoryTab({ vehicleId }) {
                       </div>
                       <p className="text-sm text-slate-600 mb-1">{activity.details}</p>
                       <p className="text-xs text-slate-500">
-                        {formatDistanceToNow(new Date(activity.created_date), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                       </p>
                     </div>
 
                     <div className="text-xs text-slate-400">
-                      {format(new Date(activity.created_date), 'MMM d, HH:mm')}
+                      {format(new Date(activity.created_at), 'MMM d, HH:mm')}
                     </div>
                   </div>
                 );

@@ -34,6 +34,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
+
 import DealRow from "../components/deals/DealRow";
 import BulkActionBar from "../components/deals/BulkActionBar";
 import DealsFilters from "../components/deals/DealsFilters";
@@ -278,136 +279,136 @@ export default function Deals() {
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">My Deals</h1>
-            <p className="text-slate-600 mt-1">
-              Track and manage all your transactions
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={refreshDealsData}
-              className="gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </Button>
-            <Link to={createPageUrl("Marketplace")}>
-              <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
-                <Search className="w-4 h-4" />
-                Find Vehicles
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Search by registration, dealer name, transaction ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">My Deals</h1>
+              <p className="text-slate-600 mt-1">
+                Track and manage all your transactions
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
               <Button 
                 variant="outline" 
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={refreshDealsData}
                 className="gap-2"
               >
-                <Filter className="w-4 h-4" />
-                Filters
+                <RefreshCw className="w-4 h-4" />
+                Refresh
               </Button>
+              <Link to={createPageUrl("Marketplace")}>
+                <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+                  <Search className="w-4 h-4" />
+                  Find Vehicles
+                </Button>
+              </Link>
             </div>
-            
-            {showFilters && (
-              <div className="mt-4 pt-4 border-t">
-                <DealsFilters 
-                  filters={filters}
-                  setFilters={setFilters}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Status Tabs */}
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-7">
+          {/* Search and Filters */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search by registration, dealer name, transaction ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="gap-2"
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                </Button>
+              </div>
+              
+              {showFilters && (
+                <div className="mt-4 pt-4 border-t">
+                  <DealsFilters 
+                    filters={filters}
+                    setFilters={setFilters}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Status Tabs */}
+          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+            <TabsList className="grid w-full grid-cols-7">
+              {STATUS_TABS.map(tab => (
+                <TabsTrigger key={tab.id} value={tab.id} className="relative">
+                  {tab.label}
+                  {statusCounts[tab.id] > 0 && (
+                    <Badge 
+                      variant="secondary" 
+                      className="ml-2 bg-blue-100 text-blue-700 text-xs"
+                    >
+                      {statusCounts[tab.id]}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
             {STATUS_TABS.map(tab => (
-              <TabsTrigger key={tab.id} value={tab.id} className="relative">
-                {tab.label}
-                {statusCounts[tab.id] > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-2 bg-blue-100 text-blue-700 text-xs"
-                  >
-                    {statusCounts[tab.id]}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+              <TabsContent key={tab.id} value={tab.id}>
+                <div className="space-y-4">
+                  {/* Bulk Actions */}
+                  {selectedDeals.size > 0 && (
+                    <BulkActionBar
+                      selectedCount={selectedDeals.size}
+                      onArchive={handleBulkArchive}
+                      onExport={handleExportPDF}
+                      onClear={() => setSelectedDeals(new Set())}
+                    />
+                  )}
 
-          {STATUS_TABS.map(tab => (
-            <TabsContent key={tab.id} value={tab.id}>
-              <div className="space-y-4">
-                {/* Bulk Actions */}
-                {selectedDeals.size > 0 && (
-                  <BulkActionBar
-                    selectedCount={selectedDeals.size}
-                    onArchive={handleBulkArchive}
-                    onExport={handleExportPDF}
-                    onClear={() => setSelectedDeals(new Set())}
-                  />
-                )}
-
-                {/* Deals List */}
-                {filteredTransactions.length === 0 ? (
-                  <EmptyDealsState 
-                    activeTab={selectedTab}
-                    hasSearch={searchQuery.length > 0}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {filteredTransactions.map(transaction => (
-                      <DealRow
-                        key={transaction.id}
-                        transaction={transaction}
-                        vehicle={vehicles[transaction.vehicle_id]}
-                        counterParty={transaction.user_role === 'buyer' 
-                          ? dealers[transaction.seller_id]
-                          : dealers[transaction.buyer_id]
-                        }
-                        userRole={transaction.user_role}
-                        isSelected={selectedDeals.has(transaction.id)}
-                        onSelect={(selected) => {
-                          const newSelection = new Set(selectedDeals);
-                          if (selected) {
-                            newSelection.add(transaction.id);
-                          } else {
-                            newSelection.delete(transaction.id);
+                  {/* Deals List */}
+                  {filteredTransactions.length === 0 ? (
+                    <EmptyDealsState 
+                      activeTab={selectedTab}
+                      hasSearch={searchQuery.length > 0}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredTransactions.map(transaction => (
+                        <DealRow
+                          key={transaction.id}
+                          transaction={transaction}
+                          vehicle={vehicles[transaction.vehicle_id]}
+                          counterParty={transaction.user_role === 'buyer' 
+                            ? dealers[transaction.seller_id]
+                            : dealers[transaction.buyer_id]
                           }
-                          setSelectedDeals(newSelection);
-                        }}
-                        statusColors={STATUS_COLORS}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                          userRole={transaction.user_role}
+                          isSelected={selectedDeals.has(transaction.id)}
+                          onSelect={(selected) => {
+                            const newSelection = new Set(selectedDeals);
+                            if (selected) {
+                              newSelection.add(transaction.id);
+                            } else {
+                              newSelection.delete(transaction.id);
+                            }
+                            setSelectedDeals(newSelection);
+                          }}
+                          statusColors={STATUS_COLORS}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
       </div>
-    </div>
   );
 }

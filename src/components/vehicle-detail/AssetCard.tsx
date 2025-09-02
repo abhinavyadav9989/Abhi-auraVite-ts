@@ -17,7 +17,7 @@ export default function AssetCard({ asset, onSetHero, onDelete, isHero }) {
     <Card className="group relative">
       <CardContent className="p-0">
         <div className="aspect-video bg-slate-100 rounded-t-lg overflow-hidden">
-          <img src={asset.original_url} alt={asset.file_name} className="w-full h-full object-cover"/>
+          <img src={asset.file_url} alt={asset.file_name} className="w-full h-full object-cover"/>
         </div>
         <div className="p-3">
           <p className="text-xs font-medium truncate">{asset.file_name}</p>

@@ -79,7 +79,8 @@ import {
   Key,
   Globe,
   FileDown,
-  History
+  History,
+  Car
 } from 'lucide-react';
 import { UploadFile } from '@/api/integrations';
 import MfaSettings from '../components/settings/MfaSettings';
@@ -225,10 +226,42 @@ export default function Settings() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showWebhook, setShowWebhook] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [tier, setTier] = useState<'basic' | 'advanced'>('basic');
 
   useEffect(() => {
     loadSettingsData();
   }, []);
+
+  const handleSwitchToBasic = async () => {
+    try {
+      if (dealer?.id) {
+        await supabase
+          .from('dealers')
+          .update({
+            activation_completed: false,
+            dashboard_type: 'basic',
+            last_activation_update: new Date().toISOString()
+          })
+          .eq('id', dealer.id);
+
+        // Update local state
+        setTier('basic');
+        setDealer(prev => prev ? { ...prev, activation_completed: false, dashboard_type: 'basic' } : prev);
+        
+        toast({
+          title: "Switched to Basic Inventory",
+          description: "You're now using Basic Inventory mode.",
+        });
+      }
+    } catch (error) {
+      console.error('Error switching to basic mode:', error);
+      toast({
+        title: "Error",
+        description: "Failed to switch inventory mode",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadSettingsData = async () => {
     try {
@@ -240,9 +273,13 @@ export default function Settings() {
         const dealerData = dealerProfile[0];
         setDealer(dealerData);
         
+        // Set tier based on activation status
+        const currentTier = dealerData.activation_completed ? 'advanced' : 'basic';
+        setTier(currentTier);
+        
         // Load data from both dealer table fields and onboarding progress
         const onboardingData = dealerData.onboarding_progress || {};
-        const organizationData = onboardingData.organization_details || {};
+        const organizationData = (onboardingData as any).organization_details || {};
         
         setProfileForm({
           phone: dealerData.phone || organizationData.phone || organizationData.contactNumber || "",
@@ -282,7 +319,7 @@ export default function Settings() {
               account_number: bankDetails.data.account_number || "",
               ifsc_code: bankDetails.data.ifsc_code || "",
               bank_name: bankDetails.data.bank_name || "",
-              cheque_image_url: bankDetails.data.cheque_image_url || ""
+              cheque_image_url: bankDetails.data.cancelled_cheque_url || ""
             }));
           }
         } catch (error) {
@@ -538,6 +575,10 @@ export default function Settings() {
             <TabsTrigger value="preferences" className="flex items-center gap-2">
               <SettingsIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Preferences</span>
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="flex items-center gap-2">
+              <Car className="w-4 h-4" />
+              <span className="hidden sm:inline">Inventory</span>
             </TabsTrigger>
             {isOwner && (
               <TabsTrigger value="team" className="flex items-center gap-2">
@@ -1167,6 +1208,116 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Inventory Settings Tab */}
+          <TabsContent value="inventory" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Inventory View Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Basic vs Customised View Toggle */}
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-slate-50">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-slate-900">Inventory View Mode</h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Switch between Basic and Customised inventory views
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                      <span className={`font-medium ${tier === 'basic' ? 'text-blue-600' : 'text-slate-500'}`}>
+                        Basic
+                      </span>
+                      <span className="mx-2 text-slate-400">•</span>
+                      <span className={`font-medium ${tier === 'advanced' ? 'text-green-600' : 'text-slate-500'}`}>
+                        Customised
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (tier === 'basic') {
+                          // Show upgrade wizard
+                          window.location.href = '/inventory?upgrade=true';
+                        } else {
+                          // Switch back to basic
+                          handleSwitchToBasic();
+                        }
+                      }}
+                      className={tier === 'basic' 
+                        ? 'text-amber-700 hover:text-amber-800 hover:bg-amber-50 border-amber-200' 
+                        : 'text-green-700 hover:text-green-800 hover:bg-green-50 border-green-200'
+                      }
+                    >
+                      {tier === 'basic' ? 'Upgrade to Customised' : 'Switch to Basic'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Current Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${tier === 'basic' ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                      <span className="font-medium">Current Mode</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {tier === 'basic' ? 'Basic Inventory' : 'Customised Inventory'}
+                    </p>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {tier === 'basic' 
+                        ? 'Standard features with 2 branch limit' 
+                        : 'Advanced features with unlimited branches'
+                      }
+                    </p>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${dealer?.verification_status === 'verified' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                      <span className="font-medium">KYC Status</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {dealer?.verification_status === 'verified' ? 'Verified' : 'Pending'}
+                    </p>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {dealer?.verification_status === 'verified' 
+                        ? 'Can publish public inventory' 
+                        : 'Complete KYC to publish public inventory'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature Summary */}
+                {tier === 'advanced' && (
+                  <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                    <h3 className="font-medium text-green-900 mb-3">Customised Features Active</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>Unlimited branches</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>Advanced analytics</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>Bulk operations (5000)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>Advanced transfers</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ST-18, ST-19, ST-20: Team Tab */}

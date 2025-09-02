@@ -30,7 +30,7 @@ const TaskCard = ({ task, index }) => (
         ref={provided.innerRef}
         {...provided.draggableProps}
         {...provided.dragHandleProps}
-        className={`p-3 mb-3 bg-white rounded-lg border shadow-sm transition-all ${
+        className={`p-3 mb-3 bg-slate-50 dark:bg-slate-900 rounded-lg border shadow-sm transition-all ${
           snapshot.isDragging ? 'shadow-lg rotate-1' : 'hover:shadow-md'
         }`}
       >

@@ -223,11 +223,11 @@ export default function OverviewTab({ vehicle, dealer }) {
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">Listed on:</span>
-              <span>{format(new Date(vehicle.created_date), 'MMM d, yyyy')}</span>
+                              <span>{format(new Date(vehicle.created_at), 'MMM d, yyyy')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Last updated:</span>
-              <span>{format(new Date(vehicle.updated_date), 'MMM d, yyyy')}</span>
+                              <span>{format(new Date(vehicle.updated_at), 'MMM d, yyyy')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Vehicle ID:</span>

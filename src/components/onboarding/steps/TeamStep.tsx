@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +28,15 @@ const TeamStep: React.FC<TeamStepProps> = ({
   dealer
 }) => {
   const [teamMembers, setTeamMembers] = React.useState(Array.isArray(data.team) ? data.team : []);
-  const teamRoles = onboardingAPI.getTeamRoles();
+  const [teamRoles, setTeamRoles] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const roles = await onboardingAPI.getTeamRoles();
+      setTeamRoles(roles);
+    };
+    loadData();
+  }, []);
 
   // Sync local state with data prop when it changes (e.g., when navigating back)
   React.useEffect(() => {

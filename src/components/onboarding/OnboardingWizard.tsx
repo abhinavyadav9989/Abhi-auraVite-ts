@@ -9,6 +9,7 @@ import { onboardingAPI, OnboardingProgress } from '@/api/onboardingAPI';
 import { Dealer } from '@/api/entityAdapters';
 import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
+import { validateUserType } from '@/lib/utils';
 
 // Import step components
 import ClientTypeStep from './steps/ClientTypeStep';
@@ -20,6 +21,8 @@ import KYBDocumentsStep from './steps/KYBDocumentsStep';
 import BankDetailsStep from './steps/BankDetailsStep';
 import PlanSelectionStep from './steps/PlanSelectionStep';
 import TermsConsentStep from './steps/TermsConsentStep';
+
+
 
 interface OnboardingData {
   clientType?: string;
@@ -91,10 +94,15 @@ const OnboardingWizard = () => {
         }
         
         // If no dealer exists, create one
+        // Ensure created_by matches what RLS policy expects from JWT
+        const jwtEmail = user.email; // This should match auth.jwt() ->> 'email'
+        console.log('🔍 Dealer creation - User email:', user.email);
+        console.log('🔍 Dealer creation - JWT email:', jwtEmail);
+
         const dealerData = {
           email: user.email, // Required field
           name: user.user_metadata?.full_name || user.email.split('@')[0], // Required field - use full name from metadata or email prefix
-          created_by: user.email,
+          created_by: jwtEmail, // Must match JWT email for RLS policy
           user_type: 'individual_org',
           access_level: 'L1',
           onboarding_progress: {},
@@ -149,7 +157,7 @@ const OnboardingWizard = () => {
       setDealer(freshDealerData);
       
       // Load existing data from dealer table JSONB fields
-      const existingData: OnboardingData = { ...progressData.data };
+      const existingData: OnboardingData = { ...(progressData as any).data };
       
       // Load business mode data from dealer.business_mode
       if (freshDealerData?.business_mode) {
@@ -278,8 +286,8 @@ const OnboardingWizard = () => {
       setOnboardingData(existingData);
       
       // Set current step to next incomplete step
-      if (progressData.currentStep <= steps.length) {
-        setCurrentStep(progressData.currentStep);
+      if (typeof progressData.current_step === 'number' && progressData.current_step <= steps.length) {
+        setCurrentStep(progressData.current_step);
       }
       
       console.log('Complete loaded data:', existingData);
@@ -355,9 +363,9 @@ const OnboardingWizard = () => {
       };
     }
 
-    // Map user type and access level
+    // Map user type and access level - validate against enum
     if (data.clientType) {
-      mappedData.user_type = data.clientType;
+      mappedData.user_type = validateUserType(data.clientType);
     }
 
     console.log('Mapping onboarding data to dealer fields:', { data, mappedData });
@@ -704,7 +712,7 @@ const OnboardingWizard = () => {
     if (!progress) return 'pending';
     
     const stepName = steps[stepId - 1].title.toLowerCase().replace(/\s+/g, '_');
-    const stepData = progress.data[stepName];
+    const stepData = (progress as any).data?.[stepName];
     
     if (stepData && (stepData === true || (typeof stepData === 'object' && !stepData.skipped))) {
       return 'completed';

@@ -7,7 +7,7 @@ export default function DocumentViewer({ asset }) {
   const [currentVersion, setCurrentVersion] = useState(asset.version_history?.length || 0);
   const hasHistory = asset.version_history && asset.version_history.length > 0;
   
-  const allVersions = [...(asset.version_history || []), { url: asset.original_url, timestamp: asset.created_date, version: (asset.version_history?.length || 0) + 1 }];
+          const allVersions = [...(asset.version_history || []), { url: asset.file_url, timestamp: asset.created_at, version: (asset.version_history?.length || 0) + 1 }];
   const displayedAsset = allVersions[currentVersion];
 
   const canGoBack = currentVersion > 0;

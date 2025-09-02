@@ -1,0 +1,367 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Cursor Backend Change Rules (Aura)
+
+## Scope
+
+These rules apply to **any change** that touches backend code, database access, API routes, RPC calls, Supabase client usage, or server utilities.
+
+---
+
+## Source of Truth for Types
+
+1. **Database types are already generated** and live at:
+
+   * `src/types/database-all.types.ts`  ← **single source of truth**
+2. **Do NOT edit** `src/types/database-all.types.ts` directly. Never regenerate or overwrite this file without explicit approval.
+
+---
+
+## Type Usage Policy
+
+3. **Always import existing types** from `src/types/database-all.types.ts`. Map your code to these types rather than redefining them.
+
+   * Prefer `Database['public']['Tables']['<table>']['Row' | 'Insert' | 'Update']`
+   * Use utility types (`Pick`, `Omit`, etc.) instead of duplicating interfaces.
+4. **Avoid the ****************`any`**************** type** across both frontend and backend. Use specific types or `unknown` + type-narrowing if needed.
+
+---
+
+## Central Supabase Client (`db`) — REQUIRED
+
+* The project already exposes a single Supabase client instance as **`db`** from your central client module (e.g., `@/lib/db` or `@/`src/api/supabaseClient.ts).
+* \*\*Always import and use \*\***`db`** in components, routes, server actions, services, and utilities.
+* **Do NOT** import from `@supabase/supabase-js` or call `createClient(...)` anywhere except the central client file.
+* If Cursor suggests `createClient` or importing `supabase` directly, **replace it with** `import { db } from '<your client path>'` and use `db`.
+* If a browser-specific client is required, use/export it from the same central module and **do not** instantiate new clients ad‑hoc.
+
+Example usage:
+
+```ts
+import { db } from '@/lib/db'; // update path if different
+
+const { data, error } = await db.from('vehicles').select('*');
+```
+
+---
+
+## Schema Change Gate (HARD STOP)
+
+5. If your change **requires**:
+
+   * a new table/column/index/constraint,
+   * altering or dropping columns,
+   * adding enums, triggers, or policies,
+   * changing RLS or RPC signatures,
+
+   ➜ **STOP. Do not proceed.**
+   **Prepare a “Schema Change Proposal” block** (see template below), including SQL. **Notify Varun and wait for approval.**
+
+6. **Do not continue coding** features that depend on unapproved schema changes. Keep work behind the gate until approval is received.
+
+---
+
+## Frontend-Only Types Guard
+
+7. If an interface/type is **frontend-only** (UI state, view models, form models, etc.):
+
+   * **Notify Varun before changing its attributes** (renames, adds/removes, required/optional flips).
+   * Document the impact on forms, validators, and API payloads.
+
+---
+
+## Coding Rules for Backend Changes
+
+8. **Map queries to generated types**:
+
+   * For reads: type return values as `Database['public']['Tables']['<table>']['Row']` (or a `Pick`/`Omit` subset).
+   * For inserts: `Database['public']['Tables']['<table>']['Insert']`
+   * For updates: `Database['public']['Tables']['<table>']['Update']`
+9. **No ad-hoc DTOs** that mirror DB tables. If you need a shaped payload, derive it from the DB types using `Pick`/`Omit`/mapped types.
+10. **Keep runtime validation aligned** with DB types. If using Zod/Valibot/etc., infer schemas from TS types where possible, or keep a comment linking fields to DB columns.
+
+---
+
+## Change Proposal Workflow
+
+11. For any suspected schema need, produce a **Schema Change Proposal** and **wait**:
+
+    * Rationale (why it’s needed)
+    * Impact (reads/writes/APIs/UI/tests/migrations/RLS)
+    * SQL (idempotent and reversible)
+    * Data migration steps (if applicable)
+    * Rollback plan
+
+12. For pure code changes (no schema change), include a **Type Mapping Note**:
+
+    * Which generated types are used
+    * Any derived types (`Pick`/`Omit`)
+    * Why no schema changes are needed
+
+---
+
+## Templates
+
+### Schema Change Proposal (REQUIRED BEFORE PROCEEDING)
+
+```
+Title: <Short, specific change>
+Reason: <Why this is necessary; alternatives considered>
+Impact:
+  - Affected tables: <list>
+  - API routes/functions: <list>
+  - RLS/policies: <list>
+  - Data backfill/migration: <describe or N/A>
+
+SQL (review in Supabase SQL editor):
+BEGIN;
+
+-- Write idempotent SQL; include IF NOT EXISTS / checks where possible
+-- Example:
+-- DO $$ BEGIN
+--   IF NOT EXISTS (
+--     SELECT 1 FROM information_schema.columns
+--     WHERE table_schema = 'public' AND table_name = '<table>' AND column_name = '<column>'
+--   ) THEN
+--     ALTER TABLE public.<table>
+--       ADD COLUMN <column> <type> DEFAULT <value>;
+--   END IF;
+-- END $$;
+
+COMMIT;
+
+Rollback:
+BEGIN;
+
+-- Revert statements here (wrap in IF EXISTS guards where possible).
+
+COMMIT;
+
+Post-deploy steps:
+- <indexes/analyze/backfill scripts/rerun type generation if approved (by Varun)>
+```
+
+### Type Mapping Note (for non-schema changes)
+
+```
+Feature/Change: <summary>
+DB Types Used:
+- import { Database } from "src/types/database-all.types";
+- Reads: Database['public']['Tables']['<table>']['Row']
+- Inserts: Database['public']['Tables']['<table>']['Insert']
+- Updates: Database['public']['Tables']['<table>']['Update']
+Derived Types:
+- type <Name> = Pick<Database['public']['Tables']['<table>']['Row'], 'a' | 'b'>;
+No schema changes required. Rationale: <why>
+```
+
+---
+
+## Prohibited Actions
+
+13. ❌ Editing `src/types/database-all.types.ts`
+14. ❌ Creating parallel “shadow” types that duplicate DB schema
+15. ❌ Proceeding with code that assumes unapproved schema changes
+16. ❌ Introducing `any` types in frontend or backend
+17. ❌ Importing `createClient` or `supabase` directly in components/routes/services — \*\*must use the central \*\***`db`**
+18. ❌ Creating new Supabase client instances outside the central client file
+
+---
+
+## Pre-Merge Checklist (Backend)
+
+*
+
+---
+
+# Quick Examples (Type-Safe Supabase Usage)
+
+> Replace `<table>` and column names with your real ones.
+
+### 1) Strongly-typed Supabase client
+
+```ts
+// lib/db.ts (example path)
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database-all.types';
+
+// Single, centralized client. Exported as `db`.
+export const db = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY! // or service role on server-only modules
+);
+```
+
+```ts
+// lib/supabase/server.ts
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/database-all.types';
+
+export const supabase = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // or anon key on client
+);
+```
+
+### 2) Typed SELECT (read)
+
+````ts
+import { db } from '@/lib/db';
+import type { Database } from '@/types/database-all.types';
+
+type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
+
+export async function getVehicleById(id: string): Promise<VehicleRow | null> {
+  const { data, error } = await db
+    .from('vehicles')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+```ts
+import { supabase } from '@/lib/supabase/server';
+import { Database } from '@/types/database-all.types';
+
+type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
+
+export async function getVehicleById(id: string): Promise<VehicleRow | null> {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error; // handle centrally in your API layer
+  return data; // typed as VehicleRow | null
+}
+````
+
+### 3) Typed INSERT
+
+````ts
+import { db } from '@/lib/db';
+import type { Database } from '@/types/database-all.types';
+
+type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
+
+export async function createVehicle(payload: VehicleInsert) {
+  const { data, error } = await db
+    .from('vehicles')
+    .insert(payload)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data; // typed as Database['public']['Tables']['vehicles']['Row']
+}
+```ts
+import { supabase } from '@/lib/supabase/server';
+import { Database } from '@/types/database-all.types';
+
+type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
+
+export async function createVehicle(payload: VehicleInsert) {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert(payload)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data; // typed as Database['public']['Tables']['vehicles']['Row']
+}
+````
+
+### 4) Typed UPDATE
+
+````ts
+import { db } from '@/lib/db';
+import type { Database } from '@/types/database-all.types';
+
+type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
+
+export async function updateVehicle(id: string, patch: VehicleUpdate) {
+  const { data, error } = await db
+    .from('vehicles')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+```ts
+import { supabase } from '@/lib/supabase/server';
+import { Database } from '@/types/database-all.types';
+
+type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
+
+export async function updateVehicle(id: string, patch: VehicleUpdate) {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+````
+
+### 5) Derived types via `Pick`/`Omit` (no shadow DTOs)
+
+```ts
+import { Database } from '@/types/database-all.types';
+
+type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
+// Example: public card view without internals
+export type VehicleCard = Pick<VehicleRow, 'id' | 'make' | 'model' | 'price' | 'thumbnail_url'>;
+```
+
+### 6) Runtime validation aligned with DB types (Zod)
+
+```ts
+import { z } from 'zod';
+import { Database } from '@/types/database-all.types';
+
+type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
+
+export const vehicleInsertSchema: z.ZodType<VehicleInsert> = z.object({
+  id: z.string().uuid().optional(),
+  make: z.string().min(1),
+  model: z.string().min(1),
+  price: z.number().nonnegative(),
+  thumbnail_url: z.string().url().optional(),
+  // ... add remaining fields to mirror your DB exactly
+});
+```
+
+### 7) Guardrails in PRs (optional template)
+
+```md
+### PR Checklist (Backend)
+- [ ] No edits to `src/types/database-all.types.ts`
+- [ ] All DB interactions typed via generated types
+- [ ] Schema change? → Added **Schema Change Proposal** and got approval
+- [ ] RLS/Policies reviewed if access patterns changed
+```
+
+---
+
+## Optional: Cursor Hints for AI
+
+* When Cursor suggests creating a new type mirroring a table, **reject** and instead propose `Pick`/`Omit` from the generated `Database` types.
+* When Cursor proposes a schema change, **insert** the **Schema Change Proposal** block and ping Varun.
+
+---
+
+**Note:** If types need to be regenerated after an approved schema change, do it in a separate PR titled **“chore(types): regenerate supabase types (approved)”** and attach the approved proposal link.

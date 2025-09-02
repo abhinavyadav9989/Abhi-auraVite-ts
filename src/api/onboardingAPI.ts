@@ -1,386 +1,217 @@
-import { supabase } from './supabaseClient';
+import { db } from './supabaseClient';
+import { z } from 'zod';
 
-// Types for onboarding
 export interface OnboardingData {
-  clientType?: string;
-  businessMode?: any;
-  organization?: any;
-  branches?: any[];
-  team?: any[];
-  kybDocuments?: any;
-  bankDetails?: any;
-  planSelection?: any;
-  consent?: any;
+  dealer_id: string;
+  step: string;
+  data: Record<string, unknown>;
+  completed: boolean;
 }
 
 export interface OnboardingProgress {
-  currentStep: number;
-  completedSteps: string[];
-  progress: number;
-  data: OnboardingData;
+  current_step: string;
+  completed_steps: string[];
+  total_steps: number;
+  progress_percentage: number;
 }
 
-// Onboarding API functions
-export const onboardingAPI = {
-  // Start onboarding process
-  start: async (dealerId: string) => {
-    const { data, error } = await supabase
-      .from('dealers')
-      .update({
-        onboarding_started_at: new Date().toISOString(),
-        onboarding_progress: { started: true }
-      })
-      .eq('id', dealerId)
-      .select()
-      .single();
+// Validation schema for onboarding audit data
+const OnboardingAuditSchema = z.object({
+  dealer_id: z.string().uuid('Invalid dealer ID'),
+  step: z.string().min(1, 'Step is required'),
+  data: z.record(z.unknown()).optional(),
+  completed: z.boolean().default(true),
+  created_at: z.string().datetime().optional()
+});
 
-    if (error) throw error;
-    return data;
-  },
+type OnboardingAuditInsert = z.infer<typeof OnboardingAuditSchema>;
 
-  // Get onboarding progress
-  getProgress: async (dealerId: string): Promise<OnboardingProgress> => {
-    const { data, error } = await supabase
-      .from('dealers')
-      .select('onboarding_progress, onboarding_completed, current_onboarding_step')
-      .eq('id', dealerId)
-      .single();
+export class OnboardingAPI {
+  private static instance: OnboardingAPI;
 
-    if (error) throw error;
+  private constructor() {}
 
-    const progress = data.onboarding_progress || {};
-    const completedSteps = Object.keys(progress).filter(key => 
-      progress[key] === true || 
-      (typeof progress[key] === 'object' && progress[key] !== null && !progress[key].skipped)
-    );
-    
-    // Use stored current step if available, otherwise calculate based on completed steps
-    const currentStep = data.current_onboarding_step || Math.min(completedSteps.length + 1, 9);
-    
-    return {
-      currentStep: currentStep,
-      completedSteps,
-      progress: Math.round((completedSteps.length / 9) * 100), // 9 total steps
-      data: progress
-    };
-  },
+  static getInstance(): OnboardingAPI {
+    if (!OnboardingAPI.instance) {
+      OnboardingAPI.instance = new OnboardingAPI();
+    }
+    return OnboardingAPI.instance;
+  }
 
-  // Save onboarding step
-  saveStep: async (dealerId: string, step: string, stepData: any, currentStep?: number) => {
+  async saveOnboardingStep(dealerId: string, step: string, data: Record<string, unknown>): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .rpc('update_onboarding_progress', {
-          p_dealer_id: dealerId,
-          p_step: step,
-          p_data: stepData,
-          p_current_step: currentStep || null
-        });
+      // Validate onboarding data before database insert
+      const auditData = {
+        dealer_id: dealerId,
+        step,
+        data,
+        completed: true,
+        created_at: new Date().toISOString()
+      };
+
+      const validatedData = OnboardingAuditSchema.parse(auditData);
+
+      const { error } = await (db as any)
+        .from('onboarding_audit_log')
+        .upsert(validatedData);
 
       if (error) throw error;
-      return data;
     } catch (error) {
-      console.error('Error in saveStep:', error);
-      // Fallback: try without current_step parameter
-      try {
-        const { data, error: fallbackError } = await supabase
-          .rpc('update_onboarding_progress', {
-            p_dealer_id: dealerId,
-            p_step: step,
-            p_data: stepData
-          });
+      console.error('Error saving onboarding step:', error);
+      throw error;
+    }
+  }
 
-        if (fallbackError) throw fallbackError;
-        return data;
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        throw fallbackError;
+  async getOnboardingProgress(dealerId: string): Promise<OnboardingProgress> {
+    try {
+      const { data, error } = await (db as any)
+        .from('onboarding_audit_log')
+        .select('*')
+        .eq('dealer_id', dealerId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const completedSteps = data?.map(item => item.step) || [];
+      const totalSteps = 10; // Define total steps
+      const progressPercentage = Math.round((completedSteps.length / totalSteps) * 100);
+
+      // Determine current step (next incomplete step)
+      const allSteps = [
+        'business_verification',
+        'kyc_verification',
+        'bank_details',
+        'branch_setup',
+        'team_members',
+        'preferences',
+        'documents',
+        'terms_acceptance',
+        'final_review',
+        'activation'
+      ];
+
+      const currentStep = allSteps.find(step => !completedSteps.includes(step)) || 'completed';
+
+      return {
+        current_step: currentStep,
+        completed_steps: completedSteps,
+        total_steps: totalSteps,
+        progress_percentage: progressPercentage
+      };
+    } catch (error) {
+      console.error('Error getting onboarding progress:', error);
+      throw error;
+    }
+  }
+
+  async getOnboardingData(dealerId: string): Promise<OnboardingData[]> {
+    try {
+      const { data, error } = await (db as any)
+        .from('onboarding_audit_log')
+        .select('*')
+        .eq('dealer_id', dealerId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting onboarding data:', error);
+      throw error;
+    }
+  }
+
+  async isOnboardingComplete(dealerId: string): Promise<boolean> {
+    try {
+      const progress = await this.getOnboardingProgress(dealerId);
+      return progress.progress_percentage === 100;
+    } catch (error) {
+      console.error('Error checking onboarding completion:', error);
+      return false;
+    }
+  }
+
+  // Alias methods for compatibility
+  async getProgress(dealerId: string): Promise<OnboardingProgress> {
+    return this.getOnboardingProgress(dealerId);
+  }
+
+  async saveStep(dealerId: string, stepName: string, data: any, step?: number): Promise<void> {
+    return this.saveOnboardingStep(dealerId, stepName, data);
+  }
+
+  async complete(dealerId: string): Promise<void> {
+    try {
+      const { error } = await (db as any)
+        .from('dealers')
+        .update({ 
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString()
+        })
+        .eq('id', dealerId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      throw error;
+    }
+  }
+
+  async getBusinessModes(): Promise<any[]> {
+    return [
+      { id: 'retail', name: 'Retail', description: 'Sell directly to end customers' },
+      { id: 'wholesale', name: 'Wholesale', description: 'Sell to other dealers' },
+      { id: 'both', name: 'Both', description: 'Sell to both retail and wholesale customers' }
+    ];
+  }
+
+  async getVehicleSegments(): Promise<any[]> {
+    return [
+      { id: 'hatchback', name: 'Hatchback', description: 'Compact hatchback vehicles' },
+      { id: 'sedan', name: 'Sedan', description: 'Sedan vehicles' },
+      { id: 'suv', name: 'SUV', description: 'Sport Utility Vehicles' },
+      { id: 'muv', name: 'MUV', description: 'Multi Utility Vehicles' },
+      { id: 'luxury', name: 'Luxury', description: 'Luxury vehicles' },
+      { id: 'commercial', name: 'Commercial', description: 'Commercial vehicles' }
+    ];
+  }
+
+  async getClientTypes(): Promise<any[]> {
+    return [
+      { id: 'individual', name: 'Individual', description: 'Individual customers' },
+      { id: 'corporate', name: 'Corporate', description: 'Corporate customers' },
+      { id: 'both', name: 'Both', description: 'Both individual and corporate customers' }
+    ];
+  }
+
+  async getTeamRoles(): Promise<any[]> {
+    return [
+      { 
+        id: 'owner', 
+        name: 'Owner', 
+        description: 'Full access to all features',
+        permissions: ['all']
+      },
+      { 
+        id: 'manager', 
+        name: 'Manager', 
+        description: 'Manage inventory and deals',
+        permissions: ['inventory', 'deals', 'reports']
+      },
+      { 
+        id: 'sales', 
+        name: 'Sales Executive', 
+        description: 'Handle sales and customer interactions',
+        permissions: ['deals', 'customers']
+      },
+      { 
+        id: 'support', 
+        name: 'Support', 
+        description: 'Customer support and basic operations',
+        permissions: ['customers', 'basic_operations']
       }
-    }
-  },
-
-  // Complete onboarding
-  complete: async (dealerId: string) => {
-    const { data, error } = await supabase
-      .rpc('complete_onboarding', {
-        p_dealer_id: dealerId
-      });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Get client types
-  getClientTypes: () => {
-    return [
-      { id: 'group_dealer', label: 'Group Dealer', icon: '🏢', description: 'Multiple dealerships under one organization' },
-      { id: 'individual_org', label: 'Individual Organization', icon: '🏪', description: 'Single dealership or business' },
-      { id: 'franchise', label: 'Franchise (OEM store)', icon: '🏭', description: 'Authorized brand dealership' },
-      { id: 'wholesale_trader', label: 'Wholesale Trader', icon: '📦', description: 'Bulk vehicle trading' },
-      { id: 'consignment_seller', label: 'Consignment Seller', icon: '🤝', description: 'Selling vehicles on behalf of others' },
-      { id: 'fleet_corporate', label: 'Fleet/Corporate Seller', icon: '🚗', description: 'Corporate fleet management' },
-      { id: 'nbfc_bank', label: 'NBFC/Bank (Repo)', icon: '🏦', description: 'Financial institution with repossessed vehicles' },
-      { id: 'govt_psu', label: 'Govt/PSU', icon: '🏛️', description: 'Government or public sector unit' },
-      { id: 'rental_leasing', label: 'Rental/Leasing', icon: '🔑', description: 'Vehicle rental and leasing services' },
-      { id: 'agri_construction', label: 'Agri/Construction', icon: '🚜', description: 'Agricultural or construction vehicles' },
-      { id: '2w_3w_network', label: '2W/3W Network', icon: '🛵', description: 'Two-wheeler and three-wheeler network' },
-      { id: 'dsa_broker', label: 'DSA/Broker', icon: '👨‍💼', description: 'Direct selling agent or broker' },
-      { id: 'chauffeur_driver', label: 'Chauffeur/Driver', icon: '🚕', description: 'Individual driver or chauffeur' },
-      { id: 'self_user', label: 'Self-User', icon: '👤', description: 'Individual vehicle owner' },
-      { id: 'partner', label: 'Partner (Logistics/RTO/Workshop)', icon: '🔧', description: 'Service partner or workshop' }
-    ];
-  },
-
-  // Get business modes
-  getBusinessModes: () => {
-    return [
-      { id: 'new_vehicles', label: 'New Vehicles' },
-      { id: 'used_vehicles', label: 'Used Vehicles' },
-      { id: 'both', label: 'Both New & Used' }
-    ];
-  },
-
-  // Get vehicle segments
-  getVehicleSegments: () => {
-    return [
-      { id: '2w', label: '2-Wheeler' },
-      { id: '3w', label: '3-Wheeler' },
-      { id: '4w', label: '4-Wheeler' },
-      { id: 'commercial', label: 'Commercial' },
-      { id: 'others', label: 'Others' }
-    ];
-  },
-
-  // Get team roles
-  getTeamRoles: () => {
-    return [
-      { id: 'inventory_controller', label: 'Inventory Controller' },
-      { id: 'sales_manager', label: 'Sales Manager' },
-      { id: 'branch_manager', label: 'Branch Manager' },
-      { id: 'finance', label: 'Finance' },
-      { id: 'admin', label: 'Administrator' }
-    ];
-  },
-
-  // Get plans
-  getPlans: () => {
-    return [
-      { id: 'basic', label: 'Basic', price: 0, features: ['Add vehicles', 'Browse marketplace'] },
-      { id: 'premium', label: 'Premium', price: 999, features: ['All basic features', 'Analytics', 'Priority support'] },
-      { id: 'enterprise', label: 'Enterprise', price: 2999, features: ['All premium features', 'Custom integrations', 'Dedicated support'] }
     ];
   }
-};
+}
 
-// Branch management API
-export const branchAPI = {
-  // Get branches for dealer
-  getBranches: async (dealerId: string) => {
-    const { data, error } = await supabase
-      .from('branches')
-      .select('*')
-      .eq('dealer_id', dealerId)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Create branch
-  create: async (branchData: any) => {
-    const { data, error } = await supabase
-      .from('branches')
-      .insert(branchData)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Update branch
-  update: async (branchId: string, branchData: any) => {
-    const { data, error } = await supabase
-      .from('branches')
-      .update(branchData)
-      .eq('id', branchId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Delete branch
-  delete: async (branchId: string) => {
-    const { error } = await supabase
-      .from('branches')
-      .delete()
-      .eq('id', branchId);
-
-    if (error) throw error;
-    return true;
-  }
-};
-
-// Team management API
-export const teamAPI = {
-  // Get team members for dealer
-  getTeam: async (dealerId: string) => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .select('*')
-      .eq('dealer_id', dealerId)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Invite team member
-  invite: async (inviteData: any) => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .insert(inviteData)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Update team member
-  update: async (memberId: string, memberData: any) => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .update(memberData)
-      .eq('id', memberId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Delete team member
-  delete: async (memberId: string) => {
-    const { error } = await supabase
-      .from('team_members')
-      .delete()
-      .eq('id', memberId);
-
-    if (error) throw error;
-    return true;
-  }
-};
-
-// Bank details API
-export const bankAPI = {
-  // Get bank details for dealer
-  getBankDetails: async (dealerId: string) => {
-    const { data, error } = await supabase
-      .from('bank_details')
-      .select('*')
-      .eq('dealer_id', dealerId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
-    return data;
-  },
-
-  // Create bank details
-  create: async (bankData: any) => {
-    const { data, error } = await supabase
-      .from('bank_details')
-      .insert(bankData)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Update bank details
-  update: async (bankId: string, bankData: any) => {
-    const { data, error } = await supabase
-      .from('bank_details')
-      .update(bankData)
-      .eq('id', bankId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Delete bank details
-  delete: async (bankId: string) => {
-    const { error } = await supabase
-      .from('bank_details')
-      .delete()
-      .eq('id', bankId);
-
-    if (error) throw error;
-    return true;
-  }
-};
-
-// Admin verification API
-export const adminAPI = {
-  // Get pending verifications
-  getPendingVerifications: async () => {
-    const { data, error } = await supabase
-      .from('dealers')
-      .select(`
-        *,
-        branches (*),
-        team_members (*),
-        bank_details (*)
-      `)
-      .eq('verification_status_new', 'pending')
-      .order('onboarding_started_at', { ascending: true });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Verify dealer
-  verifyDealer: async (dealerId: string, verifiedBy: string) => {
-    const { data, error } = await supabase
-      .rpc('verify_dealer', {
-        p_dealer_id: dealerId,
-        p_verified_by: verifiedBy
-      });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Reject dealer
-  rejectDealer: async (dealerId: string, rejectedBy: string, reason: string) => {
-    const { data, error } = await supabase
-      .rpc('reject_dealer', {
-        p_dealer_id: dealerId,
-        p_rejected_by: rejectedBy,
-        p_reason: reason
-      });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Get audit logs
-  getAuditLogs: async (dealerId?: string) => {
-    let query = supabase
-      .from('onboarding_audit_log')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (dealerId) {
-      query = query.eq('dealer_id', dealerId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
-  }
-};
+// Export singleton instance
+export const onboardingAPI = OnboardingAPI.getInstance();

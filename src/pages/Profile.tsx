@@ -62,13 +62,14 @@ import {
   Globe,
   MessageSquare,
   BarChart3,
-  Shield,
+
   ExternalLink,
   Loader2,
   Users
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
+import { usePermissions } from "@/components/security/PermissionGuard";
 import { format, isWithinInterval, parse } from "date-fns";
 import { createPageUrl } from "@/utils";
 import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
@@ -80,6 +81,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
+
 // Components for different sections
 import ProfileOverview from "../components/profile/ProfileOverview";
 import BusinessHours from "../components/profile/BusinessHours";
@@ -88,9 +90,10 @@ import ReviewsSection from "../components/profile/ReviewsSection";
 import PerformanceMetrics from "../components/profile/PerformanceMetrics";
 import PublicProfileShare from "../components/profile/PublicProfileShare";
 import SegmentSection from "../components/profile/SegmentSection";
-import PlanSection from "../components/profile/PlanSection";
+
 import BranchesSection from "../components/profile/BranchesSection";
 import TeamSection from "../components/profile/TeamSection";
+
 
 const DAYS_OF_WEEK = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
@@ -116,6 +119,9 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
   const navigate = useNavigate(); // Initialize useNavigate
+
+  // Profile system integration
+
 
   // Form states with proper defaults
   const [profileForm, setProfileForm] = useState({
@@ -150,9 +156,12 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(null);
 
+
   useEffect(() => {
     loadProfileData();
   }, []);
+
+
 
   const loadProfileData = async () => {
     try {
@@ -194,7 +203,7 @@ export default function Profile() {
           console.log('Profile - Direct business_mode:', directDealerData?.business_mode);
           
           // Use the direct data if it's more complete
-          if (directDealerData && (!dealerData.plan_selection?.plan || !dealerData.business_mode?.mode)) {
+          if (directDealerData && (!(dealerData.plan_selection as any)?.plan || !(dealerData.business_mode as any)?.mode)) {
             console.log('Profile - Using direct Supabase data as it has more complete information');
             setDealer(directDealerData);
           } else {
@@ -204,7 +213,7 @@ export default function Profile() {
         
         // Set form data - try to get from dealer table fields first, then from onboarding progress
         const onboardingData = dealerData.onboarding_progress || {};
-        const organizationData = onboardingData.organization_details || {};
+        const organizationData = (onboardingData as any).organization_details || {};
         
         setProfileForm({
           business_name: dealerData.business_name || dealerData.name || organizationData.businessName || organizationData.organizationName || "",
@@ -264,7 +273,7 @@ export default function Profile() {
         
         console.log('Onboarding progress data:', onboardingData);
         
-        if (onboardingData.kybDocuments || onboardingData.bankDetails) {
+        if ((onboardingData as any).kybDocuments || (onboardingData as any).bankDetails) {
           console.log('Found documents in onboarding progress, attempting migration...');
           
           // Try to migrate documents from onboarding progress
@@ -286,8 +295,8 @@ export default function Profile() {
             };
             
             // Migrate KYB documents
-            if (onboardingData.kybDocuments) {
-              for (const [docType, docData] of Object.entries(onboardingData.kybDocuments)) {
+            if ((onboardingData as any).kybDocuments) {
+              for (const [docType, docData] of Object.entries((onboardingData as any).kybDocuments)) {
                 if (isValidDocumentData(docData)) {
                   console.log(`Migrating ${docType} from onboarding progress:`, docData);
                   
@@ -306,8 +315,8 @@ export default function Profile() {
             }
             
             // Migrate bank details document
-            if (onboardingData.bankDetails?.cancelledCheque && isValidDocumentData(onboardingData.bankDetails.cancelledCheque)) {
-              const docData = onboardingData.bankDetails.cancelledCheque;
+            if ((onboardingData as any).bankDetails?.cancelledCheque && isValidDocumentData((onboardingData as any).bankDetails.cancelledCheque)) {
+              const docData = (onboardingData as any).bankDetails.cancelledCheque;
               console.log('Migrating cancelled cheque from onboarding progress:', docData);
               
               await DealerDocument.create({
@@ -568,8 +577,9 @@ export default function Profile() {
   };
 
   // Utility functions
-  const canEdit = () => userRole === 'owner' || userRole === 'admin';
-  const canViewMetrics = () => userRole === 'owner' || userRole === 'admin'; // DD-14
+  const { hasPermission } = usePermissions();
+  const canEdit = () => hasPermission('profile.edit');
+  const canViewMetrics = () => hasPermission('analytics.view');
   
   const getVerificationStatus = () => {
     if (!dealer) return null;
@@ -738,10 +748,7 @@ export default function Profile() {
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Segment</span>
             </TabsTrigger>
-            <TabsTrigger value="plan" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Plan</span>
-            </TabsTrigger>
+
             <TabsTrigger value="branches" className="flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               <span className="hidden sm:inline">Branches</span>
@@ -814,10 +821,7 @@ export default function Profile() {
             <SegmentSection dealer={dealer} />
           </TabsContent>
 
-          {/* Plan Subscribed Tab */}
-          <TabsContent value="plan" className="space-y-6">
-            <PlanSection dealer={dealer} />
-          </TabsContent>
+
 
           {/* Branches Tab */}
           <TabsContent value="branches" className="space-y-6">
@@ -886,6 +890,8 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
       </div>
+
+
     </div>
   );
 }

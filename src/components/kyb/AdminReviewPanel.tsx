@@ -40,8 +40,8 @@ export default function AdminReviewPanel({ dealer, onVerify, rejectionNotes, set
         <CardHeader>
           <CardTitle className="text-lg flex items-center justify-between">
             {dealer.business_name}
-            <Badge variant={dealer.is_flagged ? "destructive" : "secondary"}>
-              {dealer.is_flagged ? 'Flagged' : 'Not Flagged'}
+                    <Badge variant={dealer.status === 'flagged' ? "destructive" : "secondary"}>
+          {dealer.status === 'flagged' ? 'Flagged' : 'Not Flagged'}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -92,7 +92,7 @@ export default function AdminReviewPanel({ dealer, onVerify, rejectionNotes, set
             <XCircle className="w-4 h-4" /> Reject
           </Button>
           <Button variant="outline" className="flex-1 gap-2" onClick={() => onVerify('flag')}>
-            <Flag className="w-4 h-4" /> {dealer.is_flagged ? 'Unflag' : 'Flag'} Dealer
+            <Flag className="w-4 h-4" /> {dealer.status === 'flagged' ? 'Unflag' : 'Flag'} Dealer
           </Button>
         </div>
         <p className="text-xs text-center text-slate-500">

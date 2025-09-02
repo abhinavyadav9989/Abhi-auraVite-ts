@@ -8,21 +8,30 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Loader2, Save, Send } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { InvokeLLM } from '@/api/integrations';
 import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
 
 // Import step components
+import VehicleTypeSelectionStep from '@/components/listing-wizard/VehicleTypeSelectionStep';
 import BranchSelectionStep from '@/components/addvehicle/BranchSelectionStep';
-import RegistrationInputStep from '@/components/listing-wizard/RegistrationInputStep';
-import AIVehicleDetailsStep from '@/components/listing-wizard/AIVehicleDetailsStep';
-import CategorySpecificsStep from '@/components/listing-wizard/CategorySpecificsStep';
-import ConditionAndHistoryStep from '@/components/listing-wizard/ConditionAndHistoryStep';
+import IdentifyStep from '@/components/listing-wizard/IdentifyStep';
+import StockContextStep from '@/components/listing-wizard/StockContextStep';
+import { useDealerActivationSettings } from '@/hooks/useDealerActivationSettings';
+import CoreSpecsStep from '@/components/listing-wizard/CoreSpecsStepEnhanced';
+import ConditionStep from '@/components/listing-wizard/ConditionStep';
+import DocumentsStep from '@/components/listing-wizard/DocumentsStep';
 import PhotosAndVideosStep from '@/components/listing-wizard/PhotosAndVideosStep';
 import PricingStep from '@/components/listing-wizard/PricingStep';
 import PublishSettingsStep from '@/components/listing-wizard/PublishSettingsStep';
 import FinalReviewStep from '@/components/listing-wizard/FinalReviewStep';
+
+// Import new UI components
+import { StepProgress, VEHICLE_ADDING_STEPS, VEHICLE_ADDING_STEPS_MOBILE } from '@/components/ui/StepProgress';
+import { AutoFillDisplay } from '@/components/ui/AutoFillDisplay';
+import { MarginPrivacy } from '@/components/ui/MarginPrivacy';
+import { DocumentUpload } from '@/components/ui/DocumentUpload';
 
 // This is a placeholder for CATEGORY_FIELDS. 
 // In a real application, this would likely be imported from a shared constants/config file
@@ -37,17 +46,27 @@ const CATEGORY_FIELDS = {
   // Add other categories that might require custom fields
 };
 
-const STEPS = [
+const ALL_STEPS = [
+  { id: 'vehicle_type', title: 'Vehicle Type', component: VehicleTypeSelectionStep },
   { id: 'branch_selection', title: 'Select Branch', component: BranchSelectionStep },
-  { id: 'reg_input', title: 'Registration Number', component: RegistrationInputStep },
-  { id: 'ai_details', title: 'Vehicle Details', component: AIVehicleDetailsStep },
-  { id: 'category_specifics', title: 'Category Details', component: CategorySpecificsStep }, // New step
-  { id: 'condition', title: 'Condition & History', component: ConditionAndHistoryStep },
+  { id: 'identify', title: 'Identify Vehicle', component: IdentifyStep },
+  { id: 'stock_context', title: 'Stock Information', component: StockContextStep, vehicleTypes: ['new'] },
+  { id: 'core_specs', title: 'Core Specifications', component: CoreSpecsStep },
+  { id: 'condition', title: 'Condition', component: ConditionStep, vehicleTypes: ['used'] },
+  { id: 'documents', title: 'Documents', component: DocumentsStep },
   { id: 'media', title: 'Photos & Videos', component: PhotosAndVideosStep },
-  { id: 'pricing', title: 'Set Price', component: PricingStep },
+  { id: 'pricing', title: 'Pricing & Exposure', component: PricingStep },
   { id: 'publish', title: 'Publish Settings', component: PublishSettingsStep },
-  { id: 'review', title: 'Final Review', component: FinalReviewStep },
+  { id: 'review', title: 'Review & Publish', component: FinalReviewStep },
 ];
+
+// Dynamically filter steps based on vehicle type
+const getFilteredSteps = (vehicleType: 'new' | 'used') => {
+  return ALL_STEPS.filter(step => {
+    if (!step.vehicleTypes) return true; // Show step for all vehicle types
+    return step.vehicleTypes.includes(vehicleType);
+  });
+};
 
 export default function AddVehicle() {
   const navigate = useNavigate();
@@ -64,8 +83,14 @@ export default function AddVehicle() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<'draft' | 'live' | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [vehicleType, setVehicleType] = useState<'new' | 'used'>('used');
+  const [filteredSteps, setFilteredSteps] = useState(() => getFilteredSteps('used'));
   const [vehicleData, setVehicleData] = useState<any>({
-    branch_id: '', // New field for branch association
+    // Branch and identification
+    branch_id: '',
+    identification_method: 'manual', // 'reg_number', 'vin', 'manual'
+    
+    // Basic vehicle info
     registration_number: '',
     make: '',
     model: '',
@@ -73,16 +98,50 @@ export default function AddVehicle() {
     year: '',
     fuel_type: '',
     transmission: '',
+    body_type: '',
     kilometers: '',
     ownership: 'first',
     color: '',
+    
+    // Condition fields
+    tyres_ok: null,
+    paint_ok: null,
+    accident_history: null,
+    service_history_available: null,
+    condition_notes: '',
+    
+    // Document fields
+    rc_available: false,
+    insurance_status: '',
+    insurance_valid_until: null,
+    puc_valid_until: null,
+    service_records_uploaded: false,
+    
+    // Stock context fields (for new vehicles)
+    stock_type: 'dealer_stock', // 'dealer_stock' or 'incoming_allocation'
+    allotment_id: null,
+    eta: null,
+    allocation_status: 'allocated', // 'allocated', 'confirmed', 'in_production', etc.
+
+    // Pricing fields
+    base_cost: null,
+    dealer_margin_target: null,
+    dealer_net: null,
+    shown_price: null,
+    dealer_price: null,
+    exposure_mode: 'masked', // 'retail', 'b2b', 'masked'
+    consignment_terms: null,
+    
+    // Media
+    images: [],
+    videos: [],
+    hero_image_url: '',
+    
+    // Legacy fields (for backward compatibility)
     vehicle_type: 'personal',
     description: '',
     service_history: [],
     inspection_report_url: '',
-    images: [],
-    videos: [],
-    hero_image_url: '',
     landed_cost_components: { procurement: 0, refurbishment: 0, logistics: 0, other: 0 },
     asking_price: 0,
     market_data: {},
@@ -90,20 +149,34 @@ export default function AddVehicle() {
     publish_at: null,
     status: 'draft',
     ai_metadata: { fetched_from_reg: false, photo_suggestions: [] },
-    vehicle_category: [], // New field
-    custom_attributes: {}, // New field
+    vehicle_category: [],
+    custom_attributes: {},
+    
+    // Auto-fill tracking
+    auto_filled_fields: {},
   });
 
   // Check for edit mode parameters
   useEffect(() => {
     const id = searchParams.get('id');
     const mode = searchParams.get('mode');
-    
+
     if (id && mode === 'edit') {
       setIsEditMode(true);
       setVehicleId(id);
     }
   }, [searchParams]);
+
+  // Update filtered steps when vehicle type changes
+  useEffect(() => {
+    const newFilteredSteps = getFilteredSteps(vehicleType);
+    setFilteredSteps(newFilteredSteps);
+
+    // Adjust current step if it's no longer valid after filtering
+    if (currentStep >= newFilteredSteps.length) {
+      setCurrentStep(Math.max(0, newFilteredSteps.length - 1));
+    }
+  }, [vehicleType, currentStep]);
 
   useEffect(() => {
     loadDealer();
@@ -197,7 +270,7 @@ export default function AddVehicle() {
         description: "Failed to load vehicle details for editing.",
         variant: "destructive",
       });
-      navigate(createPageUrl('Inventory'));
+      navigate(createPageUrl('Inventory') + '?refresh=true');
     } finally {
       setIsLoading(false);
     }
@@ -208,12 +281,22 @@ export default function AddVehicle() {
   };
 
   const handleNext = async () => {
-    if (currentStep < STEPS.length - 1) {
-      if (STEPS[currentStep].id === 'reg_input') {
+    // Special validation for vehicle type step
+    if (filteredSteps[currentStep]?.id === 'vehicle_type') {
+      if (!vehicleData.vehicleType) {
+        toast({
+          title: "Vehicle Type Required",
+          description: "Please select whether you're adding a Used or New vehicle.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (currentStep < filteredSteps.length - 1) {
+      if (filteredSteps[currentStep]?.id === 'identify' && vehicleData.registration_number) {
         await fetchVehicleDetails();
       }
-      // Skip category step if no categories are applicable based on some logic (future enhancement)
-      // For now, always show it.
       setCurrentStep(prev => prev + 1);
     } else {
       await handleSubmit('live');
@@ -289,6 +372,77 @@ export default function AddVehicle() {
     setPendingStatus(status);
   };
 
+  const saveAsDraft = async () => {
+    setIsSubmitting(true);
+    try {
+      // Clean the data before sending to database
+      const cleanData = { ...vehicleData };
+      
+      // Convert empty strings to null for integer fields
+      if (cleanData.kilometers === '') cleanData.kilometers = null;
+      if (cleanData.mileage === '') cleanData.mileage = null;
+      if (cleanData.year === '') cleanData.year = null;
+      if (cleanData.seating_capacity === '') cleanData.seating_capacity = null;
+      if (cleanData.condition_rating === '') cleanData.condition_rating = null;
+      
+      // Convert empty strings to null for decimal fields
+      if (cleanData.price === '') cleanData.price = null;
+      if (cleanData.asking_price === '') cleanData.asking_price = null;
+      if (cleanData.market_price_min === '') cleanData.market_price_min = null;
+      if (cleanData.market_price_max === '') cleanData.market_price_max = null;
+      if (cleanData.listing_fee_value === '') cleanData.listing_fee_value = null;
+      
+      // Convert empty strings to null for date fields
+      if (cleanData.insurance_valid_until === '') cleanData.insurance_valid_until = null;
+      if (cleanData.publish_at === '') cleanData.publish_at = null;
+      if (cleanData.publish_schedule === '') cleanData.publish_schedule = null;
+      
+      const finalPayload = { 
+        ...cleanData, 
+        status: 'draft', 
+        dealer_id: dealer.id,
+        location_city: dealer.city,
+        location_state: dealer.state
+      };
+      
+      console.log('AddVehicle - Saving draft with payload:', finalPayload);
+      console.log('AddVehicle - Selected branch:', selectedBranch);
+      console.log('AddVehicle - Vehicle data branch_id:', vehicleData.branch_id);
+      
+      if (isEditMode && vehicleId) {
+        console.log('AddVehicle - Updating existing vehicle:', vehicleId);
+        const result = await Vehicle.update(vehicleId, finalPayload);
+        console.log('AddVehicle - Update result:', result);
+        setVehicleData(result);
+        toast({
+          title: "Draft Saved!",
+          description: "Your vehicle draft has been updated successfully.",
+        });
+      } else {
+        console.log('AddVehicle - Creating new vehicle');
+        const result = await Vehicle.create(finalPayload);
+        console.log('AddVehicle - Create result:', result);
+        console.log('AddVehicle - New vehicle ID:', result.id);
+        setVehicleData(result);
+        setVehicleId(result.id);
+        setIsEditMode(true);
+        toast({
+          title: "Draft Saved!",
+          description: `Your vehicle has been saved as a draft with ID: ${result.id}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({ 
+        title: "Save Failed", 
+        description: "There was an error saving your draft.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handlePasswordConfirm = async () => {
     setIsSubmitting(true);
     try {
@@ -339,8 +493,9 @@ export default function AddVehicle() {
           description: `Your vehicle has been successfully ${pendingStatus === 'draft' ? 'saved as a draft' : 'added to the marketplace'}.`,
         });
       }
-      
-      navigate(createPageUrl('Inventory'));
+
+      console.log('AddVehicle - Vehicle published/updated successfully, navigating to inventory');
+      navigate(createPageUrl('Inventory') + '?refresh=true');
     } catch (error) {
       console.error('Error submitting listing:', error);
       toast({ 
@@ -355,6 +510,62 @@ export default function AddVehicle() {
   const handlePasswordModalClose = () => {
     setShowPasswordModal(false);
     setPendingStatus(null);
+  };
+
+  // Enhanced navigation functions
+  const handleStepClick = (stepIndex: number) => {
+    // Allow navigation to completed steps or current step
+    if (stepIndex <= currentStep) {
+      setCurrentStep(stepIndex);
+    }
+  };
+
+  const canProceedToNext = () => {
+    const currentStepData = filteredSteps[currentStep];
+    
+    // Basic validation for each step
+    switch (currentStepData.id) {
+      case 'identify':
+        return vehicleData.make && vehicleData.model && vehicleData.year;
+      case 'core_specs':
+        return vehicleData.fuel_type && vehicleData.transmission && vehicleData.kilometers;
+      case 'condition':
+        return true; // Optional step
+      case 'documents':
+        return true; // Optional step
+      case 'media':
+        return vehicleData.images && vehicleData.images.length > 0;
+      case 'pricing':
+        return vehicleData.shown_price && vehicleData.shown_price > 0;
+      case 'publish':
+        return vehicleData.exposure_mode;
+      case 'review':
+        return true; // Final step
+      default:
+        return true;
+    }
+  };
+
+  const getAutoFilledFields = () => {
+    const fields = [];
+    
+    if (vehicleData.auto_filled_fields) {
+      Object.entries(vehicleData.auto_filled_fields).forEach(([key, value]: [string, any]) => {
+        if (value && value.source) {
+          fields.push({
+            key,
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            value: value.value,
+            source: value.source,
+            confidence: value.confidence,
+            validated: value.validated,
+            editable: true
+          });
+        }
+      });
+    }
+    
+    return fields;
   };
 
   // Show loading while initializing
@@ -374,112 +585,166 @@ export default function AddVehicle() {
     return null;
   }
   
-  const CurrentStepComponent: any = STEPS[currentStep].component;
+  const CurrentStepComponent: any = filteredSteps[currentStep]?.component;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 p-3 md:p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate(createPageUrl('Inventory'))} 
-            className="mb-4"
+        <div className="mb-6 md:mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(createPageUrl('Inventory'))}
+            className="mb-3 md:mb-4 text-sm md:text-base py-2 px-3 md:px-4"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Inventory
+            <ArrowLeft className="w-3 h-3 md:w-4 md:h-4 mr-2" />
+            <span className="hidden sm:inline">Back to Inventory</span>
+            <span className="sm:hidden">Back</span>
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
             {isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
           </h1>
-          <p className="text-slate-600">
-            {isEditMode 
+          <p className="text-slate-600 text-sm md:text-base">
+            {isEditMode
               ? `Editing vehicle: ${vehicleData.registration_number || 'Loading...'}`
               : 'Follow the steps to create a new listing.'
             }
           </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <Progress value={((currentStep + 1) / STEPS.length) * 100} className="h-2" />
-          <p className="text-sm text-center mt-2 text-slate-500">
-            Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
-          </p>
+        {/* Enhanced Progress Indicator */}
+        <div className="mb-6 md:mb-8">
+          <StepProgress
+            steps={VEHICLE_ADDING_STEPS.slice(0, filteredSteps.length)}
+            currentStep={currentStep}
+            onStepClick={handleStepClick}
+            variant="mobile"
+            className="mb-3 md:mb-4"
+          />
+          <div className="text-center px-4 md:px-0">
+            <p className="text-xs md:text-sm text-slate-500">
+              Step {currentStep + 1} of {filteredSteps.length}: {filteredSteps[currentStep]?.title}
+            </p>
+          </div>
         </div>
         
         {/* Step Content */}
-        <Card>
-          <CardContent className="p-6">
+        <Card className="mx-4 md:mx-0">
+          <CardContent className="p-4 md:p-6">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center min-h-[300px]">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-                <p className="text-slate-600">Fetching vehicle details...</p>
+              <div className="flex flex-col items-center justify-center min-h-[200px] md:min-h-[300px]">
+                <Loader2 className="w-6 h-6 md:w-8 md:h-8 animate-spin text-blue-600 mb-3 md:mb-4" />
+                <p className="text-slate-600 text-sm md:text-base">Fetching vehicle details...</p>
               </div>
             ) : (
-              STEPS[currentStep].id === 'branch_selection' ? (
-                <BranchSelectionStep
-                  selectedBranch={selectedBranch}
-                  onBranchSelect={(branchId) => {
-                    setSelectedBranch(branchId);
-                    setVehicleData(prev => ({ ...prev, branch_id: branchId }));
-                  }}
-                  onNext={() => setCurrentStep(currentStep + 1)}
-                  onBack={() => navigate(createPageUrl('Dashboard'))}
-                  dealer={dealer}
-                  onDealerUpdate={loadDealer}
-                />
-              ) : (
-                <CurrentStepComponent 
-                  data={vehicleData} 
-                  updateData={updateVehicleData} 
-                  dealer={dealer} 
-                />
-              )
+              <>
+                {/* Auto-Filled Fields Display */}
+                {getAutoFilledFields().length > 0 && (
+                  <div className="mb-4 md:mb-6">
+                    <AutoFillDisplay
+                      fields={getAutoFilledFields()}
+                      onEditField={(key, value) => {
+                        updateVehicleData({ [key]: value });
+                      }}
+                      variant="compact"
+                      title="Auto-Filled Information"
+                    />
+                  </div>
+                )}
+                
+                {filteredSteps[currentStep]?.id === 'branch_selection' ? (
+                  <BranchSelectionStep
+                    selectedBranch={selectedBranch}
+                    onBranchSelect={(branchId) => {
+                      setSelectedBranch(branchId);
+                      setVehicleData(prev => ({ ...prev, branch_id: branchId }));
+                    }}
+                    onNext={() => setCurrentStep(currentStep + 1)}
+                    onBack={() => navigate(createPageUrl('Dashboard'))}
+                    dealer={dealer}
+                    onDealerUpdate={loadDealer}
+                  />
+                ) : (
+                  <CurrentStepComponent
+                    data={vehicleData}
+                    updateData={updateVehicleData}
+                    dealer={dealer}
+                    vehicleType={vehicleType}
+                  />
+                )}
+              </>
             )}
           </CardContent>
         </Card>
 
-        {/* Navigation - Hide for branch selection step as it has its own buttons */}
-        {STEPS[currentStep].id !== 'branch_selection' && (
-          <div className="mt-8 flex justify-between items-center">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={(currentStep === 0 && !isEditMode) || (currentStep === 1 && isEditMode) || isSubmitting}
-            >
-            Back
-          </Button>
-          <div className="flex items-center gap-4">
-            {currentStep < STEPS.length - 1 && (
+        {/* Enhanced Navigation */}
+        {filteredSteps[currentStep]?.id !== 'branch_selection' && (
+          <div className="mt-6 md:mt-8 mx-4 md:mx-0">
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 md:gap-4">
               <Button
-                variant="ghost"
-                onClick={() => handleSubmit('draft')}
-                disabled={isSubmitting}
-                className="flex items-center gap-2"
+                variant="outline"
+                onClick={handleBack}
+                disabled={(currentStep === 0 && !isEditMode) || (currentStep === 1 && isEditMode) || isSubmitting}
+                className="flex items-center justify-center gap-2 text-sm md:text-base py-2.5 md:py-2 flex-shrink-0"
               >
-                <Save className="w-4 h-4" /> Save as Draft
+                <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Back</span>
               </Button>
-            )}
-            <Button
-              onClick={handleNext}
-              disabled={isSubmitting || isLoading || 
-                (STEPS[currentStep].id === 'category_specifics' && 
-                 Object.keys(vehicleData.custom_attributes || {}).length === 0 && 
-                 (vehicleData.vehicle_category || []).some(cat => CATEGORY_FIELDS[cat]))}
-              className="min-w-[120px]"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : currentStep === STEPS.length - 1 ? (
-                <span className="flex items-center gap-2">
-                  <Send className="w-4 h-4" /> {isEditMode ? 'Update Vehicle' : 'Publish Now'}
-                </span>
-              ) : (
-                'Next Step'
-              )}
-            </Button>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4">
+                {/* Save Draft Button */}
+                {currentStep < filteredSteps.length - 1 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSubmit('draft')}
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center gap-2 text-sm md:text-base py-2.5 md:py-2"
+                  >
+                    <Save className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">Save as Draft</span>
+                    <span className="sm:hidden">Save Draft</span>
+                  </Button>
+                )}
+
+                {/* Next/Publish Button */}
+                <Button
+                  onClick={handleNext}
+                  disabled={isSubmitting || isLoading || !canProceedToNext()}
+                  className="min-w-[120px] flex items-center justify-center gap-2 text-sm md:text-base py-2.5 md:py-2"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                  ) : currentStep === filteredSteps.length - 1 ? (
+                    <>
+                      <Send className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden sm:inline">{isEditMode ? 'Update Vehicle' : 'Publish Now'}</span>
+                      <span className="sm:hidden">{isEditMode ? 'Update' : 'Publish'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">Next Step</span>
+                      <span className="sm:hidden">Next</span>
+                      <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
+        )}
+        
+        {/* Margin Privacy Component - Show on pricing step */}
+        {filteredSteps[currentStep]?.id === 'pricing' && (
+          <div className="mt-6 md:mt-8 mx-4 md:mx-0">
+            <MarginPrivacy
+              dealerNet={vehicleData.dealer_net || 0}
+              baseCost={vehicleData.base_cost || 0}
+              shownPrice={vehicleData.shown_price || 0}
+              dealerPrice={vehicleData.dealer_price || 0}
+              stockType={vehicleData.stock_type || 'owned'}
+              exposureMode={vehicleData.exposure_mode || 'masked'}
+            />
           </div>
         )}
       </div>

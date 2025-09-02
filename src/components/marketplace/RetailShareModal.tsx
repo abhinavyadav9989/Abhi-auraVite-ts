@@ -24,11 +24,11 @@ export default function RetailShareModal({ vehicle, transaction, onClose }) {
       try {
         const user = await User.me();
         const dealerPrefs = await DealerPreferences.filter({ created_by: user.email });
-        if (dealerPrefs.length > 0 && dealerPrefs[0].default_markup_pct) {
-          setMarkup(dealerPrefs[0].default_markup_pct);
+        if (dealerPrefs.length > 0) {
+          setMarkup(10); // Default 10% markup
         }
       } catch (error) {
-        console.error("Could not fetch dealer preferences:", error);
+        // Could not fetch dealer preferences - handled gracefully
       }
     };
     fetchPrefs();

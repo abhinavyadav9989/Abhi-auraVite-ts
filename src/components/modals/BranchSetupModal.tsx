@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, MapPin, CheckCircle } from 'lucide-react';
-import { Dealer } from '@/api/entityAdapters';
-import { supabase } from '@/api/supabaseClient';
+import { Loader2, MapPin, CheckCircle, AlertTriangle, Store, Wrench, Warehouse, Building2 } from 'lucide-react';
+import { Dealer } from '@/api/entities';
+import { db } from '@/api/supabaseClient';
 
 interface BranchSetupModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ interface BranchSetupModalProps {
   onBranchAdded?: (branch: any) => void;
   onBranchUpdated?: (branch: any) => void;
   branch?: any; // when provided, modal works in edit mode
+  currentBranchCount?: number; // current number of branches
 }
 
 const INDIAN_STATES = [
@@ -27,10 +28,63 @@ const INDIAN_STATES = [
   'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh'
 ];
 
-export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBranchUpdated, dealerId, branch }: BranchSetupModalProps) {
+const BRANCH_TYPES = [
+  {
+    value: 'showroom',
+    label: 'Showroom',
+    description: 'Vehicle display and sales',
+    icon: Store,
+    color: 'text-blue-600'
+  },
+  {
+    value: 'workshop',
+    label: 'Workshop',
+    description: 'Service and repairs',
+    icon: Wrench,
+    color: 'text-orange-600'
+  },
+  {
+    value: 'warehouse',
+    label: 'Warehouse',
+    description: 'Parts and inventory storage',
+    icon: Warehouse,
+    color: 'text-green-600'
+  },
+  {
+    value: 'kiosk',
+    label: 'Kiosk',
+    description: 'Small sales/service point',
+    icon: MapPin,
+    color: 'text-purple-600'
+  },
+  {
+    value: 'outlet',
+    label: 'Outlet',
+    description: 'Secondary location',
+    icon: Building2,
+    color: 'text-gray-600'
+  }
+];
+
+export default function BranchSetupModal({ 
+  isOpen, 
+  onClose, 
+  onBranchAdded, 
+  onBranchUpdated, 
+  dealerId, 
+  branch,
+  currentBranchCount = 0
+}: BranchSetupModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Component state variables
+
+
+
+
+
 
   // Debug: Log when modal props change
   useEffect(() => {
@@ -45,6 +99,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
     pincode: '',
     phone: '',
     email: '',
+    branchType: 'showroom',
     isDefault: true // First branch is always default
   });
 
@@ -62,6 +117,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
         pincode: branch.pincode || '',
         phone: branch.contact_number || '',
         email: branch.email || '',
+        branchType: branch.branch_type || 'showroom',
         isDefault: !!branch.is_default,
       });
       if (branch.working_hours && typeof branch.working_hours === 'object') {
@@ -118,6 +174,8 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Branch creation is now unlimited
+    
     if (!validateBranchData()) {
       toast({
         title: "Validation Error",
@@ -138,6 +196,8 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
         city: branchData.city,
         state: branchData.state,
         contact_number: branchData.phone,
+        email: branchData.email,
+        branch_type: branchData.branchType,
         working_hours: workingHours || {},
         is_default: branchData.isDefault,
         updated_at: new Date().toISOString(),
@@ -147,7 +207,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
 
       if (branch?.id) {
         // EDIT MODE
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('branches')
           .update(payload)
           .eq('id', branch.id)
@@ -157,7 +217,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
         savedBranch = data;
       } else {
         // CREATE MODE
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('branches')
           .insert({ ...payload, created_at: new Date().toISOString() })
           .select()
@@ -169,7 +229,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
       // If setting default, unset others for this dealer first to enforce single Main branch
       if (payload.is_default === true) {
         try {
-          await supabase
+          await db
             .from('branches')
             .update({ is_default: false })
             .eq('dealer_id', dealerId)
@@ -208,6 +268,7 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
         pincode: '',
         phone: '',
         email: '',
+        branchType: 'showroom',
         isDefault: false
       });
       setWorkingHours({});
@@ -251,6 +312,9 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
           <DialogDescription>
             {branch?.id ? 'Update your branch details and working hours' : 'Add your first branch location to start managing vehicle inventory'}
           </DialogDescription>
+          
+
+
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -337,6 +401,42 @@ export default function BranchSetupModal({ isOpen, onClose, onBranchAdded, onBra
               {errors.pincode && (
                 <p className="text-sm text-red-600">{errors.pincode}</p>
               )}
+            </div>
+
+            {/* Branch Type */}
+            <div className="space-y-3">
+              <Label>Branch Type *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {BRANCH_TYPES.map((type) => {
+                  const Icon = type.icon;
+                  return (
+                    <div
+                      key={type.value}
+                      onClick={() => updateBranchData('branchType', type.value)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        branchData.branchType === type.value
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          branchData.branchType === type.value ? 'bg-blue-100 dark:bg-blue-800' : 'bg-gray-100 dark:bg-gray-800'
+                        }`}>
+                          <Icon className={`w-5 h-5 ${type.color}`} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">{type.label}</h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{type.description}</p>
+                        </div>
+                        {branchData.branchType === type.value && (
+                          <CheckCircle className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Contact Information */}

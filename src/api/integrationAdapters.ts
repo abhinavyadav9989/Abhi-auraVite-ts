@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { db } from './supabaseClient';
 
 // Core integrations adapter
 class CoreAdapter {
@@ -39,7 +39,7 @@ class CoreAdapter {
         console.warn(`File extension (${fileExtension}) doesn't match MIME type (${file.type}) for file: ${file.name}`);
       }
       
-      const { data, error } = await supabase.storage
+      const { data, error } = await db.storage
         .from('uploads')
         .upload(filePath, file, {
           ...options,
@@ -49,7 +49,7 @@ class CoreAdapter {
       if (error) throw error;
       
       // Get public URL
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = db.storage
         .from('uploads')
         .getPublicUrl(filePath);
       
@@ -77,7 +77,7 @@ class CoreAdapter {
   }
 
   // LLM integration using Supabase Edge Functions
-  async InvokeLLM(promptOrOptions: string | any, options?: any) {
+  async InvokeLLM(promptOrOptions: string | Record<string, unknown>, options?: Record<string, unknown>) {
     try {
       // Handle both string and object parameters
       let prompt = '';
@@ -86,11 +86,11 @@ class CoreAdapter {
       if (typeof promptOrOptions === 'string') {
         prompt = promptOrOptions;
       } else if (typeof promptOrOptions === 'object') {
-        prompt = promptOrOptions.prompt || '';
+        prompt = (promptOrOptions.prompt as string) || '';
         requestOptions = { ...promptOrOptions, ...options };
       }
       
-      const { data, error } = await supabase.functions.invoke('invoke-llm', {
+      const { data, error } = await db.functions.invoke('invoke-llm', {
         body: { prompt, options: requestOptions }
       });
       
@@ -105,14 +105,14 @@ class CoreAdapter {
       console.warn('Edge function invoke-llm failed, using mock response:', error);
       // Return mock data for development
       return this.getMockLLMResponse(
-        typeof promptOrOptions === 'string' ? promptOrOptions : promptOrOptions.prompt || '',
+        typeof promptOrOptions === 'string' ? promptOrOptions : (promptOrOptions.prompt as string) || '',
         options
       );
     }
   }
 
   // Mock LLM response for development
-  getMockLLMResponse(prompt: string, options?: any) {
+  getMockLLMResponse(prompt: string, options?: Record<string, unknown>) {
     // Ensure prompt is a string
     const promptStr = typeof prompt === 'string' ? prompt : '';
     
@@ -164,9 +164,9 @@ class CoreAdapter {
   }
 
   // Email integration using Supabase Edge Functions
-  async SendEmail(to: string, subject: string, body: string, options?: any) {
+  async SendEmail(to: string, subject: string, body: string, options?: Record<string, unknown>) {
     try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
+      const { data, error } = await db.functions.invoke('send-email', {
         body: { to, subject, body, options }
       });
       
@@ -190,9 +190,9 @@ class CoreAdapter {
   }
 
   // Image generation using Supabase Edge Functions
-  async GenerateImage(prompt: string, options?: any) {
+  async GenerateImage(prompt: string, options?: Record<string, unknown>) {
     try {
-      const { data, error } = await supabase.functions.invoke('generate-image', {
+      const { data, error } = await db.functions.invoke('generate-image', {
         body: { prompt, options }
       });
       
@@ -209,9 +209,9 @@ class CoreAdapter {
   }
 
   // Data extraction using Supabase Edge Functions
-  async ExtractDataFromUploadedFile(fileUrl: string, options?: any) {
+  async ExtractDataFromUploadedFile(fileUrl: string, options?: Record<string, unknown>) {
     try {
-      const { data, error } = await supabase.functions.invoke('extract-data', {
+      const { data, error } = await db.functions.invoke('extract-data', {
         body: { fileUrl, options }
       });
       

@@ -78,7 +78,7 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
           <Checkbox
             checked={isSelected}
             onCheckedChange={(checked) => onSelect(vehicle.id, checked === true)}
-            className="w-5 h-5 bg-white"
+            className="w-5 h-5 bg-slate-50 dark:bg-slate-900"
           />
         </CardHeader>
         <Badge className={`absolute top-2 right-2 z-10 ${getStatusColor(vehicle.status)}`}>

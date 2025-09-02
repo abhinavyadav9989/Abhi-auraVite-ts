@@ -38,7 +38,7 @@ export default function VehicleListCard({
   };
 
   const isNewVehicle = () => {
-    const createdDate = new Date(vehicle.created_date || '');
+            const createdDate = new Date(vehicle.created_at || '');
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
     return diffDays <= 7;

@@ -1,4 +1,4 @@
-// Import from Supabase integration adapters instead of Base44
+// Import from Supabase integration adapters
 import {
   Core,
   InvokeLLM,

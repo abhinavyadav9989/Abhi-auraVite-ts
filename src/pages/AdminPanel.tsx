@@ -97,7 +97,8 @@ export default function AdminPanel() {
         update.verification_status = 'rejected';
         update.verification_notes = rejectionNotes;
       } else if (action === 'flag') {
-        update.is_flagged = !selectedDealer?.is_flagged;
+        // Note: is_flagged field doesn't exist in database, using status-based flagging
+        update.status = selectedDealer?.status === 'flagged' ? 'active' : 'flagged';
       }
       await Dealer.update(selectedReview, update);
       await handleReviewComplete(action);
@@ -260,7 +261,7 @@ export default function AdminPanel() {
                                 {dealer.verification_status.toUpperCase()}
                               </Badge>
                               <span className="text-xs text-slate-500">
-                                Applied {new Date(dealer.created_date).toLocaleDateString()}
+                                Applied {new Date(dealer.created_at).toLocaleDateString()}
                               </span>
                             </div>
                           </div>

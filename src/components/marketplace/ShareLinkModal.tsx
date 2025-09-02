@@ -47,7 +47,7 @@ export default function ShareLinkModal({ vehicle, onClose }) {
       toast({ title: "Copied!", description: "Link copied to clipboard." });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy link:', error);
+      // Failed to copy link - handled gracefully
       toast({ title: "Error", description: "Failed to copy link.", variant: "destructive" });
     }
   };
@@ -98,7 +98,7 @@ export default function ShareLinkModal({ vehicle, onClose }) {
       
       toast({ title: "✓ PDF Generated", description: "Your PDF has been downloaded." });
     } catch (error) {
-      console.error("PDF Generation failed:", error);
+      // PDF Generation failed - handled gracefully
       toast({ title: "Error", description: "Could not generate PDF.", variant: "destructive" });
     } finally {
       document.body.removeChild(printableElement);

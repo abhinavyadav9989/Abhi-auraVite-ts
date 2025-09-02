@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
     allowedHosts: true,
   },
   resolve: {

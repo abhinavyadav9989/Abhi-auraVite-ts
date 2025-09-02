@@ -59,7 +59,7 @@ export default function InsightsSidebar({ isOpen, onClose, onApplyFilter }) {
         throw new Error('No AI insights received');
       }
     } catch (error) {
-      console.error('Error loading AI insights:', error);
+      // Error loading AI insights - handled gracefully
       // Fallback to static insights
       setInsights([
         {

@@ -149,7 +149,7 @@ export default function ReviewsSection({
                             {renderStars(review.rating || 0)}
                           </div>
                           <span className="text-sm text-slate-500">
-                            {format(new Date(review.created_date), 'MMM d, yyyy')}
+                            {format(new Date(review.created_at), 'MMM d, yyyy')}
                           </span>
                         </div>
                       </div>

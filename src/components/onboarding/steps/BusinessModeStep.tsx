@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,8 +24,18 @@ const BusinessModeStep: React.FC<BusinessModeStepProps> = ({
   isSaving,
   dealer
 }) => {
-  const businessModes = onboardingAPI.getBusinessModes();
-  const vehicleSegments = onboardingAPI.getVehicleSegments();
+  const [businessModes, setBusinessModes] = useState<any[]>([]);
+  const [vehicleSegments, setVehicleSegments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const modes = await onboardingAPI.getBusinessModes();
+      const segments = await onboardingAPI.getVehicleSegments();
+      setBusinessModes(modes);
+      setVehicleSegments(segments);
+    };
+    loadData();
+  }, []);
 
   const handleBusinessModeSelect = (modeId: string) => {
     const businessMode = { mode: modeId };

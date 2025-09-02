@@ -1,102 +1,96 @@
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Vehicle } from "@/api/entities";
-import { Dealer } from "@/api/entities";
-import { User } from "@/api/entities";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Lightbulb, Plus, SlidersHorizontal, Loader2, ArrowUp, Ghost, WifiOff, Heart, Eye, ShieldCheck, X, Grid3X3, List } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { User, Dealer, Vehicle } from '@/api/entities';
+import type { Database } from '@/types';
 
-import FuzzySearchBar from "../components/marketplace/FuzzySearchBar";
-import MarketplaceFilters from "../components/marketplace/MarketplaceFilters";
-import VehicleCard from "../components/marketplace/VehicleCard";
-import VehicleListCard from "../components/marketplace/VehicleListCard";
-import ComparePanel from "../components/marketplace/ComparePanel";
-import NoResultsState from "../components/marketplace/NoResultsState";
-import OfferModal from "../components/marketplace/OfferModal";
-import ShareLinkModal from "../components/marketplace/ShareLinkModal";
-import InsightsSidebar from "../components/marketplace/InsightsSidebar";
-import ExpressInterestModal from "../components/marketplace/ExpressInterestModal";
+type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
+type DealerRow = Database['public']['Tables']['dealers']['Row'];
+type UserRow = Database['auth']['Tables']['users']['Row'];
+import { createPageUrl } from '@/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Search, 
+  Filter, 
+  Grid3X3, 
+  List, 
+  MapPin, 
+  Calendar, 
+  IndianRupee,
+  Eye,
+  EyeOff,
+  Shield,
+  Crown,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
+  TrendingUp,
+  Users,
+  Building2
+} from 'lucide-react';
 
-const INITIAL_FILTERS_STATE = {
-  vehicle_category: [],
-  fuel_type: [],
-  make: [],
-  transmission: [],
-  ownership: [],
-  verified_only: false,
-  specialised_only: false,
-  price_drops_only: false,
-  financing_available: false,
-  price_min: "",
-  price_max: "",
-  year_min: "",
-  year_max: "",
-  kms_min: "",
-  kms_max: ""
-};
+import { usePermissions } from '@/components/security/usePermissions';
+import FilterDrawer from '@/components/marketplace/FilterDrawer';
+import VehicleCard from '@/components/marketplace/VehicleCard';
 
-export default function Marketplace() {
+// Enhanced Marketplace component with policy enforcement
+function MarketplaceContent() {
   const [allVehicles, setAllVehicles] = useState([]);
   const [filteredVehicles, setFilteredVehicles] = useState([]);
-  const [dealers, setDealers] = useState({});
-  const [currentDealer, setCurrentDealer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
-  const [compareList, setCompareList] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [showOfferModal, setShowOfferModal] = useState(false);
-  const [filters, setFilters] = useState(INITIAL_FILTERS_STATE);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState({
+    vehicle_category: [],
+    fuel_type: [],
+    make: [],
+    transmission: [],
+    ownership: [],
+    verified_only: false,
+    specialised_only: false,
+    price_drops_only: false,
+    financing_available: false,
+    price_min: "",
+    price_max: "",
+    year_min: "",
+    year_max: "",
+    kms_min: "",
+    kms_max: "",
+    location: [],
+    body_type: [],
+    color: [],
+    document_status: []
+  });
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [comparedVehicles, setComparedVehicles] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentDealer, setCurrentDealer] = useState(null);
   const [isUserVerified, setIsUserVerified] = useState(false);
   const [isUnderReview, setIsUnderReview] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [showPrices, setShowPrices] = useState(false);
+  
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const { hasPermission, isLoading: permissionsLoading, userRole, dealerRole, verificationStatus } = usePermissions();
 
-  // Keyboard shortcuts for filters
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (showFilters) {
-        if (e.key === 'Escape') {
-          setShowFilters(false);
-        } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-          e.preventDefault();
-          setFilters(INITIAL_FILTERS_STATE);
-          toast({ 
-            title: "Filters Cleared", 
-            description: "All filters have been reset", 
-            variant: "default" 
-          });
-        }
-      }
-    };
-
-    if (showFilters) {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when filters are open
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'unset';
-    };
-  }, [showFilters, filters]);
-
-  // Check if any filters are active
-  const hasActiveFilters = Object.values(filters).some(value => 
-    Array.isArray(value) ? value.length > 0 : value && value !== ""
-  );
+  const hasActiveFilters = Object.values(selectedFilters).some(value => value !== '');
 
   useEffect(() => {
     loadMarketplaceData();
   }, []);
+
+  // Update price visibility based on permissions
+  useEffect(() => {
+    if (!permissionsLoading) {
+      setShowPrices(hasPermission('marketplace.view_prices'));
+    }
+  }, [hasPermission, permissionsLoading]);
 
   const loadMarketplaceData = async () => {
     try {
@@ -134,484 +128,429 @@ export default function Marketplace() {
       
       // Filter out current user's vehicles so they don't see their own cars in marketplace
       if (currentDealerData) {
-        const originalCount = vehicles.length;
-        const userVehicles = vehicles.filter(vehicle => vehicle.dealer_id === currentDealerData.id);
         vehicles = vehicles.filter(vehicle => vehicle.dealer_id !== currentDealerData.id);
-        const filteredCount = vehicles.length;
-        console.log(`Marketplace filtering: ${originalCount} total vehicles, ${filteredCount} after excluding current dealer's vehicles (${userVehicles.length} of your own vehicles hidden)`);
       }
-      
-      // Sort newest first client-side and keep as-is (can paginate later)
-      const sorted = (vehicles || []).sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
-      setAllVehicles(sorted);
 
-      const dealerIds = [...new Set(vehicles.map(v => v.dealer_id).filter(Boolean))];
-      const dealersData = await Promise.all(dealerIds.map(id => Dealer.get(id).catch(() => null)));
-      const dealersMap = {};
-      dealersData.forEach(dealer => {
-        if (dealer) dealersMap[dealer.id] = dealer;
-      });
-      setDealers(dealersMap);
-
+      setAllVehicles(vehicles);
+      setFilteredVehicles(vehicles);
     } catch (error) {
       console.error('Error loading marketplace data:', error);
-      toast({ title: 'Error', description: 'Failed to load marketplace data', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to load marketplace data.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Filter vehicles based on search and filters
   useEffect(() => {
-    let results = [...allVehicles];
+    let filtered = allVehicles;
 
-    // Search Query Filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      results = results.filter(vehicle => {
-        const searchableText = [
-          vehicle.make, vehicle.model, vehicle.variant, vehicle.registration_number, vehicle.location_city,
-          dealers[vehicle.dealer_id]?.business_name
-        ].join(' ').toLowerCase();
-        return searchableText.includes(query);
+    // Apply search term
+    if (searchTerm) {
+      filtered = filtered.filter(vehicle =>
+        vehicle.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.variant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply filters
+    const {
+      vehicle_category,
+      fuel_type,
+      make,
+      transmission,
+      ownership,
+      verified_only,
+      specialised_only,
+      price_drops_only,
+      financing_available,
+      price_min,
+      price_max,
+      year_min,
+      year_max,
+      kms_min,
+      kms_max,
+      location,
+      body_type,
+      color,
+      document_status
+    } = selectedFilters;
+
+    // Filter by vehicle category
+    if (vehicle_category.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        vehicle_category.includes(vehicle.vehicle_category) ||
+        vehicle_category.includes(vehicle.body_type)
+      );
+    }
+
+    // Filter by fuel type
+    if (fuel_type.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        fuel_type.includes(vehicle.fuel_type)
+      );
+    }
+
+    // Filter by make
+    if (make.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        make.includes(vehicle.make)
+      );
+    }
+
+    // Filter by transmission
+    if (transmission.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        transmission.includes(vehicle.transmission)
+      );
+    }
+
+    // Filter by ownership
+    if (ownership.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        ownership.includes(vehicle.ownership)
+      );
+    }
+
+    // Filter by body type
+    if (body_type.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        body_type.includes(vehicle.body_type)
+      );
+    }
+
+    // Filter by color
+    if (color.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        color.includes(vehicle.color)
+      );
+    }
+
+    // Filter by verified only
+    if (verified_only) {
+      filtered = filtered.filter(vehicle => vehicle.verification_status === 'verified');
+    }
+
+    // Filter by specialised only
+    if (specialised_only) {
+      filtered = filtered.filter(vehicle => vehicle.vehicle_category === 'specialised');
+    }
+
+    // Filter by price range
+    if (price_min || price_max) {
+      filtered = filtered.filter(vehicle => {
+        const price = vehicle.asking_price || vehicle.ex_showroom_price || 0;
+        const minPrice = price_min ? parseFloat(price_min) * 100000 : 0;
+        const maxPrice = price_max ? parseFloat(price_max) * 100000 : Number.MAX_VALUE;
+        return price >= minPrice && price <= maxPrice;
       });
     }
 
-    // Advanced Filters
-    results = results.filter(vehicle => {
-      const { vehicle_category, fuel_type, make, transmission, ownership, verified_only, price_min, price_max, year_min, year_max, kms_min, kms_max } = filters;
+    // Filter by year range
+    if (year_min || year_max) {
+      filtered = filtered.filter(vehicle => {
+        const year = parseInt(vehicle.year);
+        const minYear = year_min ? parseInt(year_min) : 0;
+        const maxYear = year_max ? parseInt(year_max) : new Date().getFullYear();
+        return year >= minYear && year <= maxYear;
+      });
+    }
 
-      // Category filter logic
-      if ((vehicle_category || []).length > 0) {
-        const vehicleCats = Array.isArray(vehicle.vehicle_category)
-            ? vehicle.vehicle_category
-            : (typeof vehicle.vehicle_category === 'string' ? [vehicle.vehicle_category] : []);
-        
-        const hasMatch = vehicle_category.some(filterCat => vehicleCats.includes(filterCat));
-        if (!hasMatch) return false;
-      }
-      
-      if ((fuel_type || []).length > 0 && !fuel_type.includes(vehicle.fuel_type)) return false;
-      if ((make || []).length > 0 && !make.includes(vehicle.make)) return false;
-      if ((transmission || []).length > 0 && !transmission.includes(vehicle.transmission)) return false;
-      if ((ownership || []).length > 0 && !ownership.includes(vehicle.ownership)) return false;
-      
-      if (verified_only && dealers[vehicle.dealer_id]?.verification_status !== 'verified') return false;
+    // Filter by kilometers
+    if (kms_min || kms_max) {
+      filtered = filtered.filter(vehicle => {
+        const kms = vehicle.kilometers || 0;
+        const minKms = kms_min ? parseInt(kms_min) : 0;
+        const maxKms = kms_max ? parseInt(kms_max) : Number.MAX_VALUE;
+        return kms >= minKms && kms <= maxKms;
+      });
+    }
 
-      if (price_min && vehicle.asking_price < parseInt(price_min) * 100000) return false;
-      if (price_max && vehicle.asking_price > parseInt(price_max) * 100000) return false;
-      
-      if (year_min && vehicle.year < parseInt(year_min)) return false;
-      if (year_max && vehicle.year > parseInt(year_max)) return false;
+    // Filter by location
+    if (location.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        location.some(loc =>
+          vehicle.location_city?.toLowerCase().includes(loc.toLowerCase()) ||
+          vehicle.location?.toLowerCase().includes(loc.toLowerCase())
+        )
+      );
+    }
 
-      if (kms_min && vehicle.kilometers < parseInt(kms_min)) return false;
-      if (kms_max && vehicle.kilometers > parseInt(kms_max)) return false;
-      
-      return true;
-    });
+    // Filter by document status (for dealers)
+    if (document_status.length > 0) {
+      filtered = filtered.filter(vehicle =>
+        document_status.includes(vehicle.document_status)
+      );
+    }
 
-    // Sorting
-    results.sort((a, b) => {
-      switch (sortBy) {
-        case 'price_low': return (a.asking_price || 0) - (b.asking_price || 0);
-        case 'price_high': return (b.asking_price || 0) - (a.asking_price || 0);
-        case 'year_new': return (b.year || 0) - (a.year || 0);
-        case 'year_old': return (a.year || 0) - (b.year || 0);
-        case 'kms_low': return (a.kilometers || 0) - (b.kilometers || 0);
-        case 'newest': default: return new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime();
-      }
-    });
+    // Filter by price drops (mock - would need actual price history)
+    if (price_drops_only) {
+      filtered = filtered.filter(vehicle => vehicle.price_drop_indicator === true);
+    }
 
-    setFilteredVehicles(results);
-  }, [allVehicles, searchQuery, sortBy, dealers, filters]);
+    // Filter by financing available (mock - would need actual financing data)
+    if (financing_available) {
+      filtered = filtered.filter(vehicle => vehicle.financing_available === true);
+    }
 
-  const handleCompareToggle = (vehicleId) => {
-    setCompareList(prev => {
+    setFilteredVehicles(filtered);
+  }, [searchTerm, selectedFilters, allVehicles]);
+
+  const handleVehicleClick = (vehicleId: string) => {
+    navigate(createPageUrl(`VehicleDetail?id=${vehicleId}`));
+  };
+
+  const handleMakeOffer = (vehicle: VehicleRow) => {
+    if (!hasPermission('marketplace.create_offer')) {
+      toast({
+        title: 'Permission Required',
+        description: 'You need permission to create offers. Contact your administrator.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    navigate(createPageUrl(`DealRoom?vehicleId=${vehicle.id}`));
+  };
+
+  const handleCompareToggle = (vehicleId: string) => {
+    setComparedVehicles(prev => {
       if (prev.includes(vehicleId)) {
         return prev.filter(id => id !== vehicleId);
-      } else if (prev.length < 3) {
+      } else if (prev.length < 4) {
         return [...prev, vehicleId];
       } else {
-        toast({ title: 'Compare Limit', description: 'You can compare up to 3 vehicles at a time', variant: 'destructive' });
+        toast({
+          title: 'Compare Limit Reached',
+          description: 'You can compare up to 4 vehicles at once.',
+          variant: 'destructive'
+        });
         return prev;
       }
     });
   };
 
-  const handleMakeOffer = (vehicle) => {
-    setSelectedVehicle(vehicle);
-    setShowOfferModal(true);
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedFilters({
+      vehicle_category: [],
+      fuel_type: [],
+      make: [],
+      transmission: [],
+      ownership: [],
+      verified_only: false,
+      specialised_only: false,
+      price_drops_only: false,
+      financing_available: false,
+      price_min: "",
+      price_max: "",
+      year_min: "",
+      year_max: "",
+      kms_min: "",
+      kms_max: "",
+      location: [],
+      body_type: [],
+      color: [],
+      document_status: []
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Loading marketplace...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 bg-transparent">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* KYB Verification Banner for Unverified Users */}
-        {!isUserVerified && currentDealer && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-amber-900">
-                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
-                      ? 'Verification Under Review' 
-                      : 'Complete KYB Verification'
-                    }
-                  </h3>
-                  <p className="text-sm text-amber-700">
-                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
-                      ? 'Your business verification is being reviewed. You can still browse vehicles but pricing is hidden.'
-                      : 'Vehicle prices and dealer details are hidden until you complete KYB verification'
-                    }
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Vehicle Marketplace</h1>
+            <p className="text-slate-600 mt-2">
+              Discover and connect with verified dealers across India
+            </p>
+          </div>
+
+        {/* Access Level Banner for Unverified Users */}
+        {!isUserVerified && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Eye className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-amber-800 mb-1">
+                  Limited Access - Complete Verification for Full Features
+                </h3>
+                <div className="text-sm text-amber-700 space-y-1">
+                  <p>
+                    <span className="font-medium">✓ Browse vehicles:</span> Available
+                    <span className="font-medium ml-4">✗ Vehicle prices:</span> "Price on request"
+                    <span className="font-medium ml-4">✗ Dealer contacts:</span> Hidden
+                  </p>
+                  <p className="text-xs">
+                    Complete your business verification to unlock pricing, dealer details, and make offers.
                   </p>
                 </div>
               </div>
-              <Link to={currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
-                ? createPageUrl("Profile") 
-                : createPageUrl("OnboardingWizard")
-              }>
-                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                  {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
-                    ? 'View Profile'
-                    : 'Complete KYB'
-                  }
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                onClick={() => window.location.href = createPageUrl('KYBWizard')}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Complete Verification
+              </Button>
             </div>
           </div>
         )}
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Marketplace</h1>
-            <p className="text-slate-600 mt-1">
-              {searchQuery ? (
-                <>
-                  {filteredVehicles.length} vehicles found for &quot;{searchQuery}&quot;
-                  {currentDealer && (
-                    <span className="text-xs text-slate-500 block mt-1">
-                      (Your own vehicles are hidden from this view)
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  {filteredVehicles.length} vehicles available from other dealers
-                  {currentDealer && (
-                    <span className="text-xs text-slate-500 block mt-1">
-                      (Your own vehicles are hidden from this view)
-                    </span>
-                  )}
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to={createPageUrl("AddVehicle")}>
-              <Button className="gap-2"><Plus className="w-4 h-4" /> List Vehicle</Button>
-            </Link>
+          
+          {/* Verification Status */}
+          <div className="flex items-center gap-2">
+            {isUserVerified ? (
+              <Badge variant="default" className="bg-green-100 text-green-800">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Verified
+              </Badge>
+            ) : isUnderReview ? (
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Under Review
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-slate-600">
+                <Shield className="w-3 h-3 mr-1" />
+                Unverified
+              </Badge>
+            )}
+            
+            {showPrices ? (
+              <Badge variant="outline" className="text-green-600">
+                <Eye className="w-3 h-3 mr-1" />
+                Prices Visible
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-slate-600">
+                <EyeOff className="w-3 h-3 mr-1" />
+                Prices Hidden
+              </Badge>
+            )}
           </div>
         </div>
 
+        {/* Search and Filters */}
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
-            <FuzzySearchBar 
-              onSearch={setSearchQuery}
-              currentDealer={currentDealer}
-              placeholder="Search by make, model, city, or dealer..."
-              value={searchQuery}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="Search vehicles by brand, model, or variant..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
+          
           <div className="flex gap-2">
-            {searchQuery && (
-              <Button 
-                variant="outline" 
-                onClick={() => setSearchQuery("")} 
-                className="gap-2 text-red-600 hover:text-red-700"
-              >
-                <X className="w-4 h-4" /> Clear Search
+            <Button variant="outline" onClick={() => setViewMode('grid')}>
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" onClick={() => setViewMode('list')}>
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className="gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700">
+                  {hasActiveFilters}
+                </Badge>
+              )}
+            </Button>
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters}>
+                Clear Filters
               </Button>
             )}
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md bg-white/80 backdrop-blur focus-ring text-sm">
-              <option value="newest">Newest First</option>
-              <option value="price_low">Price: Low to High</option>
-              <option value="price_high">Price: High to Low</option>
-              <option value="year_new">Year: Newest First</option>
-              <option value="year_old">Year: Oldest First</option>
-              <option value="kms_low">Kilometers: Low to High</option>
-            </select>
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button 
-                variant={hasActiveFilters ? "default" : "outline"} 
-                onClick={() => setShowFilters(!showFilters)} 
-                className={`gap-2 transition-all duration-200 ${
-                  hasActiveFilters 
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg" 
-                    : "hover:bg-slate-50"
-                }`}
-              >
-                <SlidersHorizontal className="w-4 h-4" /> 
-                Filters
-                {hasActiveFilters && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-2 h-2 bg-white rounded-full"
-                  />
-                )}
-              </Button>
-            </motion.div>
+          </div>
+        </div>
+      </div>
+
+
+
+      {/* Results */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {filteredVehicles.length} vehicles found
+          </h2>
+          <div className="text-sm text-slate-600">
+            Showing {filteredVehicles.length} of {allVehicles.length} vehicles
           </div>
         </div>
 
-        {/* Animated Filters Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                animate={{ opacity: 1, backdropFilter: "blur(4px)" }}
-                exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="fixed inset-0 bg-black/20 z-40"
-                onClick={() => setShowFilters(false)}
-              />
-              
-              {/* Filters Panel */}
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ 
-                  type: "spring", 
-                  damping: 25, 
-                  stiffness: 300,
-                  duration: 0.4
-                }}
-                className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
-                style={{ 
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                  borderLeft: "1px solid rgba(0, 0, 0, 0.1)"
-                }}
-              >
-                                 <motion.div 
-                   className="sticky top-0 bg-white border-b border-slate-200 p-4"
-                   initial={{ opacity: 0, y: -10 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: 0.05, duration: 0.3 }}
-                 >
-                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-3">
-                       <motion.div 
-                         className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"
-                         initial={{ scale: 0, rotate: -180 }}
-                         animate={{ scale: 1, rotate: 0 }}
-                         transition={{ delay: 0.1, duration: 0.4, type: "spring" }}
-                       >
-                         <SlidersHorizontal className="w-5 h-5 text-blue-600" />
-                       </motion.div>
-                       <div>
-                         <h2 className="text-lg font-semibold text-slate-900">Filters</h2>
-                         <p className="text-sm text-slate-600">{filteredVehicles.length} results</p>
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-2">
-                       {hasActiveFilters && (
-                         <motion.div
-                           initial={{ opacity: 0, scale: 0.8 }}
-                           animate={{ opacity: 1, scale: 1 }}
-                           transition={{ delay: 0.2, duration: 0.3 }}
-                         >
-                           <Button
-                             variant="outline"
-                             size="sm"
-                             onClick={() => {
-                               setFilters(INITIAL_FILTERS_STATE);
-                               toast({ 
-                                 title: "Filters Cleared", 
-                                 description: "All filters have been reset", 
-                                 variant: "default" 
-                               });
-                             }}
-                             className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                             title="Clear all filters (Ctrl+K)"
-                           >
-                             <X className="w-3 h-3" />
-                             Clear All
-                           </Button>
-                         </motion.div>
-                       )}
-                       <motion.div
-                         whileHover={{ scale: 1.1 }}
-                         whileTap={{ scale: 0.9 }}
-                       >
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={() => setShowFilters(false)}
-                           className="w-8 h-8 p-0 hover:bg-slate-100"
-                         >
-                           <X className="w-4 h-4" />
-                         </Button>
-                       </motion.div>
-                     </div>
-                   </div>
-                 </motion.div>
-                
-                <motion.div 
-                  className="p-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
-                >
-                  <MarketplaceFilters 
-                    filters={filters}
-                    setFilters={setFilters}
-                    resultsCount={filteredVehicles.length}
-                    allVehicles={allVehicles}
-                    userClientType={currentDealer?.client_type}
-                  />
-                </motion.div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        {compareList.length > 0 && (
-          <ComparePanel
-            vehicleIds={compareList}
-            vehicles={allVehicles}
-            dealers={dealers}
-            onRemove={handleCompareToggle}
-            onClear={() => setCompareList([])}
-          />
-        )}
-
         {filteredVehicles.length === 0 ? (
-          <NoResultsState 
-            searchQuery={searchQuery}
-            onClearSearch={() => setSearchQuery("")}
-            setFilters={() => setFilters(INITIAL_FILTERS_STATE)}
-          />
+          <Card>
+            <CardContent className="text-center py-12">
+              <Search className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No vehicles found</h3>
+              <p className="text-slate-600 mb-4">
+                Try adjusting your search criteria or filters
+              </p>
+              <Button onClick={clearFilters}>Clear All Filters</Button>
+            </CardContent>
+          </Card>
         ) : (
-          <>
-            {/* View Toggle */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">View:</span>
-                <div className="flex items-center bg-slate-100 rounded-lg p-1">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setViewMode('grid')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                      viewMode === 'grid'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                    Grid
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setViewMode('list')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                      viewMode === 'list'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <List className="w-4 h-4" />
-                    List
-                  </motion.button>
-                </div>
-              </div>
-              <div className="text-sm text-slate-500">
-                {filteredVehicles.length} vehicle{filteredVehicles.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-
-            {/* Vehicle Listings */}
-            <AnimatePresence mode="wait">
-              {viewMode === 'grid' ? (
-                <motion.div
-                  key="grid"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                >
-                  {filteredVehicles.map((vehicle) => (
-                    <VehicleCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      dealer={dealers[vehicle.dealer_id]}
-                      currentDealer={currentDealer}
-                      isInCompare={compareList.includes(vehicle.id)}
-                      onCompareToggle={() => handleCompareToggle(vehicle.id)}
-                      onMakeOffer={() => handleMakeOffer(vehicle)}
-                      isUserVerified={isUserVerified}
-                      isUnderReview={isUnderReview}
-                    />
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="list"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  {filteredVehicles.map((vehicle) => (
-                    <VehicleListCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      dealer={dealers[vehicle.dealer_id]}
-                      currentDealer={currentDealer}
-                      isInCompare={compareList.includes(vehicle.id)}
-                      onCompareToggle={() => handleCompareToggle(vehicle.id)}
-                      onMakeOffer={() => handleMakeOffer(vehicle)}
-                      isUserVerified={isUserVerified}
-                      isUnderReview={isUnderReview}
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' : 'space-y-4'}>
+            {filteredVehicles.map((vehicle) => (
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                dealer={null} // We need to fetch dealer data for each vehicle
+                currentDealer={currentDealer}
+                onCompareToggle={handleCompareToggle}
+                isInCompare={comparedVehicles.includes(vehicle.id)}
+                onMakeOffer={handleMakeOffer}
+                isUserVerified={isUserVerified}
+                isUnderReview={isUnderReview}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      {showOfferModal && selectedVehicle && isUserVerified && (
-        <OfferModal
-          vehicle={selectedVehicle}
-          dealer={dealers[selectedVehicle.dealer_id]}
-          currentDealer={currentDealer}
-          onClose={() => {
-            setShowOfferModal(false);
-            setSelectedVehicle(null);
-          }}
-        />
-      )}
+      {/* Filter Drawer */}
+      <FilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={selectedFilters}
+        setFilters={setSelectedFilters}
+        resultsCount={filteredVehicles.length}
+        allVehicles={allVehicles}
+        userClientType={userRole === 'dealer' ? 'dealer' : 'individual'}
+        isUserVerified={verificationStatus === 'verified'}
+        isDealer={dealerRole !== null}
+      />
     </div>
   );
+}
+
+// Export the marketplace content directly without policy enforcement
+// Policy restrictions are applied at the component level (prices, dealer contacts)
+export default function Marketplace() {
+  return <MarketplaceContent />;
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { onboardingAPI } from '@/api/onboardingAPI';
@@ -23,7 +23,15 @@ const ClientTypeStep: React.FC<ClientTypeStepProps> = ({
   isSaving,
   dealer
 }) => {
-  const clientTypes = onboardingAPI.getClientTypes();
+  const [clientTypes, setClientTypes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const types = await onboardingAPI.getClientTypes();
+      setClientTypes(types);
+    };
+    loadData();
+  }, []);
 
   const handleSelect = (clientType: string) => {
     updateData({ ...data, business_type: clientType });

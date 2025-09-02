@@ -81,11 +81,40 @@ export default function KYBWizard() {
     loadUserAndDraftData();
   }, []);
 
+  // Check for existing rejected application
+  const checkRejectedApplication = async () => {
+    const existingDealers = await Dealer.filter({ created_by: user.email });
+    const rejectedDealer = existingDealers.find(d =>
+      d.verification_status === 'rejected' || d.verification_status_new === 'rejected'
+    );
+
+    if (rejectedDealer) {
+      setRejectionNotes(rejectedDealer.rejection_reason || rejectedDealer.review_notes || '');
+      // Pre-fill form with existing data
+      setBusinessData({
+        business_name: rejectedDealer.business_name || '',
+        gstin: rejectedDealer.gstin || '',
+        pan_number: rejectedDealer.pan_number || '',
+        owner_name: rejectedDealer.owner_name || '',
+        phone: rejectedDealer.phone || '',
+        whatsapp: rejectedDealer.whatsapp || '',
+        email: rejectedDealer.email || '',
+        address: rejectedDealer.address || '',
+        city: rejectedDealer.city || '',
+        state: rejectedDealer.state || '',
+        pincode: rejectedDealer.pincode || '',
+        business_type: rejectedDealer.business_type || 'dealer',
+        tagline: rejectedDealer.tagline || '',
+        description: rejectedDealer.description || ''
+      });
+    }
+  };
+
   const loadUserAndDraftData = async () => {
     try {
       const currentUser = await User.me();
       setUser(currentUser);
-      
+
       // Pre-fill some data
       setBusinessData(prev => ({
         ...prev,
@@ -98,6 +127,9 @@ export default function KYBWizard() {
       if (existingDealers.length > 0) {
         const dealer = existingDealers[0];
         setDealerId(dealer.id);
+
+        // Check for rejected application
+        await checkRejectedApplication();
         
         // ONB-16: Handle rejected status
         if (dealer.verification_status === 'rejected') {
@@ -118,13 +150,13 @@ export default function KYBWizard() {
           }));
           // Subscription choice is not part of KYC anymore
           // Restore documents if present
-          if (dealer.draft_data?.documents) {
-            setDocuments(dealer.draft_data.documents);
+          if ((dealer.draft_data as any)?.documents) {
+            setDocuments((dealer.draft_data as any).documents);
           }
 
           // Restore current step if not rejected
-          if (dealer.verification_status !== 'rejected' && dealer.draft_data?.current_step !== undefined) {
-            setCurrentStep(dealer.draft_data.current_step);
+          if (dealer.verification_status !== 'rejected' && (dealer.draft_data as any)?.current_step !== undefined) {
+            setCurrentStep((dealer.draft_data as any).current_step);
           }
         }
       }
@@ -325,7 +357,7 @@ export default function KYBWizard() {
       if (businessData?.owner_name) dealerData.owner_name = businessData.owner_name;
       // If Aadhaar is part of the form later, store it inside kyb_data JSON safely
       if ((businessData as any)?.aadhar_number) {
-        dealerData.kyb_data = { ...(existingDealers?.[0]?.kyb_data || {}), aadhar_number: (businessData as any).aadhar_number };
+        dealerData.kyb_data = { ...(existingDealers?.[0]?.kyb_data as any || {}), aadhar_number: (businessData as any).aadhar_number };
       }
       
       let dealerId;
@@ -706,7 +738,19 @@ export default function KYBWizard() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Business Verification</h1>
           {rejectionNotes ? (
-            <p className="text-red-600">Your previous submission was rejected. Please correct the highlighted issues and re-submit.</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-red-800 mb-2">
+                <AlertTriangle className="w-5 h-5" />
+                <span className="font-medium">Previous Application Rejected</span>
+              </div>
+              <p className="text-red-700 text-sm mb-2">
+                Your previous submission was not approved. Please review the feedback below and make necessary corrections:
+              </p>
+              <div className="bg-white p-3 rounded border border-red-200 text-left">
+                <p className="text-sm font-medium text-red-900">Rejection Reason:</p>
+                <p className="text-sm text-red-800 mt-1">{rejectionNotes}</p>
+              </div>
+            </div>
           ) : (
             <p className="text-slate-600">Complete your KYB to start trading on Aura</p>
           )}

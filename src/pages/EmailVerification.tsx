@@ -107,8 +107,10 @@ export default function EmailVerification() {
       // Mock email verification - in real app would call API
       // For now, just update user data to mark as verified
       await User.updateMyUserData({ 
-        email_verified: true,
-        email_verification_token: null
+        data: {
+          email_verified: true,
+          email_verification_token: null
+        }
       });
       
       toast({

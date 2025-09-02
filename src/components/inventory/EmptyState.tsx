@@ -18,36 +18,56 @@ export default function EmptyState({ dealer }: EmptyStateProps) {
         
         {/* Content */}
         <h2 className="text-2xl font-bold text-slate-900 mb-4">
-          Your Digital Godown is Empty
+          Your inventory is empty
         </h2>
         <p className="text-slate-600 mb-8 leading-relaxed">
-          Start building your inventory by adding your first vehicle. You can add them one by one 
-          or import multiple vehicles at once using our CSV upload feature.
+          Add a vehicle or upload a file to get started.
         </p>
         
         {/* Action Buttons */}
         <div className="space-y-4">
-          <Link to={createPageUrl("AddVehicle")}>
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 gap-2">
-              <Plus className="w-5 h-5" />
-              Add Your First Vehicle
-            </Button>
-          </Link>
-          
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to={createPageUrl("AddVehicle")}>
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 gap-2">
+                <Plus className="w-5 h-5" />
+                Add Vehicle
+              </Button>
+            </Link>
+
             <Link to={createPageUrl("BulkImport")}>
               <Button variant="outline" className="gap-2">
                 <Upload className="w-4 h-4" />
-                Bulk Import CSV
+                Bulk Upload
               </Button>
             </Link>
-            
-            <Link to={createPageUrl("InventoryAnalytics")}>
-              <Button variant="outline" className="gap-2">
-                <BarChart3 className="w-4 h-4" />
-                View Analytics
-              </Button>
-            </Link>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-slate-500 mb-2">Need to import many vehicles?</p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center text-xs">
+              <a
+                href="#"
+                className="text-blue-600 hover:text-blue-800 underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // TODO: Download template
+                }}
+              >
+                Download template (Used)
+              </a>
+              <span className="text-slate-400">|</span>
+              <a
+                href="#"
+                className="text-blue-600 hover:text-blue-800 underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // TODO: Download template
+                }}
+              >
+                Download template (New)
+              </a>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">200 rows max in Basic tier</p>
           </div>
         </div>
         

@@ -86,7 +86,7 @@ export default function RecentListings({ vehicles, isLoading }) {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {format(new Date(vehicle.created_date), "MMM d")}
+                    {format(new Date(vehicle.created_at), "MMM d")}
                   </span>
                 </div>
               </div>

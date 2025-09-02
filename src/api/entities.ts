@@ -1,8 +1,10 @@
-// Import from Supabase adapters instead of Base44
+// Import from Supabase adapters
 import {
   Dealer,
   Vehicle,
   VehicleAsset,
+  VehicleDocument,
+  VehicleCondition,
   Transaction,
   Payment,
   LogisticsOrder,
@@ -19,14 +21,22 @@ import {
   Shortlist,
   VehicleInspection,
   AppConfig,
-  User
+  User,
+  Branch,
+  AttributeSet,
+  VehicleAttributeSet
 } from './entityAdapters';
+
+// Import specialized entities
+import { DealerActivationSettings } from './entities/DealerActivationSettings';
 
 // Re-export all entities to maintain the same interface
 export {
   Dealer,
   Vehicle,
   VehicleAsset,
+  VehicleDocument,
+  VehicleCondition,
   Transaction,
   Payment,
   LogisticsOrder,
@@ -43,6 +53,12 @@ export {
   Shortlist,
   VehicleInspection,
   AppConfig,
-  User
+  User,
+  Branch,
+  AttributeSet,
+  VehicleAttributeSet,
+  DealerActivationSettings
 };
+
+
 
