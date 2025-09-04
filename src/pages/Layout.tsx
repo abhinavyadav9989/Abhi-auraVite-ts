@@ -15,6 +15,8 @@ import {
   LayoutDashboard, Car, Search, Handshake, Heart, User, Bell, Menu, X, BarChart2,
   Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft
 } from "lucide-react";
+import BottomNavigation from "@/components/ui/bottom-navigation";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
@@ -36,10 +38,16 @@ const adminNavigationItems = [
 export default function Layout({ children, currentPageName }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const { user: authUser, loading: authLoading, isAuthenticated } = useAuth();
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Define routes where sidebar should NOT be shown
   const authOnboardingRoutes = [
@@ -121,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
         {!isCollapsed && (
           <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
             <Car className="w-6 h-6 text-blue-600" />
-            <span className="font-bold text-lg text-slate-900">Aura</span>
+            <span className="font-bold text-lg text-slate-900 dark:text-white">Aura</span>
           </Link>
         )}
         <Button variant="ghost" size="icon" onClick={handleToggleCollapse} className="hidden lg:flex">
@@ -153,11 +161,11 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen app-gradient text-slate-900">
+      <div className="min-h-screen app-gradient text-slate-900 dark:text-slate-100">
         {/* Desktop Sidebar - Only show if authenticated and not on auth/onboarding routes */}
         {shouldShowSidebar && (
           <aside className={cn(
-            "hidden lg:block fixed top-0 left-0 h-full z-30 sidebar-gradient/80 backdrop-blur-md border-r border-slate-200 transition-all duration-300",
+            "hidden lg:block fixed top-0 left-0 h-full z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-lg border-r border-slate-200/60 dark:border-slate-700/60 transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}>
             <SidebarContent />
@@ -167,14 +175,17 @@ export default function Layout({ children, currentPageName }) {
         <div className={cn("transition-all duration-300", shouldShowSidebar ? (isCollapsed ? "lg:ml-20" : "lg:ml-64") : "lg:ml-0")}>
           {/* Mobile Header - Only show if authenticated and not on auth/onboarding routes */}
           {shouldShowSidebar && (
-            <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/70 backdrop-blur-md border-b border-slate-200">
+            <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50">
               <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
-                <Car className="w-6 h-6 text-blue-600" />
-                <span className="font-bold">Aura</span>
+                <Car className="w-6 h-6 text-blue-500" />
+                <span className="font-bold text-white">Aura</span>
               </Link>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-                <Menu className="w-6 h-6" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
+                  <Menu className="w-6 h-6" />
+                </Button>
+              </div>
             </header>
           )}
           
@@ -186,23 +197,37 @@ export default function Layout({ children, currentPageName }) {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="lg:hidden fixed inset-0 z-40 h-screen sidebar-gradient"
+                className="lg:hidden fixed inset-0 z-40 h-screen bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50"
+                onClick={(e) => {
+                  // Close menu when clicking on the backdrop (not on the sidebar content)
+                  if (e.target === e.currentTarget) {
+                    setIsMobileMenuOpen(false);
+                  }
+                }}
               >
                 <SidebarContent />
-                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4">
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-50">
                   <X className="w-6 h-6" />
                 </Button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <main className="relative">
-            <div className="pointer-events-none absolute inset-0 animate-shimmer opacity-10" />
+          <main className="relative pb-20 lg:pb-0">
+            <div className="pointer-events-none absolute inset-0 animate-shimmer opacity-10 dark:opacity-5" />
             <ErrorBoundary>
               {children}
             </ErrorBoundary>
           </main>
         </div>
+
+        {/* Theme toggle floating on desktop */}
+        <div className="hidden lg:block fixed top-4 right-4 z-40">
+          <ThemeToggle />
+        </div>
+
+        {/* Bottom Navigation - Only show on mobile for authenticated users */}
+        <BottomNavigation key={`bottom-nav-${isMobileMenuOpen}`} isMobileMenuOpen={isMobileMenuOpen} />
       </div>
     </ErrorBoundary>
   );

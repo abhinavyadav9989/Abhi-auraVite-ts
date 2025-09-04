@@ -396,7 +396,7 @@ export default function VehicleDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] flex items-center justify-center">
         <div className="text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" /><p className="text-slate-600">Loading vehicle details...</p></div>
       </div>
     );
@@ -404,8 +404,8 @@ export default function VehicleDetail() {
 
   if (error || !vehicle) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
           <CardContent className="text-center p-6"><AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" /><h2 className="text-xl font-semibold mb-2">Vehicle Not Found</h2><p className="text-slate-600 mb-4">{error}</p><Button onClick={() => navigate(-1)}>Go Back</Button></CardContent>
         </Card>
       </div>
@@ -415,48 +415,58 @@ export default function VehicleDetail() {
   const vehicleCategories = ensureArray(vehicle.vehicle_category);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] overflow-x-hidden">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="space-y-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+            </div>
+            <div className="space-y-3">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">{vehicle.year} {vehicle.make} {vehicle.model}</h1>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <MapPin className="w-4 h-4" />{vehicle.location_city}, {vehicle.location_state}
-                  <Badge className={getStatusColor(vehicle.status)}>{vehicle.status.replace('_', ' ').toUpperCase()}</Badge>
-                  {vehicleCategories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{vehicle.year} {vehicle.make} {vehicle.model}</h1>
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <MapPin className="w-4 h-4" />
+                  <span>{vehicle.location_city}, {vehicle.location_state}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className={getStatusColor(vehicle.status)}>{vehicle.status.replace('_', ' ').toUpperCase()}</Badge>
+                {vehicleCategories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
+                <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-300">
+                  <Eye className="w-4 h-4" />
+                  <span>{viewCount} views</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-sm text-slate-500"><Eye className="w-4 h-4" />{viewCount} views</div>
+            <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={handleToggleShortlist} className={isInShortlist ? 'text-red-500 border-red-300' : ''}><Heart className={`w-4 h-4 mr-2 ${isInShortlist ? 'fill-current' : ''}`} />{isInShortlist ? 'Saved' : 'Save'}</Button>
               <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)}><Share2 className="w-4 h-4 mr-2" />Share</Button>
               {permissions.canInspect && <Button variant="outline" size="sm" onClick={() => setShowInspectorPanel(true)} className="gap-2"><FileText className="w-4 h-4" />Inspect</Button>}
               {permissions.canEdit && <Link to={createPageUrl(`EditVehicle?id=${vehicle.id}`)}><Button variant="outline" size="sm" className="gap-2"><Edit className="w-4 h-4" />Edit</Button></Link>}
-              {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="gap-2"><Handshake className="w-4 h-4" />Make Offer</Button>}
+              {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"><Handshake className="w-4 h-4" />Make Offer</Button>}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 space-y-6">
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <VehicleMediaGallery
-              images={vehicle.images || []}
-              videos={vehicle.videos || []}
-              onImageClick={(index) => {
-                setGalleryStartIndex(index);
-                setShowGallery(true);
-              }}
-            />
+      <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-24 overflow-x-hidden">
+        <div className="grid lg:grid-cols-3 gap-3 md:gap-6">
+          <div className="lg:col-span-2 min-w-0">
+            <div className="overflow-hidden rounded-lg max-h-[240px] md:max-h-none w-full max-w-full">
+              <VehicleMediaGallery
+                images={vehicle.images || []}
+                videos={vehicle.videos || []}
+                onImageClick={(index) => {
+                  setGalleryStartIndex(index);
+                  setShowGallery(true);
+                }}
+              />
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <Card>
+          <div className="space-y-3 min-w-0">
+            <Card className="w-full max-w-full dark:bg-black dark:border-slate-700">
               <CardHeader>
                 <CardTitle className="text-3xl font-bold text-green-600 mb-2">
                   {isUserVerified ? (
@@ -474,30 +484,30 @@ export default function VehicleDetail() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-600">Year:</span><span className="font-medium">{vehicle.year}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-600">Fuel:</span><span className="font-medium capitalize">{vehicle.fuel_type}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-600">KMs:</span><span className="font-medium">{formatKilometers(vehicle.kilometers)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-600">Owner:</span><span className="font-medium capitalize">{vehicle.ownership}</span></div>
+              <CardContent className="space-y-2 p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-600 dark:text-slate-300">Year:</span><span className="font-medium">{vehicle.year}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600 dark:text-slate-300">Fuel:</span><span className="font-medium capitalize">{vehicle.fuel_type}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600 dark:text-slate-300">KMs:</span><span className="font-medium">{formatKilometers(vehicle.kilometers)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600 dark:text-slate-300">Owner:</span><span className="font-medium capitalize">{vehicle.ownership}</span></div>
                 </div>
                 {renderCustomAttributes()}
                 {inspections.length > 0 && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="p-3 bg-blue-50 dark:bg-slate-800 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-700">Latest Inspection</span>
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Latest Inspection</span>
                       <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => <Star key={i} className={`w-3 h-3 ${i < inspections[0].overall_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} />)}
                       </div>
                     </div>
-                    <p className="text-xs text-blue-600 mt-1">{formatDate(inspections[0].inspection_date)}</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">{formatDate(inspections[0].inspection_date)}</p>
                   </div>
                 )}
                 
                 {/* KYB Verification Notice for Unverified Users */}
                 {!isUserVerified && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-amber-700 text-sm">
+                  <div className="p-3 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
                       <ShieldCheck className="w-4 h-4" />
                       <span>
                         {isUnderReview 
@@ -532,24 +542,24 @@ export default function VehicleDetail() {
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     {isUserVerified && (
-                      <Button variant="outline" onClick={() => setShowEMICalculator(true)} className="gap-2"><Calculator className="w-4 h-4" />EMI</Button>
+                      <Button variant="outline" size="sm" onClick={() => setShowEMICalculator(true)} className="gap-1 text-xs"><Calculator className="w-3 h-3" />EMI</Button>
                     )}
-                    <Button variant="outline" onClick={() => setShowShareModal(true)} className="gap-2"><Share2 className="w-4 h-4" />Share</Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)} className="gap-1 text-xs"><Share2 className="w-3 h-3" />Share</Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {dealer && isUserVerified && (
-              <Card>
-                <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="w-5 h-5" />Dealer Information</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+              <Card className="dark:bg-black dark:border-slate-700">
+                <CardHeader className="pb-3"><CardTitle className="text-lg flex items-center gap-2 dark:text-white"><Users className="w-4 h-4" />Dealer Information</CardTitle></CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{dealer.business_name}</span>
+                      <span className="font-medium dark:text-white">{dealer.business_name}</span>
                       {dealer.verification_status === 'verified' && <Badge className="bg-green-100 text-green-700"><ShieldCheck className="w-3 h-3 mr-1" />Verified</Badge>}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600"><MapPin className="w-4 h-4" />{dealer.city}, {dealer.state}</div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><MapPin className="w-4 h-4" />{dealer.city}, {dealer.state}</div>
                     {dealer.rating > 0 && (
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1"><Star className="w-4 h-4 fill-current text-yellow-400" /><span className="font-medium">{dealer.rating.toFixed(1)}</span></div>
@@ -557,8 +567,8 @@ export default function VehicleDetail() {
                       </div>
                     )}
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1"><Phone className="w-4 h-4 mr-2" />Call</Button>
-                      <Button variant="outline" size="sm" className="flex-1"><MessageCircle className="w-4 h-4 mr-2" />Chat</Button>
+                      <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-200"><Phone className="w-4 h-4 mr-2" />Call</Button>
+                      <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-200"><MessageCircle className="w-4 h-4 mr-2" />Chat</Button>
                     </div>
                   </div>
                 </CardContent>
@@ -567,24 +577,25 @@ export default function VehicleDetail() {
           </div>
         </div>
 
-        <Card>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="specs">Specifications</TabsTrigger>
-              <TabsTrigger value="inspection">Inspection</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 sm:p-3 pb-3 sm:pb-4 shadow-sm">
+            <TabsList className="flex w-full flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2 sm:gap-y-2 bg-transparent p-0 min-h-[48px] sm:min-h-[56px]">
+              <TabsTrigger className="shrink-0" value="overview">Overview</TabsTrigger>
+              <TabsTrigger className="shrink-0" value="specs">Specifications</TabsTrigger>
+              <TabsTrigger className="shrink-0" value="inspection">Inspection</TabsTrigger>
+              <TabsTrigger className="shrink-0" value="documents">Documents</TabsTrigger>
+              <TabsTrigger className="shrink-0" value="history">History</TabsTrigger>
+              <TabsTrigger className="shrink-0" value="analytics">Analytics</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="overview" className="p-6">
+          </div>
+          <Card className="mt-3">
+            <TabsContent value="overview" className="p-4 relative">
               <div className="grid md:grid-cols-1 gap-6">
                 <div><h3 className="text-lg font-semibold mb-4">Description</h3><p className="text-slate-600 leading-relaxed">{vehicle.description || 'No description provided.'}</p></div>
               </div>
             </TabsContent>
 
-            <TabsContent value="specs" className="p-6">
+            <TabsContent value="specs" className="p-4 relative">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-medium mb-3">Basic Information</h4>
@@ -607,11 +618,11 @@ export default function VehicleDetail() {
               </div>
             </TabsContent>
 
-            <TabsContent value="inspection" className="p-6">{renderInspectionHistory()}</TabsContent>
-            <TabsContent value="documents" className="p-6"><div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">Document management feature coming soon.</p></div></TabsContent>
-            <TabsContent value="history" className="p-6"><div className="text-center py-8"><History className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">History tracking feature coming soon.</p></div></TabsContent>
+            <TabsContent value="inspection" className="p-4 relative">{renderInspectionHistory()}</TabsContent>
+            <TabsContent value="documents" className="p-4 relative"><div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">Document management feature coming soon.</p></div></TabsContent>
+            <TabsContent value="history" className="p-4 relative"><div className="text-center py-8"><History className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">History tracking feature coming soon.</p></div></TabsContent>
             
-            <TabsContent value="analytics" className="p-6">
+            <TabsContent value="analytics" className="p-4 relative">
               {permissions.canViewFinancials ? (
                 <MarketplaceMetrics viewCount={viewCount} isOwner={permissions.isOwner} />
               ) : (
@@ -622,22 +633,22 @@ export default function VehicleDetail() {
                 </div>
               )}
             </TabsContent>
-          </Tabs>
-        </Card>
+          </Card>
+        </Tabs>
 
         {relatedVehicles.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle>Related Vehicles</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-4 gap-4">
-                {relatedVehicles.map(relatedVehicle => (
+          <Card className="mt-6">
+            <CardHeader className="pb-3"><CardTitle className="text-lg">Related Vehicles</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {relatedVehicles.slice(0, 4).map(relatedVehicle => (
                   <Link key={relatedVehicle.id} to={createPageUrl(`VehicleDetail?id=${relatedVehicle.id}`)}>
-                    <div className="border border-slate-200 rounded-lg p-3 hover:shadow-md transition-shadow">
-                      <div className="aspect-video bg-slate-100 rounded mb-2">
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-2 hover:shadow-md transition-shadow">
+                      <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded mb-2">
                         {relatedVehicle.images?.[0] && <img src={relatedVehicle.images[0]} alt={`${relatedVehicle.make} ${relatedVehicle.model}`} className="w-full h-full object-cover rounded" />}
                       </div>
-                      <h4 className="font-medium text-sm">{relatedVehicle.year} {relatedVehicle.make} {relatedVehicle.model}</h4>
-                      <p className="text-sm font-bold text-blue-600">
+                      <h4 className="font-medium text-sm dark:text-white">{relatedVehicle.year} {relatedVehicle.make} {relatedVehicle.model}</h4>
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
                         {isUserVerified ? (
                           formatCurrency(relatedVehicle.asking_price)
                         ) : (

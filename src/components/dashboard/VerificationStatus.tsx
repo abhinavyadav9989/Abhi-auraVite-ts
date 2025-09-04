@@ -50,7 +50,7 @@ export default function VerificationStatus({ dealer, user }: VerificationStatusP
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2 text-lg dark:text-white">
           <Shield className="w-5 h-5" />
           Verification Status
         </CardTitle>
@@ -65,8 +65,8 @@ export default function VerificationStatus({ dealer, user }: VerificationStatusP
             </Badge>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">{percentage}%</div>
-            <div className="text-sm text-gray-500">{completed} of {total} completed</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{percentage}%</div>
+            <div className="text-sm text-gray-500 dark:text-slate-300">{completed} of {total} completed</div>
           </div>
         </div>
 
@@ -78,8 +78,8 @@ export default function VerificationStatus({ dealer, user }: VerificationStatusP
           {checks.map((check, index) => (
             <div key={index} className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
-                <check.icon className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-700">{check.name}</span>
+                <check.icon className="w-4 h-4 text-gray-500 dark:text-slate-300" />
+                <span className="text-sm text-gray-700 dark:text-slate-200">{check.name}</span>
               </div>
               <Badge variant={check.status ? "default" : "secondary"} className="text-xs">
                 {check.status ? (
@@ -100,12 +100,12 @@ export default function VerificationStatus({ dealer, user }: VerificationStatusP
 
         {/* Action Required Message */}
         {percentage < 100 && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-slate-800/50 dark:border-slate-700">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-800 font-medium">Action Required</span>
+              <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-teal-300" />
+              <span className="text-sm text-blue-800 dark:text-white font-medium">Action Required</span>
             </div>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="text-sm text-blue-700 dark:text-slate-300 mt-1">
               Complete your verification to unlock full marketplace access and features.
             </p>
           </div>

@@ -249,7 +249,7 @@ export default function Dashboard() {
   // If dealer profile is not loaded and it's still loading, show nothing or a loading spinner
   if (!dealer && isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
         <p>Loading dashboard...</p>
       </div>);
 
@@ -291,7 +291,7 @@ export default function Dashboard() {
         </div>
       )}
       
-      <div className={`min-h-screen bg-slate-50 ${!isOnline ? 'opacity-75' : ''}`}>
+      <div className={`min-h-screen bg-slate-50 dark:bg-[#0b1220] ${!isOnline ? 'opacity-75' : ''}`}>
         
 
         {/* Notifications Overlay */}
@@ -302,21 +302,21 @@ export default function Dashboard() {
 
         }
 
-        <div className="p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen">
+        <div className="p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-[#0b1220] dark:to-[#0d1a2b] min-h-screen">
           <div className="max-w-7xl mx-auto space-y-8">
             
             {/* Welcome Header */}
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:text-white dark:bg-none">
                   Control Tower
                 </h1>
-                <p className="text-slate-600 flex items-center gap-2 mt-2">
-                  What needs your attention right now
-                  <span className="text-xs bg-white/70 backdrop-blur-sm border border-slate-200 px-3 py-1 rounded-full shadow-sm">
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <p>What needs your attention right now</p>
+                  <span className="text-xs bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full shadow-sm w-fit">
                     Updated {lastUpdated.toLocaleTimeString()}
                   </span>
-                </p>
+                </div>
               </div>
             </div>
 
@@ -327,10 +327,10 @@ export default function Dashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome to Aura, {dealer?.name || 'Dealer'}!
               </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <p className="text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
                 Ready to start selling vehicles on India's most trusted B2B platform?
               </p>
             </div>

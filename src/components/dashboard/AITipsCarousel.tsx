@@ -128,7 +128,7 @@ export default function AITipsCarousel({ dealer }) {
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-bold flex items-center gap-2">
+        <CardTitle className="text-lg font-bold flex items-center gap-2 dark:text-white">
           <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
             <Zap className="w-4 h-4 text-white" />
           </div>
@@ -149,11 +149,11 @@ export default function AITipsCarousel({ dealer }) {
               <div className="flex items-start gap-3">
                 <span className="text-2xl">{tip.icon}</span>
                 <div className="flex-1">
-                  <p className="text-sm text-slate-700 leading-relaxed">
+                  <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
                     {tip.text}
                   </p>
                   {hasError &&
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Using cached recommendations
                     </p>
                   }

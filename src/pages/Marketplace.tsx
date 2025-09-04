@@ -293,8 +293,8 @@ export default function Marketplace() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Marketplace</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Marketplace</h1>
+            <p className="text-slate-600 dark:text-slate-300 mt-1">
               {searchQuery ? (
                 <>
                   {filteredVehicles.length} vehicles found for &quot;{searchQuery}&quot;
@@ -318,7 +318,7 @@ export default function Marketplace() {
           </div>
           <div className="flex items-center gap-3">
             <Link to={createPageUrl("AddVehicle")}>
-              <Button className="gap-2"><Plus className="w-4 h-4" /> List Vehicle</Button>
+              <Button className="gap-2 bg-slate-800 text-white hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"><Plus className="w-4 h-4" /> List Vehicle</Button>
             </Link>
           </div>
         </div>
@@ -342,7 +342,7 @@ export default function Marketplace() {
                 <X className="w-4 h-4" /> Clear Search
               </Button>
             )}
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md bg-white/80 backdrop-blur focus-ring text-sm">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md bg-white/80 dark:bg-slate-800/80 dark:border-slate-700 backdrop-blur focus-ring text-sm dark:text-white">
               <option value="newest">Newest First</option>
               <option value="price_low">Price: Low to High</option>
               <option value="price_high">Price: High to Low</option>
@@ -369,7 +369,7 @@ export default function Marketplace() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="w-2 h-2 bg-white rounded-full"
+                    className="w-2 h-2 bg-white dark:bg-slate-200 rounded-full"
                   />
                 )}
               </Button>
@@ -402,14 +402,14 @@ export default function Marketplace() {
                   stiffness: 300,
                   duration: 0.4
                 }}
-                className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+                className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-y-auto"
                 style={{ 
                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                   borderLeft: "1px solid rgba(0, 0, 0, 0.1)"
                 }}
               >
                                  <motion.div 
-                   className="sticky top-0 bg-white border-b border-slate-200 p-4"
+                   className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 p-4"
                    initial={{ opacity: 0, y: -10 }}
                    animate={{ opacity: 1, y: 0 }}
                    transition={{ delay: 0.05, duration: 0.3 }}
@@ -425,8 +425,8 @@ export default function Marketplace() {
                          <SlidersHorizontal className="w-5 h-5 text-blue-600" />
                        </motion.div>
                        <div>
-                         <h2 className="text-lg font-semibold text-slate-900">Filters</h2>
-                         <p className="text-sm text-slate-600">{filteredVehicles.length} results</p>
+                         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Filters</h2>
+                         <p className="text-sm text-slate-600 dark:text-slate-300">{filteredVehicles.length} results</p>
                        </div>
                      </div>
                      <div className="flex items-center gap-2">
@@ -513,15 +513,15 @@ export default function Marketplace() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-700">View:</span>
-                <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setViewMode('grid')}
                     className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       viewMode === 'grid'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <Grid3X3 className="w-4 h-4" />
@@ -533,8 +533,8 @@ export default function Marketplace() {
                     onClick={() => setViewMode('list')}
                     className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       viewMode === 'list'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <List className="w-4 h-4" />

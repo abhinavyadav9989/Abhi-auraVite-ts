@@ -114,12 +114,12 @@ export default function VehicleMediaGallery({ images = [], videos = [], onImageC
       </div>
 
       {/* Thumbnail Navigation */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {/* Image Thumbnails */}
         {images.map((image, index) => (
           <div
             key={`img-${index}`}
-            className={`flex-shrink-0 w-16 h-16 rounded cursor-pointer border-2 overflow-hidden ${
+            className={`flex-shrink-0 w-20 h-20 md:w-24 md:h-24 rounded cursor-pointer border-2 overflow-hidden ${
               mediaType === 'images' && currentIndex === index
                 ? 'border-blue-500'
                 : 'border-transparent hover:border-slate-300'
@@ -141,7 +141,7 @@ export default function VehicleMediaGallery({ images = [], videos = [], onImageC
         {videos.map((video, index) => (
           <div
             key={`vid-${index}`}
-            className={`flex-shrink-0 w-16 h-16 rounded cursor-pointer border-2 overflow-hidden relative ${
+            className={`flex-shrink-0 w-20 h-20 md:w-24 md:h-24 rounded cursor-pointer border-2 overflow-hidden relative ${
               mediaType === 'videos' && currentIndex === index
                 ? 'border-blue-500'
                 : 'border-transparent hover:border-slate-300'

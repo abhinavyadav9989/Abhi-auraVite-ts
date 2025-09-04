@@ -58,23 +58,23 @@ export default function EmptyDealsState({ activeTab, hasSearch }) {
   const IconComponent = content.icon;
 
   return (
-    <Card className="border-dashed border-2 border-slate-200">
+    <Card className="border-dashed border-2 border-slate-200 dark:border-slate-700 dark:bg-black">
       <CardContent className="p-12 text-center">
-        <div className="w-16 h-16 mx-auto mb-6 bg-slate-100 rounded-full flex items-center justify-center">
-          <IconComponent className="w-8 h-8 text-slate-400" />
+        <div className="w-16 h-16 mx-auto mb-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+          <IconComponent className="w-8 h-8 text-slate-400 dark:text-blue-300" />
         </div>
-        
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
+
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
           {content.title}
         </h3>
-        
-        <p className="text-slate-600 mb-6 max-w-md mx-auto">
+
+        <p className="text-slate-600 dark:text-slate-200 mb-6 max-w-md mx-auto">
           {content.description}
         </p>
-        
+
         {content.action && (
           <Link to={content.action.href}>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
               {content.action.text}
             </Button>
           </Link>

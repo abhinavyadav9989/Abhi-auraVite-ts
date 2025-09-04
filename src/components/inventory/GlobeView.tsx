@@ -62,7 +62,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full overflow-y-auto">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-5 h-full overflow-y-auto">
             {branches.map((branch) => {
               const isSelected = selectedBranch?.id === branch.id;
               const isHovered = hoveredBranch === branch.id;
@@ -70,10 +70,10 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
               return (
                 <motion.div
                   key={branch.id}
-                  className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
-                    isSelected 
-                      ? 'border-blue-500 bg-blue-50 shadow-lg' 
-                      : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 min-w-[360px] ${
+                    isSelected
+                      ? 'border-blue-400/60 bg-white/70 backdrop-blur-md shadow-lg ring-1 ring-blue-300/50'
+                      : 'border-white/40 bg-white/40 backdrop-blur-md hover:border-blue-300/60 hover:ring-1 hover:ring-blue-200/60 hover:shadow-md'
                   }`}
                   onClick={() => onBranchSelect(branch)}
                   onMouseEnter={() => setHoveredBranch(branch.id)}
@@ -122,7 +122,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
                   {/* Branch Stats */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className={`p-3 rounded-lg text-center transition-colors ${
-                      isSelected ? 'bg-blue-100' : 'bg-gray-50'
+                      isSelected ? 'bg-blue-50/80' : 'bg-white/50'
                     }`}>
                       <div className="flex items-center justify-center space-x-1 mb-1">
                         <Car className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
@@ -132,7 +132,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
                     </div>
                     
                     <div className={`p-3 rounded-lg text-center transition-colors ${
-                      isSelected ? 'bg-blue-100' : 'bg-gray-50'
+                      isSelected ? 'bg-blue-50/80' : 'bg-white/50'
                     }`}>
                       <div className="flex items-center justify-center space-x-1 mb-1">
                         <Users className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />

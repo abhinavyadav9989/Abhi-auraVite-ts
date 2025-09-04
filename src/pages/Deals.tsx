@@ -277,13 +277,13 @@ export default function Deals() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-[#0b1220] min-h-screen pb-24 lg:pb-8">
+      <div className="max-w-7xl mx-auto space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">My Deals</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">My Deals</h1>
+            <p className="text-slate-600 dark:text-slate-300 mt-1">
               Track and manage all your transactions
             </p>
           </div>
@@ -291,13 +291,13 @@ export default function Deals() {
             <Button 
               variant="outline" 
               onClick={refreshDealsData}
-              className="gap-2"
+              className="gap-2 dark:border-slate-700 dark:text-slate-200"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
             <Link to={createPageUrl("Marketplace")}>
-              <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+              <Button className="bg-blue-600 hover:bg-blue-700 gap-2 dark:bg-blue-700 dark:hover:bg-blue-600">
                 <Search className="w-4 h-4" />
                 Find Vehicles
               </Button>
@@ -306,7 +306,7 @@ export default function Deals() {
         </div>
 
         {/* Search and Filters */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm dark:bg-black dark:border-slate-700">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
@@ -315,13 +315,13 @@ export default function Deals() {
                   placeholder="Search by registration, dealer name, transaction ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                 />
               </div>
               <Button 
                 variant="outline" 
                 onClick={() => setShowFilters(!showFilters)}
-                className="gap-2"
+                className="gap-2 dark:border-slate-700 dark:text-slate-200"
               >
                 <Filter className="w-4 h-4" />
                 Filters
@@ -341,21 +341,23 @@ export default function Deals() {
 
         {/* Status Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-7">
+          <div className="overflow-x-auto scrollbar-hide">
+            <TabsList className="flex gap-2 pb-1 mb-3 dark:bg-slate-800 min-w-max">
             {STATUS_TABS.map(tab => (
-              <TabsTrigger key={tab.id} value={tab.id} className="relative">
+              <TabsTrigger key={tab.id} value={tab.id} className="relative shrink-0 dark:!text-white dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:!text-white">
                 {tab.label}
                 {statusCounts[tab.id] > 0 && (
                   <Badge 
                     variant="secondary" 
-                    className="ml-2 bg-blue-100 text-blue-700 text-xs"
+                    className="ml-2 bg-blue-100 text-blue-700 text-xs dark:bg-blue-900 dark:text-blue-200"
                   >
                     {statusCounts[tab.id]}
                   </Badge>
                 )}
               </TabsTrigger>
             ))}
-          </TabsList>
+            </TabsList>
+          </div>
 
           {STATUS_TABS.map(tab => (
             <TabsContent key={tab.id} value={tab.id}>

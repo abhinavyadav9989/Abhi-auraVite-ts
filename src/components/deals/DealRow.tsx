@@ -112,91 +112,86 @@ export default function DealRow({
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
+      <CardContent className="p-4 overflow-x-auto overflow-y-hidden scrollbar-hide">
+        <div className="flex items-center gap-4 pr-2 min-w-[900px] md:min-w-0">
+          {/* Column 1: Select + Vehicle block */}
+          <div className="flex items-center gap-3 min-w-[260px]">
             <Checkbox 
               checked={isSelected}
               onCheckedChange={onSelect}
             />
-
-            {/* Vehicle Info */}
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden">
-                {vehicle?.images?.[0] ? (
-                  <img 
-                    src={vehicle.images[0]} 
-                    alt="Vehicle" 
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-slate-300 rounded" />
-                  </div>
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold">
-                  {vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Vehicle Info Loading...'}
-                </h3>
-                <p className="text-sm text-slate-600">{vehicle?.registration_number}</p>
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="capitalize">{userRole}</span>
-                  <span>•</span>
-                  <span>{formatDate(transaction.created_at)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Counter Party */}
-            <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback>
-                  {counterParty?.business_name?.[0] || 'D'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="font-medium text-sm">{counterParty?.business_name || 'Loading...'}</div>
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <MapPin className="w-3 h-3" />
-                  <span>{counterParty?.city}</span>
-                  {counterParty?.rating && (
-                    <>
-                      <Star className="w-3 h-3 text-yellow-400 fill-current ml-1" />
-                      <span>{counterParty.rating.toFixed(1)}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Price & Status */}
-            <div className="text-right">
-              <div className="flex items-center gap-1 font-bold text-lg">
-                <IndianRupee className="w-4 h-4" />
-                {formatPrice(transaction.current_offer)}
-              </div>
-              <Badge className={`${statusColors[transaction.status]} text-xs`}>
-                <StatusIcon className="w-3 h-3 mr-1" />
-                {transaction.status.replace('_', ' ').toUpperCase()}
-              </Badge>
-            </div>
-
-            {/* Action Status */}
-            <div className="text-right min-w-[120px]">
-              <div className="text-sm font-medium text-slate-700">
-                {getActionStatus()}
-              </div>
-              {canTakeAction() && (
-                <div className="text-xs text-blue-600 font-medium mt-1">
-                  Action Required
+            <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden">
+              {vehicle?.images?.[0] ? (
+                <img src={vehicle.images[0]} alt="Vehicle" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-slate-300 rounded" />
                 </div>
               )}
             </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold truncate">
+                {vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Vehicle Info Loading...'}
+              </h3>
+              <p className="text-sm text-slate-600 truncate">{vehicle?.registration_number}</p>
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span className="capitalize">{userRole}</span>
+                <span>•</span>
+                <span>{formatDate(transaction.created_at)}</span>
+              </div>
+            </div>
+          </div>
 
-            {/* View Button */}
+          {/* Column 2: Counter party */}
+          <div className="flex items-center gap-2 min-w-[180px]">
+            <Avatar className="w-8 h-8">
+              <AvatarFallback>
+                {counterParty?.business_name?.[0] || 'D'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate">{counterParty?.business_name || 'Loading...'}</div>
+              <div className="flex items-center gap-1 text-xs text-slate-500">
+                <MapPin className="w-3 h-3" />
+                <span className="truncate">{counterParty?.city}</span>
+                {counterParty?.rating && (
+                  <>
+                    <Star className="w-3 h-3 text-yellow-400 fill-current ml-1" />
+                    <span>{counterParty.rating.toFixed(1)}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Column 3: Price & Status */}
+          <div className="text-right min-w-[140px]">
+            <div className="flex items-center gap-1 font-bold text-lg">
+              <IndianRupee className="w-4 h-4" />
+              {formatPrice(transaction.current_offer)}
+            </div>
+            <Badge className={`${statusColors[transaction.status]} text-xs whitespace-nowrap`}>
+              <StatusIcon className="w-3 h-3 mr-1" />
+              {transaction.status.replace('_', ' ').toUpperCase()}
+            </Badge>
+          </div>
+
+          {/* Column 4: Action Status */}
+          <div className="text-right min-w-[220px]">
+            <div className="text-sm font-medium text-slate-700 whitespace-nowrap">
+              {getActionStatus()}
+            </div>
+            {canTakeAction() && (
+              <div className="text-xs text-blue-600 font-medium mt-1 whitespace-nowrap">
+                Action Required
+              </div>
+            )}
+          </div>
+
+          {/* Column 5: Button */}
+          <div className="min-w-[120px]">
             <Link to={createPageUrl(`DealRoom?id=${transaction.id}`)}>
-              <Button size="sm" variant="outline" className="gap-2">
+              <Button size="sm" variant="outline" className="gap-2 w-full whitespace-nowrap">
                 <Eye className="w-4 h-4" />
                 View Deal
               </Button>

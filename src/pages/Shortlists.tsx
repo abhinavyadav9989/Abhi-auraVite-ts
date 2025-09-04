@@ -174,33 +174,33 @@ export default function Shortlists() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-[#0b1220] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pr-16 md:pr-24">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">My Shortlists</h1>
-            <p className="text-slate-600 mt-1">Manage your saved vehicles</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Shortlists</h1>
+            <p className="text-slate-600 dark:text-slate-300 mt-1">Manage your saved vehicles</p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Button onClick={() => setShowCreateModal(true)} className="self-start sm:self-auto gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
             <Plus className="w-4 h-4" />
             New Shortlist
           </Button>
         </div>
 
-        <div className="flex gap-4">
-          <div className="w-64 space-y-2">
-            <h2 className="font-semibold text-slate-700 mb-3">Your Shortlists</h2>
+        <div className="flex flex-col gap-4">
+          <div className="w-full space-y-2">
+            <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Your Shortlists</h2>
             {shortlists.map(shortlist => (
               <Card 
                 key={shortlist.id}
-                className={`cursor-pointer transition-all ${activeShortlist === shortlist.id ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-slate-50'}`}
+                className={`cursor-pointer transition-all dark:border-slate-700 ${activeShortlist === shortlist.id ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 onClick={() => setActiveShortlist(shortlist.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-medium">{shortlist.name}</h3>
-                      <p className="text-sm text-slate-600">
+                      <h3 className="font-medium dark:text-white">{shortlist.name}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
                         {(Array.isArray(shortlist?.vehicle_ids) ? shortlist.vehicle_ids : []).length} vehicles
                       </p>
                     </div>
@@ -208,6 +208,7 @@ export default function Shortlists() {
                       <Button 
                         size="sm" 
                         variant="ghost" 
+                        className="dark:text-slate-300"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteShortlist(shortlist.id);
@@ -224,35 +225,26 @@ export default function Shortlists() {
 
           <div className="flex-1">
             {currentVehicles.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 {currentVehicles.map(vehicle => (
-                  <div key={vehicle.id} className="relative">
-                    <VehicleCard
-                      vehicle={vehicle}
-                      dealer={dealers[vehicle.dealer_id]}
-                      currentDealer={currentDealer}
-                      isInCompare={false}
-                      onCompareToggle={(id: string) => { /* no-op in shortlists */ }}
-                      onMakeOffer={(v: any) => { /* no-op in shortlists */ }}
-                      isUserVerified={isUserVerified}
-                      isUnderReview={isUnderReview}
-                    />
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute top-2 left-2 z-10"
-                      onClick={() => handleRemoveFromShortlist(vehicle.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <VehicleCard
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    dealer={dealers[vehicle.dealer_id]}
+                    currentDealer={currentDealer}
+                    isInCompare={false}
+                    onCompareToggle={(id: string) => { /* no-op in shortlists */ }}
+                    onMakeOffer={(v: any) => { /* no-op in shortlists */ }}
+                    isUserVerified={isUserVerified}
+                    isUnderReview={isUnderReview}
+                  />
                 ))}
               </div>
             ) : (
-              <Card className="p-12 text-center">
+              <Card className="p-12 text-center dark:bg-black dark:border-slate-700">
                 <Heart className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-600 mb-2">No vehicles in this shortlist</h3>
-                <p className="text-slate-500">Start adding vehicles from the marketplace to build your shortlist.</p>
+                <h3 className="text-xl font-semibold text-slate-600 dark:text-white mb-2">No vehicles in this shortlist</h3>
+                <p className="text-slate-500 dark:text-slate-300">Start adding vehicles from the marketplace to build your shortlist.</p>
               </Card>
             )}
           </div>
@@ -261,7 +253,7 @@ export default function Shortlists() {
 
       {/* Create Shortlist Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent>
+        <DialogContent className="dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">
           <DialogHeader>
             <DialogTitle>Create New Shortlist</DialogTitle>
             <DialogDescription>Give your shortlist a descriptive name.</DialogDescription>
@@ -274,12 +266,13 @@ export default function Shortlists() {
                 value={newShortlistName}
                 onChange={(e) => setNewShortlistName(e.target.value)}
                 placeholder="e.g., SUVs for Family"
+                className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-            <Button onClick={handleCreateShortlist} disabled={!newShortlistName.trim()}>Create</Button>
+            <Button variant="outline" className="dark:border-slate-700 dark:text-slate-200" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600" onClick={handleCreateShortlist} disabled={!newShortlistName.trim()}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

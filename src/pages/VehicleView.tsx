@@ -311,7 +311,7 @@ export default function VehicleView() {
                 <div className="space-y-2">
                   {!isOwner && (
                     <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700" 
+                      className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white" 
                       onClick={() => setShowOfferModal(true)}
                       disabled={vehicle.status !== 'live'}
                     >

@@ -47,12 +47,12 @@ export default function VehicleListCard({
   const hasPriceDrop = vehicle.original_price && vehicle.asking_price && vehicle.asking_price < vehicle.original_price;
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-slate-200">
+    <Card className="group hover:shadow-lg transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-black">
       <CardContent className="p-0">
         <div className="flex flex-col md:flex-row md:items-center gap-4 p-4">
           {/* Vehicle Image */}
           <div className="relative flex-shrink-0">
-            <div className="w-24 h-16 bg-slate-100 rounded-lg overflow-hidden">
+            <div className="w-24 h-16 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
               {vehicle.images && vehicle.images.length > 0 ? (
                 <img
                   src={vehicle.images[0]}
@@ -95,10 +95,10 @@ export default function VehicleListCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 truncate">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
                   {vehicle.year} {vehicle.make} {vehicle.model}
                 </h3>
-                <p className="text-sm text-slate-600 truncate">
+                <p className="text-sm text-slate-600 dark:text-slate-300 truncate">
                   {vehicle.variant && `${vehicle.variant} • `}
                   {vehicle.registration_number}
                 </p>
@@ -106,7 +106,7 @@ export default function VehicleListCard({
               
               {/* Price */}
               <div className="flex-shrink-0 ml-4 text-right">
-                <div className="text-xl font-bold text-slate-900">
+                <div className="text-xl font-bold text-slate-900 dark:text-white">
                   {isUserVerified ? formatPrice(vehicle.asking_price) : 'Price Hidden'}
                 </div>
                 {hasPriceDrop && isUserVerified && (
@@ -119,19 +119,19 @@ export default function VehicleListCard({
 
             {/* Specifications */}
             <div className="grid grid-cols-4 gap-4 mb-3">
-              <div className="flex items-center gap-1 text-sm text-slate-600">
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                 <Calendar className="w-3 h-3" />
                 <span>{vehicle.year}</span>
               </div>
-              <div className="flex items-center gap-1 text-sm text-slate-600">
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                 <Fuel className="w-3 h-3" />
                 <span className="capitalize">{vehicle.fuel_type}</span>
               </div>
-              <div className="flex items-center gap-1 text-sm text-slate-600">
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                 <Gauge className="w-3 h-3" />
                 <span>{formatKilometers(vehicle.kilometers)}</span>
               </div>
-              <div className="flex items-center gap-1 text-sm text-slate-600">
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                 <MapPin className="w-3 h-3" />
                 <span>{vehicle.location_city || 'N/A'}</span>
               </div>
@@ -141,7 +141,7 @@ export default function VehicleListCard({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
                   {dealer?.business_name || 'Pending Setup'}
                 </span>
               </div>
@@ -154,7 +154,7 @@ export default function VehicleListCard({
               <Button
                 onClick={() => onMakeOffer(vehicle)}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
               >
                 Make Offer
               </Button>

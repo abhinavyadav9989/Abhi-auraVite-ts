@@ -158,10 +158,10 @@ export default function VehicleCard({
   const heroImage = vehicleData.hero_image_url || (vehicleData.images.length > 0 ? vehicleData.images[0] : null);
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200 hover:border-blue-400 flex flex-col">
+    <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white dark:bg-black border border-slate-200 dark:border-slate-700 hover:border-blue-400 flex flex-col">
       <div className="relative">
         <Link to={createPageUrl(`VehicleDetail?id=${vehicleData.id}`)} className="block">
-          <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+          <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 overflow-hidden">
             {heroImage ? (
               <img 
                 src={heroImage} 
@@ -224,7 +224,7 @@ export default function VehicleCard({
         <Link to={createPageUrl(`VehicleDetail?id=${vehicleData.id}`)} className="block">
           <div className="space-y-2">
             {/* Title */}
-            <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+            <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-1">
               {vehicleData.year} {vehicleData.make} {vehicleData.model}
             </h3>
 
@@ -246,7 +246,7 @@ export default function VehicleCard({
             </div>
 
             {/* Key specs */}
-            <div className="flex items-center gap-4 text-sm text-slate-600">
+            <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
                 <span>{vehicleData.year}</span>
@@ -262,7 +262,7 @@ export default function VehicleCard({
             </div>
 
             {/* Location */}
-            <div className="flex items-center gap-1 text-sm text-slate-500">
+            <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
               <MapPin className="w-4 h-4" />
               <span>{vehicleData.location_city}</span>
               {isUserVerified && (
@@ -294,9 +294,8 @@ export default function VehicleCard({
         <div className="mt-4 pt-3 border-t flex gap-2">
           {isUserVerified ? (
             <Button 
-              variant="outline" 
               size="sm" 
-              className="flex-1"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
               onClick={handleMakeOfferClick}
               title="Make an offer on this vehicle"
             >

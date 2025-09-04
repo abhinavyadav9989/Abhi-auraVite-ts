@@ -124,10 +124,10 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
                 <AlertTriangle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-white">
                   {incompleteSteps.length} verification step{incompleteSteps.length > 1 ? 's' : ''} pending
                 </span>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-white">
                   Complete to unlock more features • {Math.round(progressPercentage)}% done
                 </div>
               </div>
@@ -149,19 +149,19 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
 
   return (
     <>
-      <Card className="border-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 shadow-xl backdrop-blur-sm relative overflow-hidden">
+      <Card className="border-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 shadow-xl backdrop-blur-sm relative overflow-hidden dark:from-white/5 dark:via-white/4 dark:to-white/6">
         {/* Decorative background elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-2xl"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-400/20 to-blue-400/20 rounded-full blur-xl"></div>
         
         <CardHeader className="pb-6 relative z-10">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Zap className="w-7 h-7 text-white" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                   Unlock Platform Features
                   {nextStep?.priority === 'high' && (
                     <Badge className="bg-red-500 hover:bg-red-600 text-white animate-pulse">
@@ -207,7 +207,7 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
         <CardContent className="pt-0">
           {/* Next Action Section */}
           {nextStep && (
-            <div className="mb-6 p-6 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-lg">
+            <div className="mb-6 p-6 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
@@ -225,9 +225,9 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
                         </Badge>
                       )}
                     </div>
-                    <p className="text-gray-600 mb-3">{nextStep.description}</p>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">🔓 This will unlock:</p>
+                    <p className="text-gray-600 dark:text-slate-300 mb-3">{nextStep.description}</p>
+                    <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-2">🔓 This will unlock:</p>
                       <div className="flex flex-wrap gap-2">
                         {nextStep.unlocks.map((unlock) => (
                           <Badge key={unlock} className="text-xs bg-green-100 text-green-700 border-green-200">
@@ -251,18 +251,18 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
           )}
 
           {/* All Steps Overview */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">All Verification Steps</h3>
+          <div className="rounded-xl p-3 md:p-4 dark:bg-slate-900/70 dark:border dark:border-slate-700/70 dark:backdrop-blur-md">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white dark:drop-shadow-lg mb-3 md:mb-4">All Verification Steps</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {verificationSteps.map((step, index) => (
                 <div
                   key={step.id}
                   className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-lg ${
                     step.completed
-                      ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm'
+                      ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm dark:from-teal-700/25 dark:to-teal-900/25 dark:border-teal-600/50 dark:backdrop-blur-md dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
                       : step.id === nextStep?.id
-                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300 border-2 shadow-md'
-                      : 'bg-white border-gray-200 hover:border-gray-300'
+                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300 border-2 shadow-md dark:from-teal-600/35 dark:to-cyan-900/35 dark:border-teal-500/60 dark:backdrop-blur-md dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                      : 'bg-white border-gray-200 hover:border-gray-300 dark:bg-slate-900/85 dark:border-slate-700/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -270,8 +270,8 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
                       step.completed 
                         ? 'bg-green-500 text-white' 
                         : step.id === nextStep?.id
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-500'
+                        ? 'bg-teal-500 text-white'
+                        : 'bg-gray-200 text-gray-600 dark:bg-slate-700/90 dark:text-slate-100'
                     }`}>
                       {step.completed ? (
                         <CheckCircle className="w-5 h-5" />
@@ -281,26 +281,26 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
                     </div>
                     <div className={`text-xs font-bold px-2 py-1 rounded-full ${
                       step.completed 
-                        ? 'bg-green-200 text-green-700'
+                        ? 'bg-green-200 text-green-700 dark:bg-teal-600/45 dark:text-teal-100'
                         : step.id === nextStep?.id
-                        ? 'bg-blue-200 text-blue-700'
-                        : 'bg-gray-200 text-gray-600'
+                        ? 'bg-blue-200 text-blue-700 dark:bg-teal-600/45 dark:text-teal-100'
+                        : 'bg-gray-200 text-gray-700 dark:bg-slate-700/90 dark:text-slate-100'
                     }`}>
                       {index + 1}
                     </div>
                   </div>
-                  <h4 className="font-semibold text-sm text-gray-900 mb-1">{step.title}</h4>
-                  <p className="text-xs text-gray-600 mb-3">{step.description}</p>
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">{step.title}</h4>
+                  <p className="text-xs text-gray-600 dark:text-slate-200 mb-3">{step.description}</p>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-700">Unlocks:</p>
+                    <p className="text-xs font-medium text-gray-700 dark:text-slate-200">Unlocks:</p>
                     <div className="flex flex-wrap gap-1">
                       {step.unlocks.slice(0, 2).map((unlock) => (
-                        <Badge key={unlock} variant="outline" className="text-xs">
+                        <Badge key={unlock} variant="outline" className="text-xs border-slate-200 dark:border-teal-700/60 dark:text-slate-100 dark:bg-slate-800/60">
                           {unlock}
                         </Badge>
                       ))}
                       {step.unlocks.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-slate-200 dark:border-teal-700/60 dark:text-slate-100 dark:bg-slate-800/60">
                           +{step.unlocks.length - 2}
                         </Badge>
                       )}

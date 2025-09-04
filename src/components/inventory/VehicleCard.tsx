@@ -73,7 +73,7 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
 
     return (
     <>
-      <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 relative group">
+      <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 relative group border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:bg-black">
         <CardHeader className="absolute top-2 left-2 z-10 p-0">
           <Checkbox
             checked={isSelected}
@@ -81,13 +81,13 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
             className="w-5 h-5 bg-white"
           />
         </CardHeader>
-        <Badge className={`absolute top-2 right-2 z-10 ${getStatusColor(vehicle.status)}`}>
+        <Badge className={`absolute top-2 right-2 z-10 ${getStatusColor(vehicle.status)} backdrop-blur bg-white/70`}> 
           {vehicle.status.replace('_', ' ').toUpperCase()}
         </Badge>
 
         <Link to={createPageUrl(`VehicleDetail?id=${vehicle.id}`)} className="block">
           <CardContent className="p-0">
-            <div className="aspect-video bg-slate-200 overflow-hidden">
+            <div className="aspect-video bg-gradient-to-b from-slate-100 to-slate-200 overflow-hidden">
               {heroImage ? (
                 <img src={heroImage} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
               ) : (
@@ -97,14 +97,14 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
               )}
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="font-semibold truncate">{`${vehicle.year} ${vehicle.make} ${vehicle.model}`}</h3>
-              <p className="text-sm text-slate-600 truncate">{vehicle.variant}</p>
+              <h3 className="font-semibold truncate dark:text-white">{`${vehicle.year} ${vehicle.make} ${vehicle.model}`}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 truncate">{vehicle.variant}</p>
               <div className="flex justify-between items-center pt-2">
-                <div className="text-lg font-bold text-slate-800 flex items-center">
+                <div className="text-lg font-bold text-slate-800 dark:text-white flex items-center">
                   <IndianRupee className="w-5 h-5 mr-1" />
                   {formatPrice(vehicle.asking_price)}
                 </div>
-                <div className="flex gap-3 text-sm text-slate-500">
+                <div className="flex gap-3 text-sm text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1"><Calendar className="w-4 h-4" />{vehicle.year}</div>
                   <div className="flex items-center gap-1"><Gauge className="w-4 h-4" />{(vehicle.kilometers / 1000).toFixed(0)}k km</div>
                 </div>
@@ -113,9 +113,9 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
           </CardContent>
         </Link>
 
-        <CardFooter className="p-4 bg-slate-50/50">
+        <CardFooter className="p-4 bg-slate-50/50 dark:bg-slate-800/50">
           <div className="flex justify-between items-center w-full">
-            <span className="text-xs text-slate-500">Reg: {vehicle.registration_number}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Reg: {vehicle.registration_number}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>

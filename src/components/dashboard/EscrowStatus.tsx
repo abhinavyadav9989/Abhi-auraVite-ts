@@ -44,13 +44,13 @@ export default function EscrowStatus({ data, dealer }) {
   };
 
   return (
-    <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200 dark:bg-black dark:border-slate-800/80">
       <div className="absolute top-0 right-0 w-24 h-24 transform translate-x-6 -translate-y-6 bg-emerald-600 rounded-full opacity-10" />
       
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="p-3 rounded-xl bg-emerald-600 bg-opacity-10">
-            <Shield className="w-6 h-6 text-emerald-600" />
+          <div className="p-3 rounded-xl bg-emerald-600 bg-opacity-10 dark:bg-teal-600/15">
+            <Shield className="w-6 h-6 text-emerald-600 dark:text-teal-300" />
           </div>
           <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700">
             <ArrowRight className="w-4 h-4" />
@@ -61,32 +61,32 @@ export default function EscrowStatus({ data, dealer }) {
       <CardContent className="pt-0">
         <div className="space-y-4">
           <div>
-            <CardTitle className="text-sm font-medium text-slate-500 mb-1">
+            <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-200 mb-1">
               Escrow Status
             </CardTitle>
-            <div className="flex items-center gap-1 text-2xl font-bold text-slate-900">
+            <div className="flex items-center gap-1 text-2xl font-bold text-slate-900 dark:text-white">
               <IndianRupee className="w-5 h-5" />
               {(amount / 100000).toFixed(1)}L
             </div>
-            <div className="text-sm text-slate-600">in secure escrow</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300">in secure escrow</div>
           </div>
           
           {/* Mini Progress Bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs text-slate-600">
+            <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
               <span>Funds Progress</span>
               <span>{progressValue}%</span>
             </div>
             <Progress value={progressValue} className="h-2" />
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               Delivery confirmed → Funds releasing
             </div>
           </div>
           
           {pending > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Pending Releases</span>
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+              <span className="text-sm text-slate-600 dark:text-slate-200">Pending Releases</span>
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-teal-700/40 dark:text-teal-100">
                 {pending}
               </Badge>
             </div>
@@ -95,7 +95,7 @@ export default function EscrowStatus({ data, dealer }) {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="w-full justify-start text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+            className="w-full justify-start text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-teal-300 dark:hover:text-teal-200"
             onClick={handleDrillDown}
           >
             View Escrow Details

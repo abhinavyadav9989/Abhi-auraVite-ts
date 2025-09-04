@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2, Grid3X3, List, Building2, Eye, Edit, Trash2, Share2 } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Upload, ArrowUpDown, Globe, Car, Lock, Wrench, AlertTriangle, Loader2, Grid3X3, List, Building2, Eye, Edit, Trash2, Share2, File, IndianRupee } from "lucide-react";
 // restored baseline (no permission gating here)
 import AdvancedModeToggle from "../components/inventory/AdvancedModeToggle";
 import GlobeView from "../components/inventory/GlobeView";
@@ -33,6 +33,7 @@ const INVENTORY_TYPE_FILTERS = [
   { value: 'all', label: 'All', icon: Globe },
   { value: 'public', label: 'Public', icon: Car },
   { value: 'private', label: 'Private', icon: Lock },
+  { value: 'draft', label: 'Draft', icon: File },
   { value: 'service', label: 'Service', icon: Wrench },
   { value: 'aging', label: 'Aging', icon: AlertTriangle },
 ];
@@ -64,7 +65,7 @@ export default function Inventory() {
   // Filter states for InventoryFilters component
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
   const [onlyMine, setOnlyMine] = useState<boolean>(false);
-  
+
   // Branch filter states
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
@@ -72,6 +73,8 @@ export default function Inventory() {
   
   // Advanced Mode states
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  // New explicit toggle to show branches without "upgrade" gating
+  const [showBranchView, setShowBranchView] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [planChoice, setPlanChoice] = useState<'basic' | 'advanced'>('advanced');
   const [selectedBranchForDetails, setSelectedBranchForDetails] = useState<any>(null);
@@ -185,7 +188,19 @@ export default function Inventory() {
       const nowMs = Date.now();
       const createdMs = vehicleCreatedDate.getTime();
       const isAging = (nowMs - createdMs) / (1000 * 60 * 60 * 24) > agingAlertDays;
-      const matchesType = inventoryType === "all" || (inventoryType === "aging" ? isAging : vehicle?.inventory_type === inventoryType);
+      // Align filters with card badge, which uses vehicle.status
+      let matchesType = true;
+      if (inventoryType === "aging") {
+        matchesType = isAging;
+      } else if (inventoryType === "draft") {
+        matchesType = (vehicle?.status === 'draft');
+      } else if (inventoryType === "public") {
+        // Public excludes drafts
+        matchesType = (vehicle?.status !== 'draft');
+      } else if (inventoryType !== "all") {
+        // Fallback to legacy inventory_type for other filters like private/service
+        matchesType = (vehicle?.inventory_type === inventoryType);
+      }
       
       // Price range filter
       const vehiclePrice = vehicle?.asking_price || 0;
@@ -197,11 +212,34 @@ export default function Inventory() {
       return matchesSearch && matchesType && withinPriceRange && matchesBranch;
     });
 
+    // Deduplicate by registration number, keep most recently updated
+    const byReg = new Map<string, any>();
+    for (const v of filtered) {
+      const reg = (v?.registration_number || '').trim();
+      if (!reg) {
+        // If no registration, keep as unique by id
+        byReg.set(`__id__:${v?.id}`, v);
+        continue;
+      }
+      const existing = byReg.get(reg);
+      if (!existing) {
+        byReg.set(reg, v);
+      } else {
+        const vTime = new Date(v?.updated_at || v?.created_date || 0).getTime();
+        const eTime = new Date(existing?.updated_at || existing?.created_date || 0).getTime();
+        if (vTime >= eTime) byReg.set(reg, v);
+      }
+    }
+    filtered = Array.from(byReg.values());
+
     // Safe sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "newest": 
-          return new Date(b?.created_date || 0).getTime() - new Date(a?.created_date || 0).getTime(); // Use getTime() for date comparison
+        case "newest": {
+          const aTime = new Date(a?.updated_at || a?.created_date || 0).getTime();
+          const bTime = new Date(b?.updated_at || b?.created_date || 0).getTime();
+          return bTime - aTime;
+        }
         case "price_high": 
           return (b?.asking_price || 0) - (a?.asking_price || 0);
         case "price_low": 
@@ -372,14 +410,16 @@ export default function Inventory() {
 
   // KPI metrics derived from vehicles
   const kpi = React.useMemo(() => {
-    const total = vehicles.length;
-    const listed = vehicles.filter(v => v?.inventory_type === 'public').length;
-    const internal = vehicles.filter(v => v?.inventory_type === 'private').length;
-    const workshop = vehicles.filter(v => v?.inventory_type === 'service').length;
-    const reserved = vehicles.filter(v => v?.status === 'reserved').length;
-    const totalValue = vehicles.reduce((sum, v) => sum + (v?.asking_price || 0), 0);
+    // KPIs reflect the current filter/tab selection
+    const scope = filteredVehicles.length ? filteredVehicles : vehicles;
+    const total = scope.length;
+    const listed = scope.filter(v => v?.status === 'live' || v?.inventory_type === 'public').length;
+    const internal = scope.filter(v => v?.inventory_type === 'private').length;
+    const workshop = scope.filter(v => v?.inventory_type === 'service').length;
+    const reserved = scope.filter(v => v?.status === 'reserved').length;
+    const totalValue = scope.reduce((sum, v) => sum + (v?.asking_price || 0), 0);
     return { total, listed, internal, workshop, reserved, totalValue };
-  }, [vehicles]);
+  }, [vehicles, filteredVehicles]);
 
   // Permissions derived flags
   const canAddOrEdit = true;
@@ -426,7 +466,7 @@ export default function Inventory() {
         update.inventory_type = columnKey;
       } else if (columnKey === 'reserved') {
         update.status = 'reserved';
-      } else {
+              } else {
         return; // no-op for 'all'
       }
 
@@ -445,108 +485,114 @@ export default function Inventory() {
   
   return (
     <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6 text-slate-900 dark:text-white">
         {/* Page header */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Inventory</h1>
-              <span className="hidden md:inline-block text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">Basic Mode</span>
-              <button
-                type="button"
-                className="hidden md:inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200"
-                onClick={() => setShowUpgradeModal(true)}
-              >
-                Upgrade to Advanced
-              </button>
-          </div>
-          <div className="flex gap-3">
+              <h1 className="text-[24px] md:text-[28px] font-semibold tracking-tight">Inventory</h1>
+              {/* Removed Basic Mode and Upgrade controls */}
+              </div>
+              <div className="flex gap-3 flex-wrap w-full sm:w-auto">
               <Link to={createPageUrl("AddVehicle")}>
                 <Button className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-sm" disabled={!canAddOrEdit} title={!canAddOrEdit ? 'No permission' : undefined}>
                   <Plus className="w-4 h-4" /> Add Vehicle
                 </Button>
               </Link>
               <Link to={createPageUrl("BulkImport")}>
-                <Button variant="outline" className="gap-2 border-slate-200" disabled={!canAddOrEdit} title={!canAddOrEdit ? 'No permission' : undefined}>
-                  <Upload className="w-4 h-4" /> Bulk
+                <Button variant="outline" className="gap-2 border-slate-200 dark:border-slate-700 dark:text-slate-200" disabled={!canAddOrEdit} title={!canAddOrEdit ? 'No permission' : undefined}>
+                  <Upload className="w-4 h-4" /> Bulk Upload
                 </Button>
               </Link>
+              </div>
             </div>
-          </div>
-          {/* Sub-banner */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 md:p-4">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-xs">Basic mode</span>
-              <span>You're on basic features. Upgrade to unlock branches, logistics, and advanced features.</span>
+          {/* Removed Basic mode promo banner */}
             </div>
-            <button
-              className="hidden md:inline-flex text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => setShowUpgradeModal(true)}
-            >
-              Upgrade to Advanced
-            </button>
+
+        {/* Branch View Toggle */}
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className={`inline-flex items-center px-2 py-1 rounded-md border ${showBranchView ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700'}`}>Branch view</span>
           </div>
+          <button
+            type="button"
+            className={`text-xs px-3 py-1.5 rounded-md border transition ${showBranchView ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            onClick={() => setShowBranchView(v => !v)}
+          >
+            {showBranchView ? 'Hide Branches' : 'Show Branches'}
+          </button>
         </div>
 
-        {/* Advanced Mode Toggle */}
-        <AdvancedModeToggle 
-          isEnabled={isAdvancedMode} 
-          onToggle={setIsAdvancedMode} 
-        />
-
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5">
           {INVENTORY_TYPE_FILTERS.map(type => (
-             <button key={type.value} onClick={() => setInventoryType(type.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                inventoryType === type.value ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-              }`}>
-              <type.icon className="w-4 h-4" /> {type.label}
+            <button
+              key={type.value}
+              onClick={() => setInventoryType(type.value)}
+              aria-pressed={inventoryType === type.value}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                inventoryType === type.value
+                  ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/60'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800'
+              }`}
+            >
+              <type.icon className={`w-4 h-4 ${inventoryType === type.value ? 'text-white' : 'text-slate-500 dark:text-slate-300'}`} />
+              {type.label}
             </button>
           ))}
         </div>
 
         {/* KPI Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-xs text-slate-500">Total Vehicles</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.total}</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow min-h-[110px]">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <Globe className="w-4 h-4 text-blue-600" /> Total Vehicles
+            </div>
+            <div className="text-2xl font-semibold mt-1 text-slate-900 dark:text-white">{kpi.total}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-xs text-slate-500">Listed</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.listed}</div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow min-h-[110px]">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <Car className="w-4 h-4 text-emerald-600" /> Listed
+            </div>
+            <div className="text-2xl font-semibold mt-1 text-slate-900 dark:text-white">{kpi.listed}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-xs text-slate-500">Internal</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.internal}</div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow min-h-[110px]">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <Lock className="w-4 h-4 text-indigo-600" /> Internal
+            </div>
+            <div className="text-2xl font-semibold mt-1 text-slate-900 dark:text-white">{kpi.internal}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-xs text-slate-500">Workshop</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.workshop}</div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow min-h-[110px]">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <Wrench className="w-4 h-4 text-amber-600" /> Workshop
+            </div>
+            <div className="text-2xl font-semibold mt-1 text-slate-900 dark:text-white">{kpi.workshop}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-xs text-slate-500">Total Value</div>
-            <div className="text-2xl font-semibold mt-1">₹{(kpi.totalValue || 0).toLocaleString('en-IN')}</div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow min-h-[110px] col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <IndianRupee className="w-4 h-4 text-fuchsia-600" /> Total Value
+            </div>
+            <div className="text-xl sm:text-2xl font-semibold mt-1 text-slate-900 dark:text-white break-words sm:whitespace-nowrap leading-tight">₹{(kpi.totalValue || 0).toLocaleString('en-IN')}</div>
           </div>
         </div>
 
         {/* Analytics link */}
         <div className="flex items-center justify-end -mt-2">
           <Link to={createPageUrl('Analytics')} className="text-xs text-blue-600 hover:underline">View in Analytics</Link>
-        </div>
-
+                </div>
+                
         <Card>
           <CardContent className="p-4 md:p-5">
             {/* Toolbar */}
-            <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center sticky top-16 z-[5] bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-100 p-3">
+            <div className="flex flex-col lg:flex-row lg:flex-wrap gap-3 lg:gap-4 items-stretch lg:items-center sticky top-16 z-[5] bg-white/80 dark:bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 p-3">
                 {/* Branch Filter */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <Select value={selectedBranch} onValueChange={(v) => setSelectedBranch(v)}>
-                  <SelectTrigger className="w-[160px] md:w-[200px] bg-white">
+                  <SelectTrigger className="w-full sm:w-[200px] bg-white dark:bg-slate-800 dark:text-slate-200">
                     <SelectValue placeholder="All Branches" />
-                  </SelectTrigger>
-                  <SelectContent>
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
                     <SelectItem value="all">
-                      <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         All Branches ({vehicles.length})
                       </div>
@@ -564,21 +610,21 @@ export default function Inventory() {
                           <span className="text-xs text-slate-500 ml-2">
                             ({branchVehicleCounts[branch.id] || 0})
                           </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
-                  <SelectTrigger className="w-[160px] md:w-[200px] bg-white">
+                  <SelectTrigger className="w-full sm:w-[200px] bg-white dark:bg-slate-800 dark:text-slate-200">
                     <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                      <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="price_high">Price: High to Low</SelectItem>
                     <SelectItem value="price_low">Price: Low to High</SelectItem>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
               </div>
 
               {/* Search */}
@@ -593,40 +639,40 @@ export default function Inventory() {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="gap-2 border-slate-200">
+                <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="gap-2 border-slate-200 dark:border-slate-700 dark:text-slate-200">
                   <SlidersHorizontal className="w-4 h-4" /> Advanced Filters
                 </Button>
+                </div>
               </div>
-            </div>
-            
+              
             {/* Optional advanced filters */}
-            {showFilters && (
+              {showFilters && (
               <div className="mt-4">
-              <InventoryFilters 
+                  <InventoryFilters
                   vehicles={vehicles}
-                priceRange={priceRange}
-                setPriceRange={setPriceRange}
-                onlyMine={onlyMine}
-                setOnlyMine={setOnlyMine}
-              />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    priceRange={priceRange}
+                    setPriceRange={setPriceRange}
+                    onlyMine={onlyMine}
+                    setOnlyMine={setOnlyMine}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
         {showBulkToolbar && (
-          <div className="sticky bottom-4 z-10">
+          <div className="sticky top-16 z-20">
             <div className="mx-auto max-w-7xl">
-              <div className="rounded-lg border border-slate-200 bg-white shadow-sm p-3 flex items-center justify-between">
-                <div className="text-sm text-slate-700">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-3 flex flex-wrap items-center gap-3 justify-between overflow-x-auto">
+                <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-nowrap">
                   {selectedVehicles.size} selected
                 </div>
-          <BulkToolbar 
-            selectedCount={selectedVehicles.size} 
-            onClearSelection={() => { setSelectedVehicles(new Set()); }} 
-            onArchive={handleArchiveSelected}
-            onTypeChange={handleBulkTypeChange}
-          />
+                <BulkToolbar
+                  selectedCount={selectedVehicles.size}
+                  onClearSelection={() => { setSelectedVehicles(new Set()); }} 
+                  onArchive={handleArchiveSelected}
+                  onTypeChange={handleBulkTypeChange}
+                />
               </div>
             </div>
           </div>
@@ -676,7 +722,7 @@ export default function Inventory() {
           </div>
         )}
 
-        {isAdvancedMode ? (
+        {showBranchView ? (
           // Advanced Mode Layout
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Globe View - Takes 2/3 of the space */}
@@ -735,7 +781,7 @@ export default function Inventory() {
           isLoading ? <div><Loader2 className="w-8 h-8 animate-spin mx-auto mt-10"/></div> : (
           filteredVehicles.length > 0 ? (
             <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col gap-3 mb-4">
                   <div className="flex items-center gap-2">
                     <input 
                       type="checkbox" 
@@ -747,22 +793,22 @@ export default function Inventory() {
                   </div>
                   
                     {/* Tabs */}
-                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
                       <button
                         onClick={() => { setActiveTab('table'); setViewMode('list'); }}
-                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'table' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'table' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
                       >
                         Table
                       </button>
                       <button
                         onClick={() => { setActiveTab('card'); setViewMode('grid'); }}
-                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'card' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'card' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
                       >
                         Card
                       </button>
                       <button
                         onClick={() => { setActiveTab('kanban'); }}
-                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'kanban' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'kanban' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
                       >
                         Kanban
                       </button>
@@ -784,11 +830,11 @@ export default function Inventory() {
                           return (
                             <div
                               key={col.key}
-                              className="rounded-lg border border-slate-200 bg-white"
+                              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                               onDragOver={(e) => e.preventDefault()}
                               onDrop={() => handleDropToColumn(col.key as string)}
                             >
-                              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                                 <h4 className="text-sm font-semibold flex items-center gap-2">
                                   {col.title}
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${col.badge}`}>{items.length}</span>
@@ -804,20 +850,20 @@ export default function Inventory() {
                                       draggable
                                       onDragStart={() => handleDragStart(vehicle.id)}
                                       onDragEnd={handleDragEnd}
-                                      className="rounded-md border border-slate-200 bg-white p-3 shadow-sm cursor-move"
+                                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-sm cursor-move"
                                     >
                                       <div className="flex items-center justify-between">
-                                        <div className="text-sm font-medium truncate max-w-[180px]">{vehicle?.make} {vehicle?.model}</div>
-                                        <span className="text-xs text-slate-500">₹{(vehicle?.asking_price || 0).toLocaleString('en-IN')}</span>
+                                        <div className="text-sm font-medium truncate max-w-[180px] dark:text-white">{vehicle?.make} {vehicle?.model}</div>
+                                        <span className="text-xs text-slate-500 dark:text-slate-300">₹{(vehicle?.asking_price || 0).toLocaleString('en-IN')}</span>
                                       </div>
-                                      <div className="mt-1 text-xs text-slate-500 flex items-center gap-2">
+                                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                                         <span>{vehicle?.year || '-'}</span>
                                         <span>•</span>
                                         <span>{vehicle?.registration_number || '—'}</span>
                                       </div>
                                       {vehicle?.branches?.name || vehicle?.branch_id ? (
                                         <div className="mt-2">
-                                          <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                          <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-slate-800 dark:text-blue-300 dark:border-slate-700">
                                             {branches.find(b => b.id === vehicle?.branch_id)?.name || 'Branch'}
                                           </span>
                                         </div>
@@ -833,53 +879,53 @@ export default function Inventory() {
                     </div>
                   ) : viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredVehicles.map((vehicle) => (
-                      <VehicleCard 
-                        key={vehicle.id} 
-                        vehicle={vehicle} 
-                        isSelected={selectedVehicles.has(vehicle.id)} 
+              {filteredVehicles.map((vehicle) => (
+                <VehicleCard
+                  key={vehicle.id}
+                  vehicle={vehicle}
+                  isSelected={selectedVehicles.has(vehicle.id)}
                         onSelect={handleVehicleSelect} 
                         onShare={() => setSharingVehicle(vehicle)} 
                         onDelete={handleDeleteVehicle} 
-                      />
-                    ))}
-                  </div>
+                />
+              ))}
+            </div>
                 ) : (
-                    <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-slate-50 dark:bg-slate-800">
                           <tr>
-                            <th className="text-left font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('makeModel')}>Make/Model</th>
-                            <th className="text-left font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('year')}>Year</th>
-                            <th className="text-left font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('reg')}>Reg. No</th>
-                            <th className="text-left font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('type')}>Type</th>
-                            <th className="text-left font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('branch')}>Branch</th>
-                            <th className="text-right font-medium text-slate-600 px-4 py-3 cursor-pointer" onClick={() => toggleSort('price')}>Price</th>
-                            <th className="px-4 py-3 text-right font-medium text-slate-600">Actions</th>
+                            <th className="text-left font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('makeModel')}>Make/Model</th>
+                            <th className="text-left font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('year')}>Year</th>
+                            <th className="text-left font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('reg')}>Reg. No</th>
+                            <th className="text-left font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('type')}>Type</th>
+                            <th className="text-left font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('branch')}>Branch</th>
+                            <th className="text-right font-medium text-slate-600 dark:text-slate-200 px-4 py-3 cursor-pointer" onClick={() => toggleSort('price')}>Price</th>
+                            <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-200">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {tableRows.map((v) => (
-                            <tr key={v.id} className="border-t border-slate-100 hover:bg-slate-50">
+                            <tr key={v.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                               <td className="px-4 py-3">{v?.make} {v?.model}</td>
                               <td className="px-4 py-3">{v?.year || '-'}</td>
                               <td className="px-4 py-3">{v?.registration_number || '—'}</td>
                               <td className="px-4 py-3 capitalize">{v?.inventory_type || '—'}</td>
                               <td className="px-4 py-3">
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-slate-800 dark:text-blue-300 dark:border-slate-700">
                                   {branches.find(b => b.id === v?.branch_id)?.name || '—'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right">₹{(v?.asking_price || 0).toLocaleString('en-IN')}</td>
                               <td className="px-4 py-3 text-right">
                                 <div className="inline-flex items-center gap-1">
-                                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handleViewVehicle(v.id)}>
+                                  <Button variant="outline" size="sm" className="h-8 px-2 dark:border-slate-700 dark:text-slate-200" onClick={() => handleViewVehicle(v.id)}>
                                     <Eye className="w-4 h-4" />
                                   </Button>
-                                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handleEditVehicle(v.id)}>
+                                  <Button variant="outline" size="sm" className="h-8 px-2 dark:border-slate-700 dark:text-slate-200" onClick={() => handleEditVehicle(v.id)}>
                                     <Edit className="w-4 h-4" />
                                   </Button>
-                                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setSharingVehicle(v)}>
+                                  <Button variant="outline" size="sm" className="h-8 px-2 dark:border-slate-700 dark:text-slate-200" onClick={() => setSharingVehicle(v)}>
                                     <Share2 className="w-4 h-4" />
                                   </Button>
                                   <Button variant="destructive" size="sm" className="h-8 px-2" onClick={() => handleDeleteVehicle(v.id)} disabled={!canDelete} title={!canDelete ? 'No permission' : undefined}>
@@ -891,20 +937,20 @@ export default function Inventory() {
                           ))}
                         </tbody>
                       </table>
-                  </div>
-                )}
             </div>
+          )}
+          </div>
             ) : (
               <Card className="border-dashed">
                 <CardContent className="py-12">
                   <div className="flex flex-col items-center justify-center text-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                       <Car className="w-7 h-7" />
-                    </div>
+          </div>
                     <div>
                       <h3 className="text-lg font-semibold">No Vehicles Found</h3>
                       <p className="text-slate-600 text-sm">Get started by adding your first vehicle to build your inventory.</p>
-                    </div>
+          </div>
                     <div className="flex gap-2">
                       <Link to={createPageUrl("AddVehicle")}>
                         <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -912,8 +958,8 @@ export default function Inventory() {
                         </Button>
                       </Link>
                       <Button variant="outline" className="border-slate-200">Try Sample Data</Button>
-                    </div>
-                  </div>
+              </div>
+            </div>
                 </CardContent>
               </Card>
             )
@@ -957,7 +1003,7 @@ export default function Inventory() {
                   >
                     Delete
                   </Button>
-                </div>
+          </div>
               </CardContent>
             </Card>
           </div>

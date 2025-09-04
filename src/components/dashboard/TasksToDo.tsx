@@ -30,11 +30,11 @@ export default function TasksToDo({ tasks, dealer }) {
           <div className="p-3 rounded-xl bg-green-600 bg-opacity-10 w-fit mx-auto mb-4">
             <CheckCircle2 className="w-6 h-6 text-green-600" />
           </div>
-          <CardTitle className="text-sm font-medium text-slate-500 mb-2">
+          <CardTitle className="text-sm font-medium text-slate-500 dark:text-white mb-2">
             Tasks To-Do
           </CardTitle>
           <div className="text-lg font-semibold text-green-600 mb-2">All Clear! 👌</div>
-          <div className="text-sm text-slate-600">No pending tasks</div>
+          <div className="text-sm text-slate-600 dark:text-slate-300">No pending tasks</div>
         </CardContent>
       </Card>
     );
@@ -49,7 +49,7 @@ export default function TasksToDo({ tasks, dealer }) {
           <div className="p-3 rounded-xl bg-slate-600 bg-opacity-10">
             <CheckCircle2 className="w-6 h-6 text-slate-600" />
           </div>
-          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-700">
+          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white">
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
@@ -58,11 +58,11 @@ export default function TasksToDo({ tasks, dealer }) {
       <CardContent className="pt-0">
         <div className="space-y-4">
           <div>
-            <CardTitle className="text-sm font-medium text-slate-500 mb-1">
+            <CardTitle className="text-sm font-medium text-slate-500 dark:text-white mb-1">
               Tasks To-Do
             </CardTitle>
-            <div className="text-3xl font-bold text-slate-900">{tasks.length}</div>
-            <div className="text-sm text-slate-600">items pending</div>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">{tasks.length}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300">items pending</div>
           </div>
           
           <div className="space-y-2">
@@ -72,7 +72,7 @@ export default function TasksToDo({ tasks, dealer }) {
                 <div key={task.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Icon className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                    <span className="text-sm text-slate-600 truncate">
+                    <span className="text-sm text-slate-600 dark:text-slate-300 truncate">
                       {task.title}
                     </span>
                   </div>
@@ -87,14 +87,14 @@ export default function TasksToDo({ tasks, dealer }) {
             })}
             
             {tasks.length > 3 && (
-              <div className="text-xs text-slate-500 text-center pt-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400 text-center pt-2">
                 +{tasks.length - 3} more tasks
               </div>
             )}
           </div>
           
           <Link to={createPageUrl("TaskBoard")}>
-            <Button variant="ghost" size="sm" className="w-full justify-start text-slate-600 hover:text-slate-700 hover:bg-slate-50">
+            <Button variant="ghost" size="sm" className="w-full justify-start text-slate-600 hover:text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/50">
               Open Task Board
             </Button>
           </Link>
