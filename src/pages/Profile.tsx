@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Dealer } from "@/api/entities";
 import { DealerDocument } from "@/api/entities";
 import { DealerHours } from "@/api/entities";
@@ -116,6 +116,9 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
   const navigate = useNavigate(); // Initialize useNavigate
+  const tabsListRef = useRef(null);
+  const [showLeftIndicator, setShowLeftIndicator] = useState(false);
+  const [showRightIndicator, setShowRightIndicator] = useState(true);
 
   // Form states with proper defaults
   const [profileForm, setProfileForm] = useState({
@@ -153,6 +156,139 @@ export default function Profile() {
   useEffect(() => {
     loadProfileData();
   }, []);
+
+  // Use useLayoutEffect to set scroll position before render
+  useLayoutEffect(() => {
+    if (tabsListRef.current) {
+      // Force scroll to the very beginning to show Overview tab completely
+      tabsListRef.current.scrollLeft = 0;
+      console.log('TabsList scroll position set to 0');
+    }
+  }, []);
+
+  // Additional effect to ensure scroll position is set after DOM updates
+  useEffect(() => {
+    const forceScrollLeft = () => {
+      if (tabsListRef.current) {
+        tabsListRef.current.scrollLeft = 0;
+        // Also try to scroll the Overview tab into view
+        const overviewTab = tabsListRef.current.querySelector('[value="overview"]');
+        if (overviewTab) {
+          overviewTab.scrollIntoView({
+            behavior: 'auto',
+            block: 'nearest',
+            inline: 'start'
+          });
+        }
+      }
+    };
+    
+    // Force scroll position multiple times to ensure it sticks
+    forceScrollLeft();
+    const timer1 = setTimeout(forceScrollLeft, 10);
+    const timer2 = setTimeout(forceScrollLeft, 50);
+    const timer3 = setTimeout(forceScrollLeft, 100);
+    const timer4 = setTimeout(forceScrollLeft, 200);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+      clearTimeout(timer4);
+    };
+  }, []);
+
+  // Initialize scroll position to show left buttons (Overview, Segment, etc.)
+  useEffect(() => {
+    const initializeTabs = () => {
+      if (tabsListRef.current) {
+        // Force scroll to the very beginning to show Overview tab completely
+        tabsListRef.current.scrollLeft = 0;
+        
+        // Check scroll indicators
+        const { scrollLeft, scrollWidth, clientWidth } = tabsListRef.current;
+        setShowLeftIndicator(scrollLeft > 0);
+        setShowRightIndicator(scrollLeft < scrollWidth - clientWidth - 1);
+      }
+    };
+    
+    // Initialize with multiple attempts to ensure it works
+    initializeTabs();
+    setTimeout(initializeTabs, 50);
+    setTimeout(initializeTabs, 100);
+    
+    // Also initialize on resize
+    window.addEventListener('resize', initializeTabs);
+    
+    return () => {
+      window.removeEventListener('resize', initializeTabs);
+    };
+  }, []);
+
+  // Force scroll to left on component mount and when activeTab changes
+  useEffect(() => {
+    if (tabsListRef.current) {
+      // Always scroll to the left to show Overview tab
+      tabsListRef.current.scrollLeft = 0;
+      
+      // Also ensure Overview tab is visible
+      const overviewTab = tabsListRef.current.querySelector('[value="overview"]');
+      if (overviewTab) {
+        overviewTab.scrollIntoView({
+          behavior: 'auto',
+          block: 'nearest',
+          inline: 'start'
+        });
+      }
+    }
+  }, [activeTab]);
+
+  // Auto-scroll to active tab, but prioritize showing left tabs
+  useEffect(() => {
+    if (tabsListRef.current) {
+      // If Overview tab is active, always scroll to left
+      if (activeTab === 'overview') {
+        tabsListRef.current.scrollLeft = 0;
+      } else {
+        // For other tabs, scroll to show them but don't hide left tabs
+        const activeTabElement = tabsListRef.current.querySelector(`[data-state="active"]`);
+        if (activeTabElement) {
+          activeTabElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      }
+    }
+  }, [activeTab]);
+
+  // Handle scroll to update indicators
+  const handleScroll = () => {
+    if (tabsListRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsListRef.current;
+      setShowLeftIndicator(scrollLeft > 0);
+      setShowRightIndicator(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Handle tab change with scroll
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    // Small delay to ensure the tab is rendered before scrolling
+    setTimeout(() => {
+      if (tabsListRef.current) {
+        const activeTabElement = tabsListRef.current.querySelector(`[data-state="active"]`);
+        if (activeTabElement) {
+          activeTabElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });
+        }
+      }
+    }, 100);
+  };
 
   const loadProfileData = async () => {
     try {
@@ -612,7 +748,7 @@ export default function Profile() {
   const StatusIcon = verificationStatus?.icon || Clock;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header Section */}
@@ -649,7 +785,7 @@ export default function Profile() {
             
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
                   {dealer?.business_name || dealer?.name || 'Loading...'}
                 </h1>
                 {/* PF-07: KYB verification badge */}
@@ -661,7 +797,7 @@ export default function Profile() {
                 )}
               </div>
               
-              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
                 <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   {dealer?.city || 'N/A'}, {dealer?.state || 'N/A'}
@@ -728,71 +864,81 @@ export default function Profile() {
         )}
 
         {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-11 h-auto p-1">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="segment" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Segment</span>
-            </TabsTrigger>
-            <TabsTrigger value="plan" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Plan</span>
-            </TabsTrigger>
-            <TabsTrigger value="branches" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              <span className="hidden sm:inline">Branches</span>
-            </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Team</span>
-            </TabsTrigger>
-            <TabsTrigger value="reviews" className="flex items-center gap-2">
-              <Star className="w-4 h-4" />
-              <span className="hidden sm:inline">Reviews</span>
-            </TabsTrigger>
-            <TabsTrigger value="hours" className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span className="hidden sm:inline">Hours</span>
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Documents</span>
-            </TabsTrigger>
-            
-            {/* DD-14: Conditionally render metrics tab */}
-            {canViewMetrics() ? (
-              <TabsTrigger value="metrics" className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="hidden sm:inline">Metrics</span>
-              </TabsTrigger>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center justify-center gap-2 text-slate-400 cursor-not-allowed p-2">
-                      <TrendingUp className="w-4 h-4" />
-                      <span className="hidden sm:inline">Metrics</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Only owners can view performance metrics.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          {/* Navigation Tabs - Simple horizontal scrollable tabs */}
+          <div className="relative w-full">
+            <TabsList 
+              ref={tabsListRef} 
+              onScroll={handleScroll}
+              className="w-full inline-flex h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-x-auto scrollbar-hide scroll-smooth"
+              style={{ justifyContent: 'flex-start' }}
+            >
+              <div className="flex space-x-1 min-w-max px-4">
+                <TabsTrigger value="overview" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Building2 className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="segment" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <BarChart3 className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Segment</span>
+                </TabsTrigger>
+                <TabsTrigger value="plan" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Shield className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Plan</span>
+                </TabsTrigger>
+                <TabsTrigger value="branches" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Branches</span>
+                </TabsTrigger>
+                <TabsTrigger value="team" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Users className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Team</span>
+                </TabsTrigger>
+                <TabsTrigger value="reviews" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Star className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Reviews</span>
+                </TabsTrigger>
+                <TabsTrigger value="hours" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Hours</span>
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <FileText className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Documents</span>
+                </TabsTrigger>
+                
+                {/* DD-14: Conditionally render metrics tab */}
+                {canViewMetrics() ? (
+                  <TabsTrigger value="metrics" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                    <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">Metrics</span>
+                  </TabsTrigger>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-1.5 text-slate-400 cursor-not-allowed px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                          <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                          <span className="hidden sm:inline">Metrics</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Only owners can view performance metrics.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
 
-            <TabsTrigger value="share" className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              <span className="hidden sm:inline">Public</span>
-            </TabsTrigger>
-          </TabsList>
+                <TabsTrigger value="share" className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap flex-shrink-0">
+                  <Globe className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Public</span>
+                </TabsTrigger>
+              </div>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6 w-full">
             <ProfileOverview
               dealer={dealer}
               profileForm={profileForm}
@@ -810,27 +956,27 @@ export default function Profile() {
           </TabsContent>
 
           {/* Segment Tab */}
-          <TabsContent value="segment" className="space-y-6">
+          <TabsContent value="segment" className="space-y-6 w-full">
             <SegmentSection dealer={dealer} />
           </TabsContent>
 
           {/* Plan Subscribed Tab */}
-          <TabsContent value="plan" className="space-y-6">
+          <TabsContent value="plan" className="space-y-6 w-full">
             <PlanSection dealer={dealer} />
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" className="space-y-6">
+          <TabsContent value="branches" className="space-y-6 w-full">
             <BranchesSection dealer={dealer} />
           </TabsContent>
 
           {/* Team Members Tab */}
-          <TabsContent value="team" className="space-y-6">
+          <TabsContent value="team" className="space-y-6 w-full">
             <TeamSection dealer={dealer} />
           </TabsContent>
 
           {/* Reviews Tab */}
-          <TabsContent value="reviews" className="space-y-6">
+          <TabsContent value="reviews" className="space-y-6 w-full">
             <ReviewsSection
               reviews={reviews}
               dealer={dealer}
@@ -841,7 +987,7 @@ export default function Profile() {
           </TabsContent>
 
           {/* Business Hours Tab */}
-          <TabsContent value="hours" className="space-y-6">
+          <TabsContent value="hours" className="space-y-6 w-full">
             <BusinessHours
               businessHours={businessHours}
               onHoursUpdate={handleHoursUpdate}
@@ -851,7 +997,7 @@ export default function Profile() {
           </TabsContent>
 
           {/* Documents Tab */}
-          <TabsContent value="documents" className="space-y-6">
+          <TabsContent value="documents" className="space-y-6 w-full">
             <DocumentLocker
               documents={documents}
               dealer={dealer}
@@ -863,7 +1009,7 @@ export default function Profile() {
 
           {/* Performance Metrics Tab (Private) */}
           {canViewMetrics() && (
-            <TabsContent value="metrics" className="space-y-6">
+            <TabsContent value="metrics" className="space-y-6 w-full">
               <PerformanceMetrics
                 dealer={dealer}
                 vehicles={vehicles}
@@ -873,7 +1019,7 @@ export default function Profile() {
           )}
 
           {/* Public Profile Tab */}
-          <TabsContent value="share" className="space-y-6">
+          <TabsContent value="share" className="space-y-6 w-full">
             <PublicProfileShare
               dealer={dealer}
               vehicles={vehicles}

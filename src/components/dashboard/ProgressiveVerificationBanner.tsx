@@ -155,31 +155,31 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-400/20 to-blue-400/20 rounded-full blur-xl"></div>
         
         <CardHeader className="pb-6 relative z-10">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Zap className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
-              <div>
-                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                  Unlock Platform Features
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <span>Unlock Platform Features</span>
                   {nextStep?.priority === 'high' && (
-                    <Badge className="bg-red-500 hover:bg-red-600 text-white animate-pulse">
+                    <Badge className="bg-red-500 hover:bg-red-600 text-white animate-pulse text-xs">
                       Action Required
                     </Badge>
                   )}
                 </CardTitle>
-                <p className="text-gray-600 text-sm mt-1">
+                <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
                   Complete verification steps to access advanced functionality
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center justify-between sm:justify-end gap-4">
               <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {completedSteps}/{totalSteps}
                 </div>
-                <div className="text-sm text-gray-500 font-medium">Complete</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Complete</div>
               </div>
               <Button
                 variant="ghost"
@@ -192,7 +192,7 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
             </div>
           </div>
           <div className="mt-6">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 mb-3">
               <span className="font-medium">Overall Progress</span>
               <span className="font-bold text-lg">{Math.round(progressPercentage)}%</span>
             </div>
@@ -207,57 +207,78 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
         <CardContent className="pt-0">
           {/* Next Action Section */}
           {nextStep && (
-            <div className="mb-6 p-6 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg">
-              <div className="flex items-start justify-between">
+            <div className="mb-6 p-5 sm:p-6 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg">
+              <div className="space-y-4">
+                {/* Header Section */}
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
                     <nextStep.icon className="w-6 h-6 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-gray-900">{nextStep.title}</h3>
-                      <Badge variant="outline" className="text-xs font-medium border-blue-200 text-blue-700">
-                        ⏱️ {nextStep.estimatedTime}
-                      </Badge>
-                      {nextStep.priority === 'high' && (
-                        <Badge className="text-xs bg-red-500 hover:bg-red-600 text-white animate-pulse">
-                          🚨 Required
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-gray-600 dark:text-slate-300 mb-3">{nextStep.description}</p>
-                    <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-2">🔓 This will unlock:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {nextStep.unlocks.map((unlock) => (
-                          <Badge key={unlock} className="text-xs bg-green-100 text-green-700 border-green-200">
-                            ✨ {unlock}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{nextStep.title}</h3>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs font-medium border-blue-200 text-blue-700 dark:border-blue-600 dark:text-blue-300">
+                            ⏱️ {nextStep.estimatedTime}
                           </Badge>
-                        ))}
+                          {nextStep.priority === 'high' && (
+                            <Badge className="text-xs bg-red-500 hover:bg-red-600 text-white animate-pulse">
+                              🚨 Required
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <Button
-                  onClick={nextStep.action}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                  size="lg"
-                >
-                  Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+
+                {/* Description */}
+                <p className="text-gray-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+                  {nextStep.description}
+                </p>
+
+                {/* Unlock Features Section */}
+                <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-orange-600 dark:text-orange-400 text-xs">🔓</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">This will unlock:</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {nextStep.unlocks.map((unlock) => (
+                      <div key={unlock} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-green-200 dark:border-green-700/50">
+                        <span className="text-green-500 text-sm">✨</span>
+                        <span className="text-xs font-medium text-gray-700 dark:text-slate-200">{unlock}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="pt-2">
+                  <Button
+                    onClick={nextStep.action}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    size="lg"
+                  >
+                    Get Started
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
           {/* All Steps Overview */}
           <div className="rounded-xl p-3 md:p-4 dark:bg-slate-900/70 dark:border dark:border-slate-700/70 dark:backdrop-blur-md">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white dark:drop-shadow-lg mb-3 md:mb-4">All Verification Steps</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white dark:drop-shadow-lg mb-3 md:mb-4">All Verification Steps</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {verificationSteps.map((step, index) => (
                 <div
                   key={step.id}
-                  className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-lg ${
+                  className={`p-3 sm:p-4 rounded-xl border transition-all duration-300 hover:shadow-lg ${
                     step.completed
                       ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm dark:from-teal-700/25 dark:to-teal-900/25 dark:border-teal-600/50 dark:backdrop-blur-md dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
                       : step.id === nextStep?.id

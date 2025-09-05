@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Mail, Lock, User, CheckCircle, Car } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function Authentication() {
   const navigate = useNavigate();
@@ -84,26 +85,31 @@ export default function Authentication() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4 relative">
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Car className="w-12 h-12 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Aura</h1>
-          <p className="text-gray-600">Your vehicle marketplace platform</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Aura</h1>
+          <p className="text-gray-600 dark:text-gray-300">Your vehicle marketplace platform</p>
         </div>
 
         {/* Registration Success Message */}
         {registrationSuccess && (
-          <Card className="mb-6 border-green-200 bg-green-50">
+          <Card className="mb-6 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-6 h-6 text-green-600" />
                 <div>
-                  <h4 className="font-medium text-green-900">Registration Successful!</h4>
-                  <p className="text-sm text-green-700">
+                  <h4 className="font-medium text-green-900 dark:text-green-100">Registration Successful!</h4>
+                  <p className="text-sm text-green-700 dark:text-green-300">
                     Account created for {registrationEmail}. Please check your email for verification.
                   </p>
                 </div>
@@ -290,7 +296,7 @@ export default function Authentication() {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-600">
+        <div className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
           <p>By continuing, you agree to our Terms of Service and Privacy Policy</p>
         </div>
       </div>

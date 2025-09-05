@@ -58,9 +58,9 @@ export default function ProfileOverview({
   }
 
   return (
-    <div className="grid lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
       {/* Main Profile Info */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-4 lg:space-y-6 order-1 lg:order-1">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleInputChange('business_name', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900 font-medium">{dealer.business_name || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{dealer.business_name || 'Not set'}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -91,7 +91,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleInputChange('owner_name', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900 font-medium">{dealer.owner_name || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{dealer.owner_name || 'Not set'}</p>
                 )}
               </div>
             </div>
@@ -106,7 +106,7 @@ export default function ProfileOverview({
                   placeholder="e.g., Your trusted car partner"
                 />
               ) : (
-                <p className="text-slate-600">{dealer.tagline || 'No tagline set'}</p>
+                <p className="text-slate-600 dark:text-slate-300">{dealer.tagline || 'No tagline set'}</p>
               )}
             </div>
 
@@ -121,7 +121,7 @@ export default function ProfileOverview({
                   placeholder="Tell customers about your dealership..."
                 />
               ) : (
-                <p className="text-slate-600">{dealer.description || 'No description available'}</p>
+                <p className="text-slate-600 dark:text-slate-300">{dealer.description || 'No description available'}</p>
               )}
             </div>
 
@@ -137,7 +137,7 @@ export default function ProfileOverview({
                 ) : (
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-slate-500" />
-                    <p className="text-slate-900">{dealer.phone || 'Not set'}</p>
+                    <p className="text-slate-900 dark:text-white">{dealer.phone || 'Not set'}</p>
                   </div>
                 )}
               </div>
@@ -150,7 +150,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleInputChange('whatsapp', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{dealer.whatsapp || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{dealer.whatsapp || 'Not set'}</p>
                 )}
               </div>
             </div>
@@ -172,7 +172,7 @@ export default function ProfileOverview({
                       {dealer.website}
                     </a>
                   ) : (
-                    <p className="text-slate-500">No website set</p>
+                    <p className="text-slate-500 dark:text-slate-400">No website set</p>
                   )}
                 </div>
               )}
@@ -199,7 +199,7 @@ export default function ProfileOverview({
                   rows={3}
                 />
               ) : (
-                <p className="text-slate-900">{dealer.address || 'Address not set'}</p>
+                <p className="text-slate-900 dark:text-white">{dealer.address || 'Address not set'}</p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -212,7 +212,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleInputChange('city', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{dealer.city || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{dealer.city || 'Not set'}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -224,7 +224,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleInputChange('state', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{dealer.state || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{dealer.state || 'Not set'}</p>
                 )}
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleBankDataChange('account_holder_name', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{bankData?.account_holder_name || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{bankData?.account_holder_name || 'Not set'}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -262,7 +262,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleBankDataChange('account_number', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{bankData?.account_number || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{bankData?.account_number || 'Not set'}</p>
                 )}
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleBankDataChange('ifsc_code', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{bankData?.ifsc_code || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{bankData?.ifsc_code || 'Not set'}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -288,7 +288,7 @@ export default function ProfileOverview({
                     onChange={(e) => handleBankDataChange('bank_name', e.target.value)}
                   />
                 ) : (
-                  <p className="text-slate-900">{bankData?.bank_name || 'Not set'}</p>
+                  <p className="text-slate-900 dark:text-white">{bankData?.bank_name || 'Not set'}</p>
                 )}
               </div>
             </div>
@@ -306,35 +306,40 @@ export default function ProfileOverview({
       </div>
 
       {/* Sidebar */}
-      <div className="space-y-6">
+      <div className="space-y-4 lg:space-y-6 order-2 lg:order-2 lg:border-l lg:border-slate-200 dark:lg:border-slate-700 lg:pl-6">
+        {/* Debug: Sidebar Content */}
+        <div className="lg:hidden text-xs text-slate-500 dark:text-slate-400 mb-2">
+          Sidebar Content (Mobile View)
+        </div>
+        
         {/* Banner Upload */}
-        {canEdit && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Cover Banner</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden">
-                  {dealer.banner_url ? (
-                    <img 
-                      src={dealer.banner_url} 
-                      alt="Business Banner" 
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <Camera className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm text-slate-500">Upload banner image</p>
-                      </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cover Banner</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                {dealer.banner_url ? (
+                  <img 
+                    src={dealer.banner_url} 
+                    alt="Business Banner" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <Camera className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                      <p className="text-xs text-slate-500">Upload banner image</p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
+              {canEdit && (
                 <label className="cursor-pointer">
                   <Button 
                     variant="outline" 
-                    className="w-full"
+                    className="w-full text-sm"
                     disabled={uploadingDoc === 'banner'}
                   >
                     <Upload className="w-4 h-4 mr-2" />
@@ -352,23 +357,23 @@ export default function ProfileOverview({
                     }}
                   />
                 </label>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Stats */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
+            <CardTitle className="text-base">Quick Stats</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Car className="w-4 h-4 text-blue-600" />
                 <span className="text-sm">Live Vehicles</span>
               </div>
-              <Badge variant="secondary">{vehicles.length}</Badge>
+              <Badge variant="secondary" className="text-xs">{vehicles.length}</Badge>
             </div>
             
             <div className="flex items-center justify-between">
@@ -376,7 +381,7 @@ export default function ProfileOverview({
                 <Shield className="w-4 h-4 text-green-600" />
                 <span className="text-sm">Inspection Coverage</span>
               </div>
-              <Badge variant="secondary">{inspectionCoverage}%</Badge>
+              <Badge variant="secondary" className="text-xs">{inspectionCoverage}%</Badge>
             </div>
 
             <div>
@@ -392,7 +397,7 @@ export default function ProfileOverview({
         {/* Trust Indicators */}
         <Card>
           <CardHeader>
-            <CardTitle>Trust Score</CardTitle>
+            <CardTitle className="text-base">Trust Score</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
@@ -403,7 +408,7 @@ export default function ProfileOverview({
               <Shield className="w-4 h-4 text-green-500" />
               <span className="text-sm">KYB Completed</span>
             </div>
-            <p className="text-xs text-slate-600 mt-2">
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-2">
               Trust indicators help other dealers feel confident about trading with you.
             </p>
           </CardContent>

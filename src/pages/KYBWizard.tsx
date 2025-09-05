@@ -28,6 +28,7 @@ import {
   Clock,
   Star // ONB-23: Added for subscription
 } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { createPageUrl } from '@/utils';
 // Subscription step removed from KYC flow
 
@@ -700,15 +701,20 @@ export default function KYBWizard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-4 relative">
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Business Verification</h1>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Business Verification</h1>
           {rejectionNotes ? (
-            <p className="text-red-600">Your previous submission was rejected. Please correct the highlighted issues and re-submit.</p>
+            <p className="text-red-600 dark:text-red-400">Your previous submission was rejected. Please correct the highlighted issues and re-submit.</p>
           ) : (
-            <p className="text-slate-600">Complete your KYB to start trading on Aura</p>
+            <p className="text-slate-600 dark:text-slate-300">Complete your KYB to start trading on Aura</p>
           )}
         </div>
 
@@ -718,7 +724,7 @@ export default function KYBWizard() {
             {STEPS.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  index <= currentStep ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'
+                  index <= currentStep ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                 }`}>
                   {index < currentStep ? (
                     <CheckCircle className="w-5 h-5" />
@@ -728,14 +734,14 @@ export default function KYBWizard() {
                 </div>
                 {index < STEPS.length - 1 && (
                   <div className={`flex-1 h-0.5 mx-4 ${
-                    index < currentStep ? 'bg-blue-600' : 'bg-slate-200'
+                    index < currentStep ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
                   }`} />
                 )}
               </div>
             ))}
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-slate-900">{STEPS[currentStep].title}</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{STEPS[currentStep].title}</h2>
             <Progress value={((currentStep + 1) / STEPS.length) * 100} className="mt-2" />
           </div>
         </div>

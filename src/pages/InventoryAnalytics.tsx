@@ -158,17 +158,17 @@ const KPITile = ({ title, value, subtitle, icon: Icon, trend, onClick, loading, 
     <CardContent className="p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-600 flex items-center">
+          <p className="text-sm font-medium text-slate-600 dark:text-white flex items-center">
             {title}
             {tooltip && <InfoTooltip className="ml-1" >{tooltip}</InfoTooltip>}
           </p>
           {loading ? (
-            <div className="h-8 w-24 bg-slate-200 animate-pulse rounded mt-2" />
+            <div className="h-8 w-24 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mt-2" />
           ) : (
-            <p className="text-2xl font-bold text-slate-900 mt-2">{value}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">{value}</p>
           )}
           {subtitle && (
-            <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">{subtitle}</p>
           )}
         </div>
         <div className="flex flex-col items-end">
@@ -279,7 +279,7 @@ const AgingHeatmap = ({ data, onCellClick }: AgingHeatmapProps) => {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-6 gap-1 text-xs font-medium text-slate-600">
+      <div className="grid grid-cols-6 gap-1 text-xs font-medium text-slate-600 dark:text-white">
         <div></div>
         <div className="text-center">0-15d</div>
         <div className="text-center">16-30d</div>  
@@ -289,7 +289,7 @@ const AgingHeatmap = ({ data, onCellClick }: AgingHeatmapProps) => {
       </div>
       {data.map((row, rowIndex) => (
         <div key={rowIndex} className="grid grid-cols-6 gap-1">
-          <div className="text-xs font-medium text-slate-700 py-2 pr-2 truncate">
+          <div className="text-xs font-medium text-slate-700 dark:text-white py-2 pr-2 truncate">
             {row.category}
           </div>
           {row.data.map((cell, cellIndex) => (
@@ -321,7 +321,7 @@ const DealCycleFunnel = ({ data }: DealCycleFunnelProps) => (
         <div key={stage.name} className="space-y-1">
           <div className="flex justify-between text-sm">
             <span className="font-medium">{stage.name}</span>
-            <div className="flex gap-4 text-slate-600">
+            <div className="flex gap-4 text-slate-600 dark:text-white">
               <span>{stage.count} vehicles</span>
               {index > 0 && <span className="text-red-600">-{dropOff}%</span>}
               <span>{stage.avgDays}d avg</span>
@@ -409,8 +409,8 @@ const PhotoQualityGauge = ({ percentage, onDetailsClick }: PhotoQualityGaugeProp
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl font-bold text-slate-900">{percentage}%</div>
-          <div className="text-xs text-slate-600">Quality</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{percentage}%</div>
+          <div className="text-xs text-slate-600 dark:text-white">Quality</div>
         </div>
       </div>
     </div>
@@ -432,12 +432,12 @@ const InsightsFeed = ({ insights, onDismiss, onAction }: InsightsFeedProps) => (
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Zap className="w-4 h-4 text-blue-600" />
-                <h4 className="font-medium text-slate-900">{insight.title}</h4>
+                <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
                 <Badge variant={insight.priority === 'high' ? 'destructive' : 'secondary'} className="text-xs">
                   {insight.priority}
                 </Badge>
               </div>
-              <p className="text-sm text-slate-600 mb-3">{insight.message}</p>
+              <p className="text-sm text-slate-600 dark:text-white mb-3">{insight.message}</p>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => onAction(insight)}>
                   {insight.action}
@@ -739,18 +739,18 @@ export default function InventoryAnalytics() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header with Controls */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center">
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center">
               Business Analytics
               <InfoTooltip>
                 Comprehensive dashboard tracking your dealership&apos;s performance, inventory metrics, and market insights. Use these analytics to make data-driven decisions and optimize your business strategy.
               </InfoTooltip>
             </h1>
-            <p className="text-slate-600 mt-1">Track performance, identify opportunities, and optimize your inventory</p>
+            <p className="text-slate-600 dark:text-white mt-1">Track performance, identify opportunities, and optimize your inventory</p>
           </div>
           
           <div className="flex flex-wrap gap-3">

@@ -31,16 +31,16 @@ export default function CityDetailModal({ city, onClose }) {
         <CardContent className="space-y-4">
           <div className="flex justify-around text-center">
             <div>
-              <p className="text-sm text-slate-500">Demand Score</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Demand Score</p>
               <p className="text-2xl font-bold text-blue-600">{city.demand}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Supply Score</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Supply Score</p>
               <p className="text-2xl font-bold text-green-600">{city.supply}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Market Gap</p>
-              <p className={`text-2xl font-bold ${city.demand > city.supply ? 'text-red-600' : 'text-slate-600'}`}>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Market Gap</p>
+              <p className={`text-2xl font-bold ${city.demand > city.supply ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
                 {city.demand - city.supply}
               </p>
             </div>
@@ -58,7 +58,7 @@ export default function CityDetailModal({ city, onClose }) {
             </div>
             <div>
               <h4 className="font-semibold flex items-center gap-2 mb-2"><Users className="w-4 h-4"/>Top Performing Dealers</h4>
-              <ul className="list-disc list-inside text-sm text-slate-700">
+              <ul className="list-disc list-inside text-sm text-slate-700 dark:text-slate-300">
                 {mockCityData.topDealers.map(dealer => <li key={dealer}>{dealer}</li>)}
               </ul>
             </div>

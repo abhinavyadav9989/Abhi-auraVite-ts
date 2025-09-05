@@ -133,13 +133,13 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Admin Panel</h1>
-            <p className="text-slate-600">Monitor and manage platform operations</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Admin Panel</h1>
+            <p className="text-slate-600 dark:text-slate-300">Monitor and manage platform operations</p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="gap-2">

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { onboardingAPI, OnboardingProgress } from '@/api/onboardingAPI';
 import { Dealer } from '@/api/entityAdapters';
 import { supabase } from '@/api/supabaseClient';
@@ -736,17 +737,27 @@ const OnboardingWizard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center relative">
+        {/* Theme Toggle Button */}
+        <div className="absolute top-4 right-4 z-10">
+          <ThemeToggle />
+        </div>
+        
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading onboarding...</p>
+          <p className="text-slate-600 dark:text-slate-300">Loading onboarding...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative">
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -758,8 +769,8 @@ const OnboardingWizard = () => {
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">Complete Your Profile</h1>
-          <p className="text-slate-600 mt-2">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Complete Your Profile</h1>
+          <p className="text-slate-600 dark:text-slate-300 mt-2">
             Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.description}
           </p>
         </div>
@@ -767,10 +778,10 @@ const OnboardingWizard = () => {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Progress: {calculateProgress()}%
             </span>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-500 dark:text-slate-400">
               Step {currentStep} of {steps.length}
             </span>
           </div>

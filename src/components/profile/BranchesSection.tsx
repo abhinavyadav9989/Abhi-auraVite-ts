@@ -147,8 +147,8 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
       {(!branches || branches.length === 0) && (
         <div className="text-center py-8">
           <Building2 className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">No Branches Added</h3>
-          <p className="text-slate-600 mb-4">You haven't added any branch locations yet.</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Branches Added</h3>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">You haven't added any branch locations yet.</p>
           <Button 
             variant="outline" 
             className="gap-2"
@@ -205,10 +205,10 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-slate-900">
+                    <p className="text-sm text-slate-900 dark:text-white">
                       {branch.address || 'Address not provided'}
                     </p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
                       {branch.city && branch.state ? `${branch.city}, ${branch.state}` : 'Location not specified'}
                     </p>
                   </div>
@@ -217,7 +217,7 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
                 {branch.contact_number && (
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm text-slate-900">{branch.contact_number}</span>
+                    <span className="text-sm text-slate-900 dark:text-white">{branch.contact_number}</span>
                   </div>
                 )}
               </div>
@@ -226,10 +226,10 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-medium text-slate-900">Working Hours</span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Working Hours</span>
                 </div>
                 <div className="pl-6">
-                  <p className="text-sm text-slate-600 leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                     {formatWorkingHours(branch.working_hours)}
                   </p>
                 </div>
@@ -237,8 +237,8 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
 
               {/* Detailed Working Hours */}
               {branch.working_hours && typeof branch.working_hours === 'object' && (
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-slate-900 mb-2">Detailed Schedule</h4>
+                <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Detailed Schedule</h4>
                   <div className="space-y-1">
                     {DAYS_OF_WEEK.map((dayName, dayIndex) => {
                       const dayHours = branch.working_hours[dayIndex];
@@ -246,8 +246,8 @@ const BranchesSection: React.FC<BranchesSectionProps> = ({ dealer }) => {
                       
                       return (
                         <div key={dayIndex} className="flex justify-between text-xs">
-                          <span className="text-slate-600 font-medium">{dayName}</span>
-                          <span className="text-slate-900">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium">{dayName}</span>
+                          <span className="text-slate-900 dark:text-white">
                             {dayHours.isOpen ? `${dayHours.openTime} - ${dayHours.closeTime}` : 'Closed'}
                           </span>
                         </div>

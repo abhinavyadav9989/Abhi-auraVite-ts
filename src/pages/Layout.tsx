@@ -69,6 +69,9 @@ export default function Layout({ children, currentPageName }) {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState) {
       setIsCollapsed(JSON.parse(savedState));
+    } else {
+      // Default to expanded state if no saved state
+      setIsCollapsed(false);
     }
   }, []);
 
@@ -123,38 +126,40 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isMobile = false }) => (
     <div className="flex flex-col h-full">
-      <div className={cn("flex items-center border-b border-slate-200", isCollapsed ? "justify-center h-16" : "justify-between h-16 px-4")}>
-        {!isCollapsed && (
+      <div className={cn("flex items-center border-b border-slate-200", (isCollapsed && !isMobile) ? "justify-center h-16" : "justify-between h-16 px-4")}>
+        {(!isCollapsed || isMobile) && (
           <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
             <Car className="w-6 h-6 text-blue-600" />
             <span className="font-bold text-lg text-slate-900 dark:text-white">Aura</span>
           </Link>
         )}
-        <Button variant="ghost" size="icon" onClick={handleToggleCollapse} className="hidden lg:flex">
-          <ChevronLeft className={cn("w-5 h-5 transition-transform text-slate-600", isCollapsed && "rotate-180")} />
-        </Button>
+        {!isMobile && (
+          <Button variant="ghost" size="icon" onClick={handleToggleCollapse} className="hidden lg:flex">
+            <ChevronLeft className={cn("w-5 h-5 transition-transform text-slate-600", isCollapsed && "rotate-180")} />
+          </Button>
+        )}
       </div>
       <nav className="flex-1 px-2 py-4 space-y-2">
         {navigationItems.map((item) => (
-          <NavItem key={item.title} item={item} isCollapsed={isCollapsed} isActive={location.pathname === item.url} />
+          <NavItem key={item.title} item={item} isCollapsed={isCollapsed && !isMobile} isActive={location.pathname === item.url} />
         ))}
         {user?.role === 'admin' && (
           <div className="pt-4 mt-4 border-t border-slate-200">
-            <h3 className={cn("text-xs font-semibold text-slate-500 uppercase", isCollapsed ? "text-center" : "px-2")}>Admin</h3>
+            <h3 className={cn("text-xs font-semibold text-slate-500 uppercase", (isCollapsed && !isMobile) ? "text-center" : "px-2")}>Admin</h3>
             <div className="space-y-2 mt-2">
             {adminNavigationItems.map((item) => (
-              <NavItem key={item.title} item={item} isCollapsed={isCollapsed} isActive={location.pathname === item.url} />
+              <NavItem key={item.title} item={item} isCollapsed={isCollapsed && !isMobile} isActive={location.pathname === item.url} />
             ))}
             </div>
           </div>
         )}
       </nav>
       <div className="px-2 py-4 mt-auto border-t border-slate-200">
-        <NavItem item={{ title: "Profile", url: createPageUrl("Profile"), icon: User }} isCollapsed={isCollapsed} isActive={location.pathname === createPageUrl("Profile")} />
-        <NavItem item={{ title: "Settings", url: createPageUrl("Settings"), icon: Settings }} isCollapsed={isCollapsed} isActive={location.pathname === createPageUrl("Settings")} />
-        <NavItem item={{ title: "Logout", url: "#", icon: LogOut, action: handleLogout }} isCollapsed={isCollapsed} isActive={false} />
+        <NavItem item={{ title: "Profile", url: createPageUrl("Profile"), icon: User }} isCollapsed={isCollapsed && !isMobile} isActive={location.pathname === createPageUrl("Profile")} />
+        <NavItem item={{ title: "Settings", url: createPageUrl("Settings"), icon: Settings }} isCollapsed={isCollapsed && !isMobile} isActive={location.pathname === createPageUrl("Settings")} />
+        <NavItem item={{ title: "Logout", url: "#", icon: LogOut, action: handleLogout }} isCollapsed={isCollapsed && !isMobile} isActive={false} />
       </div>
     </div>
   );
@@ -168,7 +173,7 @@ export default function Layout({ children, currentPageName }) {
             "hidden lg:block fixed top-0 left-0 h-full z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-lg border-r border-slate-200/60 dark:border-slate-700/60 transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}>
-            <SidebarContent />
+            <SidebarContent isMobile={false} />
           </aside>
         )}
 
@@ -205,7 +210,7 @@ export default function Layout({ children, currentPageName }) {
                   }
                 }}
               >
-                <SidebarContent />
+                <SidebarContent isMobile={true} />
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-50">
                   <X className="w-6 h-6" />
                 </Button>

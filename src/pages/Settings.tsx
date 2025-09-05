@@ -486,11 +486,11 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Settings</h1>
-          <p className="text-slate-600 mt-1">Manage your account, security, and business preferences</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
+          <p className="text-slate-600 dark:text-slate-300 mt-1">Manage your account, security, and business preferences</p>
         </div>
 
         {/* User Profile Header */}

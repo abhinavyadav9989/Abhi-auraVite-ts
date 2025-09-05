@@ -178,6 +178,16 @@ button:focus-visible {
   }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  
+  /* Smooth scrolling for better UX */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+  
+  /* Ensure proper touch scrolling on mobile */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @keyframes float {

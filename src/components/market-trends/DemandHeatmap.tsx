@@ -23,7 +23,7 @@ export default function DemandHeatmap({ data = [] }) {
           <CardDescription>Circles represent market size. Color indicates demand vs. supply.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap justify-center gap-4 p-4 bg-slate-50 rounded-lg">
+          <div className="flex flex-wrap justify-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
             {data.map((city) => {
               const marketSize = (city.demand + city.supply) / 2;
               return (
@@ -41,12 +41,12 @@ export default function DemandHeatmap({ data = [] }) {
                   >
                     <span className="text-xs drop-shadow-md">{city.demand - city.supply}</span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-slate-700 group-hover:text-blue-600">{city.city}</p>
+                  <p className="mt-2 text-sm font-medium text-slate-700 dark:text-white group-hover:text-blue-600">{city.city}</p>
                 </div>
               );
             })}
           </div>
-          <div className="flex justify-center gap-4 mt-4 text-xs text-slate-500">
+          <div className="flex justify-center gap-4 mt-4 text-xs text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500"/>High Demand</span>
             <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500"/>Balanced</span>
             <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"/>High Supply</span>

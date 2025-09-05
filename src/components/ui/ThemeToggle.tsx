@@ -17,7 +17,7 @@ export default function ThemeToggle({ className }: Props) {
       aria-label="Toggle theme"
       className={cn(
         "rounded-xl px-3 py-2",
-        "bg-white/70 dark:bg-slate-900/70 backdrop-blur-md",
+        "bg-white/70 dark:bg-slate-800/70 backdrop-blur-md",
         "border border-slate-200/60 dark:border-slate-700/60",
         "shadow-sm hover:shadow-md transition",
         "flex items-center gap-2 text-slate-700 dark:text-slate-200",

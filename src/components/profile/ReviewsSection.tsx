@@ -143,12 +143,12 @@ export default function ReviewsSection({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{review.reviewer_name || 'Anonymous'}</div>
+                        <div className="font-medium text-slate-900 dark:text-white">{review.reviewer_name || 'Anonymous'}</div>
                         <div className="flex items-center gap-2">
                           <div className="flex">
                             {renderStars(review.rating || 0)}
                           </div>
-                          <span className="text-sm text-slate-500">
+                          <span className="text-sm text-slate-500 dark:text-slate-400">
                             {format(new Date(review.created_date), 'MMM d, yyyy')}
                           </span>
                         </div>
@@ -181,7 +181,7 @@ export default function ReviewsSection({
                     </DropdownMenu>
                   </div>
 
-                  <p className="text-slate-700 mb-3">{review.review_text}</p>
+                  <p className="text-slate-700 dark:text-slate-300 mb-3">{review.review_text}</p>
 
                   {review.is_verified && (
                     <Badge variant="secondary" className="mb-3">
@@ -198,14 +198,14 @@ export default function ReviewsSection({
                             {dealer?.business_name?.[0]?.toUpperCase() || 'D'}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium text-blue-900">
+                        <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                           {dealer?.business_name} (Owner)
                         </span>
-                        <span className="text-xs text-blue-600">
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
                           {format(new Date(review.responded_at), 'MMM d, yyyy')}
                         </span>
                       </div>
-                      <p className="text-sm text-blue-800">{review.dealer_response}</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">{review.dealer_response}</p>
                     </div>
                   )}
 

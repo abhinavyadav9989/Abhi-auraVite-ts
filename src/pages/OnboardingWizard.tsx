@@ -18,6 +18,7 @@ import {
   Building2, Users, Car, CheckCircle, ArrowRight, ArrowLeft, Clock, 
   Phone, Mail, MapPin, Info, Loader2, Zap
 } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 // Progressive Disclosure: Minimal onboarding steps for immediate dashboard access
 const MINIMAL_ONBOARDING_STEPS = [
@@ -393,7 +394,7 @@ export default function OnboardingWizard() {
                     <SelectItem key={type.value} value={type.value}>
                       <div>
                         <div className="font-medium">{type.label}</div>
-                        <div className="text-xs text-gray-500">{type.description}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{type.description}</div>
                       </div>
                     </SelectItem>
                   ))}
@@ -555,17 +556,17 @@ export default function OnboardingWizard() {
       // Completion step
       return (
         <div className="text-center space-y-6">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Aura!</h3>
-            <p className="text-gray-600 mb-4">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Aura!</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
               Your organization "{organizationData.organizationName}" is now set up and ready to use.
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-              <h4 className="font-medium text-blue-900 mb-2">Next Steps - Unlock Features:</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
+            <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-lg p-4 text-left">
+              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Next Steps - Unlock Features:</h4>
+              <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                 <li>• <strong>Add a branch</strong> - Required to add vehicles to inventory</li>
                 <li>• <strong>Complete KYC</strong> - View marketplace prices and dealer details</li>
                 <li>• <strong>Add bank details</strong> - Participate in deals and transactions</li>
@@ -580,10 +581,15 @@ export default function OnboardingWizard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 relative">
+        {/* Theme Toggle Button */}
+        <div className="absolute top-4 right-4 z-10">
+          <ThemeToggle />
+        </div>
+        
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">Setting up your onboarding...</p>
+          <p className="text-slate-600 dark:text-slate-300">Setting up your onboarding...</p>
         </div>
       </div>
     );
@@ -594,16 +600,21 @@ export default function OnboardingWizard() {
   const remainingTime = MINIMAL_ONBOARDING_STEPS.slice(currentStep).reduce((total, step) => total + step.estimatedTime, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-8 relative">
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Car className="w-12 h-12 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to Aura</h1>
-          <p className="text-slate-600">Quick setup to get you started immediately</p>
-          <div className="flex items-center justify-center gap-2 mt-2 text-sm text-slate-500">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Welcome to Aura</h1>
+          <p className="text-slate-600 dark:text-slate-300">Quick setup to get you started immediately</p>
+          <div className="flex items-center justify-center gap-2 mt-2 text-sm text-slate-500 dark:text-slate-400">
             <Clock className="w-4 h-4" />
             <span>~{remainingTime} minutes remaining</span>
           </div>
@@ -614,8 +625,8 @@ export default function OnboardingWizard() {
           <CardContent className="p-6">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">{currentStepInfo?.title}</h2>
-                <p className="text-slate-600 text-sm">{currentStepInfo?.description}</p>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{currentStepInfo?.title}</h2>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">{currentStepInfo?.description}</p>
               </div>
               <div className="flex items-center gap-4">
                 <Badge variant="outline" className="text-sm">
@@ -640,7 +651,7 @@ export default function OnboardingWizard() {
               </div>
               <div>
                 <CardTitle>{currentStepInfo?.title}</CardTitle>
-                <p className="text-sm text-slate-600">{currentStepInfo?.description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{currentStepInfo?.description}</p>
               </div>
             </div>
           </CardHeader>

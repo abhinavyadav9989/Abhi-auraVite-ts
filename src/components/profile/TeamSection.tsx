@@ -87,8 +87,8 @@ const TeamSection: React.FC<TeamSectionProps> = ({ dealer }) => {
     return (
       <div className="text-center py-8">
         <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">No Team Members</h3>
-        <p className="text-slate-600 mb-4">You haven't added any team members yet.</p>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Team Members</h3>
+        <p className="text-slate-600 dark:text-slate-300 mb-4">You haven't added any team members yet.</p>
         <Button variant="outline" className="gap-2">
           <Plus className="w-4 h-4" />
           Add Team Member
@@ -101,8 +101,8 @@ const TeamSection: React.FC<TeamSectionProps> = ({ dealer }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Team Members</h2>
-          <p className="text-slate-600">Your team members and their roles</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Team Members</h2>
+          <p className="text-slate-600 dark:text-slate-300">Your team members and their roles</p>
         </div>
         <Button variant="outline" className="gap-2">
           <Plus className="w-4 h-4" />
@@ -143,20 +143,20 @@ const TeamSection: React.FC<TeamSectionProps> = ({ dealer }) => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm text-slate-900">{member.email || 'Email not provided'}</span>
+                  <span className="text-sm text-slate-900 dark:text-white">{member.email || 'Email not provided'}</span>
                 </div>
 
                 {member.mobile_number && (
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm text-slate-900">{member.mobile_number}</span>
+                    <span className="text-sm text-slate-900 dark:text-white">{member.mobile_number}</span>
                   </div>
                 )}
 
                 {member.aadhar_number && (
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm text-slate-900">
+                    <span className="text-sm text-slate-900 dark:text-white">
                       Aadhar: {member.aadhar_number.replace(/(\d{4})(\d{4})(\d{4})/, '$1-XXXX-XXXX')}
                     </span>
                   </div>
@@ -167,15 +167,15 @@ const TeamSection: React.FC<TeamSectionProps> = ({ dealer }) => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-medium text-slate-900">Role & Permissions</span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Role & Permissions</span>
                 </div>
                 <div className="pl-6">
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
                     {member.role ? `${member.role.charAt(0).toUpperCase() + member.role.slice(1)} role` : 'No role assigned'}
                   </p>
                   {member.permissions && Object.keys(member.permissions).length > 0 && (
                     <div className="mt-2">
-                      <p className="text-xs text-slate-500">Permissions:</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Permissions:</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {Object.keys(member.permissions).map((permission) => (
                           <Badge key={permission} variant="outline" className="text-xs">
@@ -190,7 +190,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({ dealer }) => {
 
               {/* Member Status */}
               <div className="pt-3 border-t">
-                <div className="flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>Member since {new Date(member.created_at).toLocaleDateString()}</span>
                   <span>ID: {member.id}</span>
                 </div>

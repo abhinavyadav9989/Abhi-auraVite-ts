@@ -188,8 +188,8 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
               <div key={docTypeInfo.value} className="p-4 border rounded-lg space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-medium">{docTypeInfo.label}</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="font-medium text-slate-900 dark:text-white">{docTypeInfo.label}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       {docTypeInfo.required ? "Required for KYB verification" : "Optional document"}
                     </p>
                   </div>
@@ -202,7 +202,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                 </div>
 
                 {doc && (
-                  <div className="bg-slate-50 p-3 rounded-md flex items-center justify-between">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {doc.file_type?.startsWith('image/') ? (
                         <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
@@ -212,11 +212,11 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                         <FileText className="w-5 h-5 text-slate-500"/>
                       )}
                       <div className="truncate">
-                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{doc.file_name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           {((doc.file_size || 0) / 1024).toFixed(1)} KB
                           {doc.file_type && (
-                            <span className="ml-2 text-xs text-blue-600">
+                            <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                               ({doc.file_type.split('/')[1]?.toUpperCase() || 'Unknown'})
                             </span>
                           )}
