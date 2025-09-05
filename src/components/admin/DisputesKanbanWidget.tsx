@@ -16,10 +16,10 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 
 const DISPUTE_COLUMNS = [
-  { id: 'new', title: 'New', icon: AlertTriangle, color: 'bg-red-50 border-red-200' },
-  { id: 'investigating', title: 'Investigating', icon: Search, color: 'bg-yellow-50 border-yellow-200' },
-  { id: 'awaiting_evidence', title: 'Awaiting Evidence', icon: Clock, color: 'bg-blue-50 border-blue-200' },
-  { id: 'resolved', title: 'Resolved', icon: CheckCircle, color: 'bg-green-50 border-green-200' }
+  { id: 'new', title: 'New', icon: AlertTriangle, color: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700/50' },
+  { id: 'investigating', title: 'Investigating', icon: Search, color: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-700/50' },
+  { id: 'awaiting_evidence', title: 'Awaiting Evidence', icon: Clock, color: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50' },
+  { id: 'resolved', title: 'Resolved', icon: CheckCircle, color: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700/50' }
 ];
 
 const POLICY_CODES = [
@@ -127,7 +127,7 @@ export default function DisputesKanbanWidget({
 
   return (
     <>
-      <Card>
+      <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-orange-600" />
@@ -144,7 +144,7 @@ export default function DisputesKanbanWidget({
                 <div key={column.id} className={`p-3 rounded-lg border-2 border-dashed ${column.color}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <Icon className="w-4 h-4" />
-                    <h3 className="font-medium text-sm">{column.title}</h3>
+                    <h3 className="font-medium text-sm dark:text-white">{column.title}</h3>
                     <Badge variant="secondary" className="text-xs">
                       {columnDisputes.length}
                     </Badge>
@@ -159,7 +159,7 @@ export default function DisputesKanbanWidget({
                       </div>
                     )}
                     {/* Drop zone for drag & drop (simplified) */}
-                    <div className="border-2 border-dashed border-slate-200 rounded p-2 text-center text-xs text-slate-400 min-h-[40px] flex items-center justify-center">
+                    <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded p-2 text-center text-xs text-slate-400 dark:text-slate-300 min-h-[40px] flex items-center justify-center">
                       Drop here
                     </div>
                   </div>

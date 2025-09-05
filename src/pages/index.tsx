@@ -62,6 +62,7 @@ import OnboardingWizard from "./OnboardingWizard";
 import DataMigrationPanel from "./DataMigrationPanel";
 
 import Authentication from "./Authentication";
+import AdminUserDetails from "./AdminUserDetails";
 import BusinessVerification from "./BusinessVerification";
 
 import { Route, Routes, useLocation } from 'react-router-dom';
@@ -88,6 +89,7 @@ const PAGES = {
     
     AdminDashboard: AdminDashboard,
     AdminUsers: AdminUsers,
+    AdminUserDetails: AdminUserDetails,
     
     DisputeResolution: DisputeResolution,
     
@@ -179,6 +181,7 @@ function PagesContent() {
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
                 
                 <Route path="/AdminUsers" element={<AdminUsers />} />
+                <Route path="/AdminUserDetails" element={<AdminUserDetails />} />
                 
                 <Route path="/DisputeResolution" element={<DisputeResolution />} />
                 

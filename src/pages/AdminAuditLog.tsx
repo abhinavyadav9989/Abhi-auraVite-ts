@@ -68,10 +68,10 @@ export default function AdminAuditLog() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-100 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-100 dark:bg-slate-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Platform Audit Log</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Platform Audit Log</h1>
           <Button onClick={handleExportCsv} disabled={logs.length === 0}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
@@ -102,7 +102,7 @@ export default function AdminAuditLog() {
               </TableBody>
             </Table>
             {logs.length === 0 && (
-              <p className="text-center text-slate-500 p-8">No audit logs found.</p>
+              <p className="text-center text-slate-500 dark:text-slate-400 p-8">No audit logs found.</p>
             )}
           </CardContent>
         </Card>

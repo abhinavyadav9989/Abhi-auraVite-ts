@@ -152,7 +152,7 @@ export default function SystemHealthPanel({
       </Card>
 
       {/* Maintenance Mode */}
-      <Card>
+      <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-orange-600">
             <AlertTriangle className="w-5 h-5" />
@@ -163,14 +163,14 @@ export default function SystemHealthPanel({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Alert variant="default" className="border-yellow-300 bg-yellow-50">
+          <Alert variant="default" className="border-yellow-300 dark:border-yellow-700/60 bg-yellow-50 dark:bg-yellow-900/20">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Maintenance Mode</AlertTitle>
             <AlertDescription>
               Activating this will make the platform temporarily unavailable to all dealers. Use with caution.
             </AlertDescription>
           </Alert>
-          <div className="flex items-center justify-between mt-4 p-3 border rounded-lg">
+          <div className="flex items-center justify-between mt-4 p-3 border rounded-lg dark:border-slate-700 dark:bg-slate-800/60">
             <Label htmlFor="maintenance-mode" className="font-medium">
               Enable Maintenance Mode
             </Label>

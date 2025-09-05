@@ -228,7 +228,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Maintenance Banner - Only show when maintenance mode is enabled */}
       {isMaintenanceMode && <MaintenanceBanner />}
       
@@ -237,8 +237,8 @@ export default function AdminDashboard() {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-              <p className="text-slate-600 mt-1">Platform overview and management</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Admin Dashboard</h1>
+              <p className="text-slate-600 dark:text-slate-300 mt-1">Platform overview and management</p>
             </div>
             <div className="flex gap-2">
               <Link to={createPageUrl('AdminKYBVerification')}>
@@ -351,7 +351,7 @@ export default function AdminDashboard() {
                   <CardContent>
                     <div className="space-y-3">
                       {recentActivity.map(activity => (
-                        <div key={activity.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div key={activity.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             <div>

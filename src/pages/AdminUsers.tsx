@@ -220,12 +220,12 @@ export default function AdminUsers() {
   };
 
   const handleViewDealer = (dealerId: string) => {
-    // Navigate to dealer detail view
-    navigate(createPageUrl('AdminDealerDetail') + `?id=${dealerId}`);
+    // Navigate to admin user details (by dealer)
+    navigate(createPageUrl('AdminUserDetails') + `?dealerId=${dealerId}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -239,8 +239,8 @@ export default function AdminUsers() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Dealer Management</h1>
-              <p className="text-slate-600">Manage all dealers and their accounts</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dealer Management</h1>
+              <p className="text-slate-600 dark:text-slate-300">Manage all dealers and their accounts</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export default function AdminUsers() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -265,7 +265,7 @@ export default function AdminUsers() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -309,7 +309,7 @@ export default function AdminUsers() {
         </div>
 
         {/* Filters and Search */}
-        <Card>
+        <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -319,7 +319,7 @@ export default function AdminUsers() {
                     placeholder="Search dealers by name, email, or city..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                   />
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function AdminUsers() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
@@ -342,7 +342,7 @@ export default function AdminUsers() {
                     setSortBy(field);
                     setSortOrder(order as 'asc' | 'desc');
                   }}
-                  className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="created_at-desc">Newest First</option>
                   <option value="created_at-asc">Oldest First</option>
@@ -357,7 +357,7 @@ export default function AdminUsers() {
         </Card>
 
         {/* Dealers Table */}
-        <Card>
+        <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
@@ -386,7 +386,7 @@ export default function AdminUsers() {
                   </TableHeader>
                   <TableBody>
                     {filteredDealers.map((dealer) => (
-                      <TableRow key={dealer.id} className="hover:bg-slate-50">
+                      <TableRow key={dealer.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
                         <TableCell>
                           <div>
                             <div className="font-medium text-slate-900">
@@ -446,6 +446,7 @@ export default function AdminUsers() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewDealer(dealer.id)}
+                            className="text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800/60"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -458,8 +459,8 @@ export default function AdminUsers() {
                 {filteredDealers.length === 0 && !isLoading && (
                   <div className="text-center py-12">
                     <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900 mb-2">No dealers found</h3>
-                    <p className="text-slate-600">
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No dealers found</h3>
+                    <p className="text-slate-600 dark:text-slate-300">
                       {searchQuery || statusFilter !== 'all' 
                         ? 'Try adjusting your search or filters'
                         : 'No dealers have been registered yet'

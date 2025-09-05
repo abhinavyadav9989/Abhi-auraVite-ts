@@ -233,7 +233,7 @@ export default function AdminKYBVerification() {
   // Show KYB queue if no dealerId is provided
   if (!dealerId) {
     return (
-      <div className="p-4 md:p-8 bg-slate-100 min-h-screen">
+      <div className="p-4 md:p-8 bg-slate-100 dark:bg-slate-900 min-h-screen">
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -242,8 +242,8 @@ export default function AdminKYBVerification() {
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">KYB Queue</h1>
-                <p className="text-slate-600">Pending dealer verifications</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">KYB Queue</h1>
+                <p className="text-slate-600 dark:text-slate-300">Pending dealer verifications</p>
               </div>
             </div>
           </div>
@@ -254,8 +254,8 @@ export default function AdminKYBVerification() {
               <Card>
                 <CardContent className="p-8 text-center">
                   <ShieldCheck className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Pending KYBs</h3>
-                  <p className="text-slate-600">All dealer verifications are up to date.</p>
+                  <h3 className="text-lg font-semibold mb-2 dark:text-white">No Pending KYBs</h3>
+                  <p className="text-slate-600 dark:text-slate-300">All dealer verifications are up to date.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -308,7 +308,7 @@ export default function AdminKYBVerification() {
 
   return (
     <>
-      <div className="p-4 md:p-8 bg-slate-100 min-h-screen">
+      <div className="p-4 md:p-8 bg-slate-100 dark:bg-slate-900 min-h-screen">
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -317,8 +317,8 @@ export default function AdminKYBVerification() {
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">KYB Review</h1>
-                <p className="text-slate-600">Reviewing: {dealer.business_name}</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">KYB Review</h1>
+                <p className="text-slate-600 dark:text-slate-300">Reviewing: {dealer.business_name}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

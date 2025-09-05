@@ -31,11 +31,11 @@ export default function KybQueueWidget({ queue = [], onApprove, onReject, onRequ
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      documents_required: 'bg-red-100 text-red-800',
-      documents_submitted: 'bg-blue-100 text-blue-800',
-      verified: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+      documents_required: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+      documents_submitted: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+      verified: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+      rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
     };
     return colors[status] || colors.pending;
   };
@@ -81,20 +81,20 @@ export default function KybQueueWidget({ queue = [], onApprove, onReject, onRequ
 
   const KybItem = ({ dealer }) => (
     <div 
-      className="p-4 border rounded-lg bg-white hover:bg-slate-50 cursor-pointer transition-colors"
+      className="p-4 border rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700/80 cursor-pointer transition-colors"
       onClick={() => setSelectedDealer(dealer)}
     >
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h4 className="font-semibold text-slate-900">{dealer.business_name}</h4>
-          <p className="text-sm text-slate-600">{dealer.owner_name}</p>
+          <h4 className="font-semibold text-slate-900 dark:text-white">{dealer.business_name}</h4>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{dealer.owner_name}</p>
         </div>
         <Badge className={getStatusColor(dealer.status)}>
           {getStatusText(dealer.status)}
         </Badge>
       </div>
       
-      <div className="space-y-2 text-sm text-slate-600">
+      <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4" />
           <span>{dealer.city}</span>
@@ -117,7 +117,7 @@ export default function KybQueueWidget({ queue = [], onApprove, onReject, onRequ
 
   return (
     <>
-      <Card className="h-full">
+      <Card className="h-full dark:bg-slate-900/80 dark:border-slate-700/80">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Clock className="w-5 h-5 text-orange-600" />
