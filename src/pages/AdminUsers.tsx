@@ -243,8 +243,8 @@ export default function AdminUsers() {
               <p className="text-slate-600 dark:text-slate-300">Manage all dealers and their accounts</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExport}>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="outline" onClick={handleExport} className="relative z-10">
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
@@ -257,8 +257,8 @@ export default function AdminUsers() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Dealers</p>
-                  <p className="text-2xl font-bold text-slate-900">{dealers.length}</p>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Total Dealers</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{dealers.length}</p>
                 </div>
                 <Users className="w-8 h-8 text-blue-600" />
               </div>
@@ -269,8 +269,8 @@ export default function AdminUsers() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active Dealers</p>
-                  <p className="text-2xl font-bold text-slate-900">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Active Dealers</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {dealers.filter(d => d.status === 'active' || d.status === 'verified').length}
                   </p>
                 </div>
@@ -279,12 +279,12 @@ export default function AdminUsers() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Pending KYB</p>
-                  <p className="text-2xl font-bold text-slate-900">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Pending KYB</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {dealers.filter(d => d.status === 'pending').length}
                   </p>
                 </div>
@@ -293,12 +293,12 @@ export default function AdminUsers() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="dark:bg-slate-900/80 dark:border-slate-700/80">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Vehicles</p>
-                  <p className="text-2xl font-bold text-slate-900">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Total Vehicles</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {dealers.reduce((sum, dealer) => sum + dealer.vehicle_count, 0)}
                   </p>
                 </div>
@@ -389,27 +389,27 @@ export default function AdminUsers() {
                       <TableRow key={dealer.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
                         <TableCell>
                           <div>
-                            <div className="font-medium text-slate-900">
+                            <div className="font-medium text-slate-900 dark:text-white">
                               {dealer.business_name || 'N/A'}
                             </div>
-                            <div className="text-sm text-slate-500">
+                            <div className="text-sm text-slate-500 dark:text-slate-300">
                               {dealer.business_type} • {dealer.client_type}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-slate-900 dark:text-white">
                             {dealer.owner_name || 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-sm">
+                            <div className="flex items-center gap-1 text-sm text-slate-700 dark:text-slate-200">
                               <Mail className="w-3 h-3 text-slate-400" />
                               {dealer.email}
                             </div>
                             {dealer.phone && (
-                              <div className="flex items-center gap-1 text-sm text-slate-600">
+                              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                                 <Phone className="w-3 h-3 text-slate-400" />
                                 {dealer.phone}
                               </div>
@@ -417,27 +417,27 @@ export default function AdminUsers() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
+                          <div className="text-sm text-slate-700 dark:text-slate-200">
                             {dealer.city && dealer.state ? (
                               <>
                                 {dealer.city}, {dealer.state}
                               </>
                             ) : (
-                              <span className="text-slate-400">Not specified</span>
+                              <span className="text-slate-400 dark:text-slate-500">Not specified</span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Car className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium">{dealer.vehicle_count}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{dealer.vehicle_count}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(dealer.status)}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-slate-600">
+                          <div className="text-sm text-slate-600 dark:text-slate-300">
                             {formatDate(dealer.created_at)}
                           </div>
                         </TableCell>

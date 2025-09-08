@@ -9,7 +9,9 @@ interface PlanSectionProps {
 
 const PlanSection: React.FC<PlanSectionProps> = ({ dealer }) => {
   // Prefer simple subscription_plan field; fallback to plan_selection.plan
-  const planKey = dealer?.subscription_plan || dealer?.plan_selection?.plan;
+  // Normalize plan keys across screens: standard->basic, pro->premium
+  const rawPlanKey: string | undefined = (dealer?.subscription_plan || dealer?.plan_selection?.plan || '').toLowerCase();
+  const planKey = rawPlanKey === 'standard' ? 'basic' : rawPlanKey === 'pro' ? 'premium' : rawPlanKey;
   
   // Debug logging (safe)
   const planSelection = dealer?.plan_selection || {};
