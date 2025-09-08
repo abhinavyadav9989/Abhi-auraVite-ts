@@ -85,6 +85,14 @@ class EntityAdapter {
     console.log(`EntityAdapter.filter() - Table: ${this.tableName}, Filters:`, filters);
     
     try {
+      // Ensure we never query with an anonymous session which will 403 under RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn(`EntityAdapter.filter() - Aborting query for ${this.tableName}: no authenticated session`);
+        // Return empty list to mimic a safe, non-error state for callers that expect [] when unauthenticated
+        return [] as any[];
+      }
+
       let query = supabase.from(this.tableName).select('*');
       
       if (filters) {

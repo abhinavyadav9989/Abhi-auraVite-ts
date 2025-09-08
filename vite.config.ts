@@ -9,6 +9,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: true,
+    proxy: {
+      // Dev proxy for Supabase Edge Functions to avoid CORS during local development
+      '/functions/v1': {
+        target: 'https://uyahditchuyudbpphfry.supabase.co',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path,
+      },
+    },
   },
   resolve: {
     alias: {

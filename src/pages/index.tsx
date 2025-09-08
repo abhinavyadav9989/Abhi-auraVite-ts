@@ -65,7 +65,8 @@ import Authentication from "./Authentication";
 import AdminUserDetails from "./AdminUserDetails";
 import BusinessVerification from "./BusinessVerification";
 
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 const PAGES = {
     
@@ -226,8 +227,8 @@ function PagesContent() {
                 
                 <Route path="/Authentication" element={<Authentication />} />
                 
-                {/* Catch-all route - redirect to Authentication */}
-                <Route path="*" element={<Authentication />} />
+                {/* Catch-all route - auth-aware redirect */}
+                <Route path="*" element={<AuthAwareFallback />} />
                 
             </Routes>
         </Layout>
@@ -236,4 +237,10 @@ function PagesContent() {
 
 export default function Pages() {
     return <PagesContent />;
+}
+
+function AuthAwareFallback() {
+    const { isAuthenticated } = useAuth();
+    const target = isAuthenticated ? '/Dashboard' : '/Authentication';
+    return <Navigate to={target} replace />;
 }

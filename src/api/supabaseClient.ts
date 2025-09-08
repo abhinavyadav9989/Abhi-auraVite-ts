@@ -19,7 +19,22 @@ console.log('Supabase Client Configuration:', {
 });
 
 // Create Supabase client
+// Route Edge Functions via relative path in dev to use Vite proxy and avoid CORS
+const functionsBase = (typeof window !== 'undefined' && window.location.origin.includes('localhost'))
+  ? '/functions/v1'
+  : undefined; // use default in prod
+
+// Note: older @supabase/supabase-js does not accept `functions` in options.
+// Use the 3-arg overload and then override the functions URL via .functions.setURL when available.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+try {
+  // @ts-ignore - setURL exists in v2.43+; ignore if not available
+  if (functionsBase && supabase.functions?.setURL) {
+    // @ts-ignore
+    supabase.functions.setURL(functionsBase);
+  }
+} catch {}
 
 // Test connection
 supabase.auth.getSession().then(({ data, error }) => {

@@ -79,6 +79,17 @@ class CoreAdapter {
   // LLM integration using Supabase Edge Functions
   async InvokeLLM(promptOrOptions: string | any, options?: any) {
     try {
+      // Default to mock unless explicitly enabled
+      const env = (import.meta as any)?.env || {};
+      const edgeEnabled = env.VITE_ENABLE_EDGE_FUNCTIONS === 'true';
+      const forceMock = env.VITE_USE_MOCK_LLM === 'true';
+      if (!edgeEnabled || forceMock) {
+        return this.getMockLLMResponse(
+          typeof promptOrOptions === 'string' ? promptOrOptions : (promptOrOptions?.prompt || ''),
+          options
+        );
+      }
+
       // Handle both string and object parameters
       let prompt = '';
       let requestOptions = options;
@@ -90,12 +101,40 @@ class CoreAdapter {
         requestOptions = { ...promptOrOptions, ...options };
       }
       
+      // Prefer a relative call in localhost to leverage Vite proxy and avoid CORS
+      const isLocal = typeof window !== 'undefined' && window.location.origin.includes('localhost');
+      if (isLocal) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const resp = await fetch('/functions/v1/invoke-llm', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+            },
+            body: JSON.stringify({ prompt, options: requestOptions })
+          });
+          if (resp.ok) {
+            const json = await resp.json();
+            return json;
+          }
+          // If function not found locally, fall back to mock instead of remote to avoid CORS spam
+          if (resp.status === 404) {
+            return this.getMockLLMResponse(prompt, requestOptions);
+          }
+          console.warn('invoke-llm relative call failed, status:', resp.status);
+        } catch (localErr) {
+          console.warn('invoke-llm relative call error, falling back:', localErr);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('invoke-llm', {
         body: { prompt, options: requestOptions }
       });
       
       if (error) {
-        console.warn('Edge function invoke-llm not available, using mock response:', error);
+        // Use mock if remote is not available (CORS or not deployed)
+        console.warn('Edge function invoke-llm not available, using mock response');
         // Return mock data for development
         return this.getMockLLMResponse(prompt, requestOptions);
       }
