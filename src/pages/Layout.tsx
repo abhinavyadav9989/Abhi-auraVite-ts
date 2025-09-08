@@ -183,7 +183,7 @@ export default function Layout({ children, currentPageName }) {
             <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50">
               <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">
                 <Car className="w-6 h-6 text-blue-500" />
-                <span className="font-bold text-white">Aura</span>
+                <span className="font-bold text-slate-900 dark:text-white">Aura</span>
               </Link>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
