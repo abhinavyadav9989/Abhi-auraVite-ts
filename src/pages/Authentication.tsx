@@ -124,12 +124,12 @@ export default function Authentication() {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative bg-black">
       {/* Background video layer */}
       {!prefersReducedMotion && (
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-contain md:object-cover pointer-events-none"
+          className="absolute inset-0 h-full w-full object-contain md:object-cover pointer-events-none z-0"
           autoPlay
           muted
           playsInline
@@ -142,20 +142,35 @@ export default function Authentication() {
       )}
 
       {/* Dark overlay to ensure readability when form appears */}
-      <div className="absolute inset-0 bg-black/60 md:bg-black/50" />
+      <div className="absolute inset-0 bg-black/60 md:bg-black/50 z-10 pointer-events-none" />
 
       {/* Top-right controls */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+      <div className="absolute top-4 right-4 z-50 flex flex-col md:flex-row items-end md:items-center gap-2">
         <ThemeToggle />
         {!showOverlay && (
-          <Button variant="secondary" onClick={() => { setSkipped(true); setShowOverlay(true); }}>
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => { setSkipped(true); setShowOverlay(true); }}
+            className="md:ml-2"
+          >
             {skipped ? 'Loading…' : 'Skip'}
           </Button>
         )}
       </div>
 
       {/* Content layer */}
-      <div className={`relative z-20 mx-auto px-4 py-8 min-h-screen transition-opacity duration-500 will-change-opacity ${showOverlay ? 'opacity-100' : 'opacity-0'} flex items-center justify-center`}>
+      <div className={`relative z-20 mx-auto px-4 py-8 min-h-screen transition-opacity duration-500 will-change-opacity ${showOverlay ? 'opacity-100' : 'opacity-0'} flex items-center justify-center`}> 
+        {/* Brand compact header on small screens */}
+        <div className="md:hidden absolute top-12 left-0 right-0 flex justify-center">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-3">
+              <Car className="w-8 h-8 text-blue-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-1">Welcome to Aura</h1>
+            <p className="text-slate-200/90 text-sm">Your vehicle marketplace platform</p>
+          </div>
+        </div>
         {/* Brand pinned top-left on md+ */}
         <div className="hidden md:flex absolute top-16 left-12 items-start">
           <div className="text-left">
