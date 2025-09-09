@@ -1,3 +1,4 @@
+import React from 'react';
 import Layout from "./Layout";
 
 import Dashboard from "./Dashboard";
@@ -40,6 +41,7 @@ import Settings from "./Settings";
 import Compare from "./Compare";
 
 import EmailVerification from "./EmailVerification";
+import Intro from "./Intro";
 
 import OnboardingPath from "./OnboardingPath";
 
@@ -158,7 +160,7 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<Authentication />} />
                 
                 
                 <Route path="/Dashboard" element={<Dashboard />} />
@@ -244,3 +246,24 @@ function AuthAwareFallback() {
     const target = isAuthenticated ? '/Dashboard' : '/Authentication';
     return <Navigate to={target} replace />;
 }
+
+function Landing() {
+    const { session } = useAuth();
+    const [introSeen, setIntroSeen] = React.useState<boolean>(() => {
+        const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        return reduce || localStorage.getItem('introSeen') === 'true';
+    });
+
+    if (session) {
+        return <Dashboard />;
+    }
+
+    if (introSeen) {
+        return <Authentication />;
+    }
+
+    return (
+        <Intro onComplete={() => { localStorage.setItem('introSeen', 'true'); setIntroSeen(true); }} />
+    );
+}
+

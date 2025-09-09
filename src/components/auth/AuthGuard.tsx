@@ -21,6 +21,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   // List of public routes that don't require authentication
   const publicRoutes = [
+    '/',
     '/Authentication',
     '/EmailVerification',
     '/OnboardingPath',
