@@ -47,6 +47,7 @@ export default function Marketplace() {
   const [dealers, setDealers] = useState({});
   const [currentDealer, setCurrentDealer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [soldByVehicleId, setSoldByVehicleId] = useState<Record<string, { buyer_name?: string }>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [compareList, setCompareList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +131,9 @@ export default function Marketplace() {
       }
 
       // Load only public, live vehicles from all dealers EXCEPT current user's vehicles
+      // Also exclude vehicles that are sold or tied to completed deals if backend marks them accordingly
       let vehicles = await Vehicle.filter({ status: 'live', inventory_type: 'public' });
+      vehicles = (vehicles || []).filter(v => v.status !== 'sold');
       
       // Filter out current user's vehicles so they don't see their own cars in marketplace
       if (currentDealerData) {
@@ -152,6 +155,34 @@ export default function Marketplace() {
         if (dealer) dealersMap[dealer.id] = dealer;
       });
       setDealers(dealersMap);
+
+      // Fetch sold/completed transactions for these vehicles to flag sold state in marketplace
+      try {
+        const vehicleIds = vehicles.map(v => v.id).filter(Boolean);
+        const chunk = 20;
+        const allTxns: any[] = [];
+        for (let i = 0; i < vehicleIds.length; i += chunk) {
+          const slice = vehicleIds.slice(i, i + chunk);
+          const orFilters = slice.map(id => ({ vehicle_id: id }));
+          // @ts-ignore Transaction imported via entities
+          const { Transaction } = await import('@/api/entities');
+          const txns = await Transaction.filter({ $or: orFilters, status: 'completed' }).catch(() => []);
+          allTxns.push(...(txns || []));
+        }
+        const buyerIds = [...new Set(allTxns.map(t => t.buyer_id).filter(Boolean))];
+        const buyerMap: Record<string, any> = {};
+        await Promise.all(buyerIds.map(async (id) => {
+          try { buyerMap[id] = await Dealer.get(id); } catch {}
+        }));
+        const soldMap: Record<string, { buyer_name?: string }> = {};
+        allTxns.forEach(t => {
+          soldMap[t.vehicle_id] = { buyer_name: buyerMap[t.buyer_id]?.business_name };
+        });
+        setSoldByVehicleId(soldMap);
+      } catch (e) {
+        console.warn('Sold state enrichment failed', e);
+        setSoldByVehicleId({});
+      }
 
     } catch (error) {
       console.error('Error loading marketplace data:', error);
@@ -569,6 +600,7 @@ export default function Marketplace() {
                       onMakeOffer={() => handleMakeOffer(vehicle)}
                       isUserVerified={isUserVerified}
                       isUnderReview={isUnderReview}
+                      soldInfo={soldByVehicleId[vehicle.id]}
                     />
                   ))}
                 </motion.div>

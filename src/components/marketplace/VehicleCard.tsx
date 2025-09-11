@@ -30,6 +30,7 @@ type VehicleCardProps = {
   onMakeOffer: (vehicle: any) => void;
   isUserVerified: boolean;
   isUnderReview?: boolean;
+  soldInfo?: { buyer_name?: string } | null;
 };
 
 export default function VehicleCard({
@@ -41,6 +42,7 @@ export default function VehicleCard({
   onMakeOffer = () => {},
   isUserVerified = false,
   isUnderReview = false,
+  soldInfo = null,
 }: VehicleCardProps) {
   const [isInShortlist, setIsInShortlist] = useState(false);
   const [isShortlisting, setIsShortlisting] = useState(false);
@@ -68,6 +70,10 @@ export default function VehicleCard({
     verification_status: dealer?.verification_status || 'pending',
     business_name: dealer?.business_name || 'Unknown Dealer'
   };
+
+  const soldAttr = vehicle?.custom_attributes?.sold || null;
+  const combinedSold: any = soldInfo || soldAttr;
+  const isSold = !!combinedSold;
 
   const formatPrice = (price) => {
     if (!price || price === 0) return 'On Request';
@@ -186,8 +192,11 @@ export default function VehicleCard({
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
-          {isNew && (
+          {isNew && !isSold && (
             <Badge className="bg-green-500 text-white">New</Badge>
+          )}
+          {isSold && (
+            <Badge className="bg-purple-600 text-white">Sold</Badge>
           )}
           {dealerData.verification_status === 'verified' && (
             <Badge className="bg-blue-100 text-blue-700 gap-1">
@@ -230,7 +239,9 @@ export default function VehicleCard({
 
             {/* Price */}
             <div className="text-xl font-bold text-blue-600">
-              {isUserVerified ? (
+              {isSold ? (
+                <span className="text-purple-700 dark:text-purple-300">Sold</span>
+              ) : isUserVerified ? (
                 formatPrice(vehicleData.asking_price)
               ) : (
                 <div className="flex items-center gap-2 text-amber-600">
@@ -292,7 +303,14 @@ export default function VehicleCard({
 
         {/* Action footer */}
         <div className="mt-4 pt-3 border-t flex gap-2">
-          {isUserVerified ? (
+          {isSold ? (
+            <div className="flex-1 text-left text-sm">
+              <div className="font-semibold text-purple-700 dark:text-purple-300">Sold</div>
+              {combinedSold?.buyer_name && (
+                <div className="text-slate-600 dark:text-slate-300">to {combinedSold.buyer_name}</div>
+              )}
+            </div>
+          ) : isUserVerified ? (
             <Button 
               size="sm" 
               className="flex-1 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"

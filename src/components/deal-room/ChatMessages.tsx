@@ -76,7 +76,7 @@ export default function ChatMessages({ messages = [], timeline = [], currentUser
         </Avatar>
         
         <div className={`max-w-xs lg:max-w-md ${isCurrentUser ? 'text-right' : 'text-left'}`}>
-          <div className="text-xs text-slate-500 mb-1">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
             {isCurrentUser ? 'You' : (dealer?.business_name || 'User')}
             <span className="ml-2">{format(new Date(event.timestamp), 'HH:mm')}</span>
           </div>
@@ -85,8 +85,8 @@ export default function ChatMessages({ messages = [], timeline = [], currentUser
             isCurrentUser 
               ? 'bg-blue-600 text-white' 
               : event.type === 'system' 
-              ? 'bg-slate-100 text-slate-700'
-              : 'bg-white border'
+              ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+              : 'bg-white border dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100'
           }`}>
             <div className="flex items-start gap-2">
               <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -119,12 +119,12 @@ export default function ChatMessages({ messages = [], timeline = [], currentUser
     
     return (
       <div key={`${event.status}-${event.timestamp}`} className="flex justify-center">
-        <Card className="p-3 bg-slate-50 border-slate-200 max-w-sm">
+        <Card className="p-3 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 max-w-sm">
           <div className="flex items-center gap-2 text-center">
-            <Icon className="w-4 h-4 text-slate-500" />
+            <Icon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             <div>
-              <div className="text-sm font-medium text-slate-700">{event.details}</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{event.details}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
               </div>
             </div>

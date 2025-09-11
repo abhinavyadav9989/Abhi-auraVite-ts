@@ -9,6 +9,8 @@ interface Branch {
   longitude?: number;
   city?: string;
   state?: string;
+  address?: string;
+  contact_number?: string;
   vehicle_count: number;
   team_member_count: number;
   is_default?: boolean;
@@ -26,13 +28,13 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
 
   return (
-    <div className="relative w-full h-[600px] bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl border border-gray-200 overflow-hidden">
+    <div className="relative w-full h-[600px] bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Branch Locations</h3>
-            <p className="text-sm text-gray-600">{branches.length} branch{branches.length !== 1 ? 'es' : ''} found</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Branch Locations</h3>
+            <p className="text-sm text-gray-600 dark:text-slate-300">{branches.length} branch{branches.length !== 1 ? 'es' : ''} found</p>
           </div>
           <button
             onClick={onAddBranch}

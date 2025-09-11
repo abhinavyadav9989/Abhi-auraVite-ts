@@ -23,15 +23,15 @@ export default function DealRoomPricingRibbon({ transaction, vehicle, userRole }
   if (userRole === 'seller') {
     const netEarnings = transaction.current_offer - platformFee;
     return (
-      <div className="p-3 bg-green-50 rounded-lg border border-green-200 w-full">
+      <div className="p-3 bg-green-50 dark:bg-emerald-900/30 rounded-lg border border-green-200 dark:border-emerald-800 w-full">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2 text-green-800">
+          <div className="flex items-center gap-2 text-green-800 dark:text-emerald-200">
             <TrendingDown className="w-5 h-5" />
             <span className="font-semibold">Your Net Earnings</span>
           </div>
-          <span className="text-xl font-bold text-green-800">{formatCurrency(netEarnings)}</span>
+          <span className="text-xl font-bold text-green-800 dark:text-emerald-200">{formatCurrency(netEarnings)}</span>
         </div>
-        <p className="text-xs text-green-600 text-right mt-1">
+        <p className="text-xs text-green-600 dark:text-emerald-300/80 text-right mt-1">
           After {formatCurrency(platformFee)} platform fee
         </p>
       </div>
@@ -46,18 +46,18 @@ export default function DealRoomPricingRibbon({ transaction, vehicle, userRole }
     const marginPct = landedCost > 0 ? (margin / landedCost) * 100 : 0;
 
     return (
-      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 w-full space-y-2">
+      <div className="p-3 bg-blue-50 dark:bg-slate-800 rounded-lg border border-blue-200 dark:border-slate-700 w-full space-y-2">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2 text-blue-800">
+          <div className="flex items-center gap-2 text-blue-800 dark:text-slate-100">
             <TrendingUp className="w-5 h-5" />
             <span className="font-semibold">Projected Landed Cost</span>
           </div>
-          <span className="text-xl font-bold text-blue-800">{formatCurrency(landedCost)}</span>
+          <span className="text-xl font-bold text-blue-800 dark:text-slate-100">{formatCurrency(landedCost)}</span>
         </div>
-        <div className="pt-2 border-t border-blue-100">
-          <div className="text-xs text-slate-600 mb-1">Potential Margin Preview (at 10% markup)</div>
+        <div className="pt-2 border-t border-blue-100 dark:border-slate-700">
+          <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">Potential Margin Preview (at 10% markup)</div>
           <MarginGauge margin={marginPct} />
-          <div className="flex justify-between text-xs font-medium text-slate-700 mt-1">
+          <div className="flex justify-between text-xs font-medium text-slate-700 dark:text-slate-200 mt-1">
             <span>{formatCurrency(margin)}</span>
             <span>{marginPct.toFixed(1)}%</span>
           </div>

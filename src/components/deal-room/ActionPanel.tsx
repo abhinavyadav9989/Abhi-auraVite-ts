@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,11 @@ import CounterOfferPanel from './CounterOfferPanel';
 import { Transaction, Payment } from '@/api/entities';
 import EscrowVisual from '../payments/EscrowVisual';
 import { useToast } from "@/components/ui/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { CreditCard, QrCode, Download, Eye } from "lucide-react";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function ActionPanel({ 
   transaction, 
@@ -22,6 +28,11 @@ export default function ActionPanel({
   const [showCounter, setShowCounter] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [paymentMode, setPaymentMode] = useState<'card' | 'upi'>('card');
+  const [paymentMeta, setPaymentMeta] = useState<{ id: string; timestamp: string; mode: string } | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Critical Fix: Only allow counter party to take action
   const canTakeAction = () => {
@@ -34,6 +45,38 @@ export default function ActionPanel({
 
   const isBuyer = userRole === 'buyer';
   const isSeller = userRole === 'seller';
+
+  const formatLakh = (amount?: number) => (amount ? `₹${(amount / 100000).toFixed(2)}L` : '₹0.00L');
+
+  const downloadReceipt = async () => {
+    if (!paymentMeta) return;
+    setIsGeneratingPdf(true);
+    const mount = document.createElement('div');
+    mount.id = 'receipt-inline-print';
+    mount.className = 'p-6 w-[900px] bg-white text-slate-900';
+    mount.innerHTML = `
+      <div style="font-family: ui-sans-serif, system-ui;">
+        <h1 style="font-size:20px; font-weight:700; margin-bottom:8px;">Payment Receipt</h1>
+        <table style="width:100%; border-collapse:collapse;">
+          <tr><td style=\"padding:6px; font-weight:600; background:#f1f5f9; width:220px;\">Transaction ID</td><td style=\"padding:6px;\">${paymentMeta.id}</td></tr>
+          <tr><td style=\"padding:6px; font-weight:600; background:#f1f5f9;\">Payment Time</td><td style=\"padding:6px;\">${new Date(paymentMeta.timestamp).toLocaleString()}</td></tr>
+          <tr><td style=\"padding:6px; font-weight:600; background:#f1f5f9;\">Payment Mode</td><td style=\"padding:6px;\">${paymentMeta.mode}</td></tr>
+          <tr><td style=\"padding:6px; font-weight:600; background:#f1f5f9;\">Amount</td><td style=\"padding:6px;\">${formatLakh(transaction.final_price || transaction.current_offer)}</td></tr>
+        </table>
+      </div>
+    `;
+
+    document.body.appendChild(mount);
+    try {
+      const canvas = await html2canvas(mount, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [canvas.width, canvas.height] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`Payment_Receipt_${paymentMeta.id}.pdf`);
+    } finally {
+      document.body.removeChild(mount);
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const handleAction = async (newStatus, updateData = {}, details) => {
     setIsProcessing(true);
@@ -74,6 +117,65 @@ export default function ActionPanel({
     setIsProcessing(false);
   };
   
+  const simulatePayment = async () => {
+    if (!isBuyer) return;
+    setIsProcessing(true);
+    const txnId = `TXN-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    const timestamp = new Date().toISOString();
+    try {
+      const updatedTimeline = [
+        ...(transaction.timeline || []),
+        { timestamp, status: 'paid', user_id: currentDealer.id, details: `Payment via ${paymentMode.toUpperCase()} (${txnId}).` },
+        { timestamp, status: 'completed', user_id: currentDealer.id, details: 'Deal closed after payment.' }
+      ];
+
+      await Transaction.update(transaction.id, {
+        status: 'completed',
+        amount_paid: transaction.final_price || transaction.current_offer,
+        last_action_by: currentDealer.id,
+        timeline: updatedTimeline,
+        payment_method: paymentMode === 'card' ? 'card' : 'upi',
+        transaction_date: timestamp,
+        metadata: {
+          ...(transaction.metadata || {}),
+          payment: {
+            txn_id: txnId,
+            mode: paymentMode === 'card' ? 'card' : 'upi',
+            paid_at: timestamp,
+            amount: transaction.final_price || transaction.current_offer,
+            currency: transaction.currency || 'INR'
+          }
+        }
+      });
+
+      // Best-effort mark vehicle as sold
+      try {
+        // @ts-ignore Vehicle imported from entities
+        const { Vehicle } = await import('@/api/entities');
+        await Vehicle.update(transaction.vehicle_id, {
+          inventory_type: 'private',
+          custom_attributes: {
+            ...(transaction?.vehicle_custom_attributes || {}),
+            sold: {
+              buyer_id: transaction.buyer_id,
+              buyer_name: currentDealer?.business_name || undefined,
+              transaction_id: transaction.id,
+              paid_at: timestamp
+            }
+          }
+        });
+      } catch {}
+
+      setPaymentMeta({ id: txnId, timestamp, mode: paymentMode === 'card' ? 'Credit Card' : 'UPI' });
+      toast({ title: 'Payment Successful', description: 'Receipt is ready below.' });
+      onUpdate();
+    } catch (error) {
+      console.error('Payment simulation failed', error);
+      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
+    }
+    setIsProcessing(false);
+  };
+
   const renderActionButtons = () => {
     const canAct = canTakeAction();
 
@@ -154,26 +256,51 @@ export default function ActionPanel({
       case 'accepted':
       case 'payment_pending': {
         if (isBuyer) {
-          const remainingAmount = transaction.final_price - (transaction.amount_paid || 0);
-          const tokenAmount = transaction.final_price * 0.1;
-          
+          if (paymentMeta) {
+            return (
+              <div className="space-y-2">
+                <p className="text-sm text-center text-green-600 dark:text-green-400">Payment successful</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowReceipt(v => !v)}>
+                    <Eye className="w-4 h-4" /> {showReceipt ? 'Hide Receipt' : 'View Receipt'}
+                  </Button>
+                  <Button className="flex-1 gap-2" onClick={downloadReceipt} disabled={isGeneratingPdf}>
+                    <Download className="w-4 h-4" /> Download
+                  </Button>
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm text-center font-medium">Payment Required</p>
-              {transaction.amount_paid < tokenAmount && (
-                 <Button 
-                   className="w-full" 
-                   onClick={() => onInitiatePayment(tokenAmount)}
-                 >
-                   Pay 10% Token (₹{(tokenAmount/100000).toFixed(1)}L)
-                 </Button>
-              )}
+              <RadioGroup value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)} className="grid grid-cols-2 gap-2">
+                <Label htmlFor="card" className="border border-slate-200 dark:border-slate-700 rounded p-2 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
+                  <RadioGroupItem id="card" value="card" />
+                  <CreditCard className="w-4 h-4" /> Card
+                </Label>
+                <Label htmlFor="upi" className="border border-slate-200 dark:border-slate-700 rounded p-2 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
+                  <RadioGroupItem id="upi" value="upi" />
+                  <QrCode className="w-4 h-4" /> UPI
+                </Label>
+              </RadioGroup>
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700" 
-                onClick={() => onInitiatePayment(remainingAmount)}
+                onClick={simulatePayment}
+                disabled={isProcessing}
               >
-                {transaction.amount_paid > 0 ? `Pay Remaining Balance` : 'Pay Full Amount'}
+                {isProcessing ? 'Processing…' : 'Pay Now'}
               </Button>
+              {showReceipt && paymentMeta && (
+                <div className="text-xs p-3 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                  <div className="font-medium mb-1">Receipt</div>
+                  <div>Transaction ID: {paymentMeta.id}</div>
+                  <div>Payment Time: {new Date(paymentMeta.timestamp).toLocaleString()}</div>
+                  <div>Mode: {paymentMeta.mode}</div>
+                  <div>Amount: {formatLakh(transaction.final_price || transaction.current_offer)}</div>
+                </div>
+              )}
             </div>
           );
         }

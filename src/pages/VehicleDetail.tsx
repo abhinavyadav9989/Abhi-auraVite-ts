@@ -93,6 +93,7 @@ export default function VehicleDetail() {
   const [marketData, setMarketData] = useState(null);
   const [relatedVehicles, setRelatedVehicles] = useState([]);
   const [dealHistory, setDealHistory] = useState([]);
+  const [soldInfo, setSoldInfo] = useState<{ buyer_name?: string } | null>(null);
   
   const vehicleId = new URLSearchParams(location.search).get('id');
 
@@ -147,10 +148,29 @@ export default function VehicleDetail() {
         });
       }
 
+      // Determine sold state via custom_attributes or completed transaction
+      let computedSoldInfo: { buyer_name?: string } | null = null;
+      if (vehicleData?.custom_attributes && vehicleData.custom_attributes.sold) {
+        computedSoldInfo = { buyer_name: vehicleData.custom_attributes.sold?.buyer_name };
+      } else {
+        try {
+          const txns = await Transaction.filter({ vehicle_id: vehicleData.id, status: 'completed' });
+          if (Array.isArray(txns) && txns.length > 0) {
+            const last = txns[0];
+            try {
+              const buyerDealer = await Dealer.get(last.buyer_id);
+              computedSoldInfo = { buyer_name: buyerDealer?.business_name };
+            } catch { computedSoldInfo = { buyer_name: undefined }; }
+          }
+        } catch {}
+      }
+      if (computedSoldInfo) setSoldInfo(computedSoldInfo);
+
       const isAdmin = currentUser?.role === 'admin';
       const isOwner = currentDealerData && vehicleData.dealer_id === currentDealerData.id;
       const isEditableStatus = ['draft', 'live'].includes(vehicleData.status);
-      const canMakeOffer = currentUser && !isOwner && vehicleData.status === 'live';
+      const isSold = !!computedSoldInfo;
+      const canMakeOffer = currentUser && !isOwner && vehicleData.status === 'live' && !isSold;
       const canInspect = isAdmin || (isOwner && ['draft', 'service'].includes(vehicleData.status));
 
       setPermissions({
@@ -432,6 +452,9 @@ export default function VehicleDetail() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className={getStatusColor(vehicle.status)}>{vehicle.status.replace('_', ' ').toUpperCase()}</Badge>
+                {(soldInfo) && (
+                  <Badge className="bg-purple-100 text-purple-700">SOLD</Badge>
+                )}
                 {vehicleCategories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
                 <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-300">
                   <Eye className="w-4 h-4" />
@@ -468,9 +491,11 @@ export default function VehicleDetail() {
           <div className="space-y-3 min-w-0">
             <Card className="w-full max-w-full dark:bg-black dark:border-slate-700">
               <CardHeader>
-                <CardTitle className="text-3xl font-bold text-green-600 mb-2">
-                  {isUserVerified ? (
-                    formatCurrency(vehicle.asking_price)
+                <CardTitle className="text-3xl font-bold mb-2">
+                  {soldInfo ? (
+                    <span className="text-purple-700 dark:text-purple-300">Sold</span>
+                  ) : isUserVerified ? (
+                    <span className="text-green-600">{formatCurrency(vehicle.asking_price)}</span>
                   ) : (
                     <div className="flex items-center gap-2 text-amber-600">
                       <ShieldCheck className="w-5 h-5" />
@@ -520,15 +545,24 @@ export default function VehicleDetail() {
                 )}
                 
                 <div className="space-y-2">
-                  {permissions.canMakeOffer && isUserVerified && (
-                    <Button 
-                      onClick={() => setShowOfferModal(true)} 
-                      className="w-full gap-2"
-                      title="Make an offer on this vehicle"
-                    >
-                      <Handshake className="w-4 h-4" />
-                      Make Offer
-                    </Button>
+                  {soldInfo ? (
+                    <div className="p-3 rounded border border-purple-200 dark:border-slate-700 bg-purple-50 dark:bg-slate-900">
+                      <div className="font-semibold text-purple-700 dark:text-purple-300">Sold</div>
+                      {soldInfo?.buyer_name && (
+                        <div className="text-sm text-slate-700 dark:text-slate-300">to {soldInfo.buyer_name}</div>
+                      )}
+                    </div>
+                  ) : (
+                    permissions.canMakeOffer && isUserVerified && (
+                      <Button 
+                        onClick={() => setShowOfferModal(true)} 
+                        className="w-full gap-2"
+                        title="Make an offer on this vehicle"
+                      >
+                        <Handshake className="w-4 h-4" />
+                        Make Offer
+                      </Button>
+                    )
                   )}
                   {permissions.canMakeOffer && !isUserVerified && (
                     <Button 

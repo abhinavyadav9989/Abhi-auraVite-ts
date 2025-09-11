@@ -23,6 +23,7 @@ import AdminDashboard from "./AdminDashboard";
 import AdminUsers from "./AdminUsers";
 
 import DisputeResolution from "./DisputeResolution";
+import PaymentCheckout from "./PaymentCheckout";
 
 import InventoryAnalytics from "./InventoryAnalytics";
 
@@ -66,6 +67,7 @@ import DataMigrationPanel from "./DataMigrationPanel";
 import Authentication from "./Authentication";
 import AdminUserDetails from "./AdminUserDetails";
 import BusinessVerification from "./BusinessVerification";
+import Bank from "./Bank";
 
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -88,6 +90,8 @@ const PAGES = {
     
     DealRoom: DealRoom,
     
+    PaymentCheckout: PaymentCheckout,
+    
     AdminPanel: AdminPanel,
     
     AdminDashboard: AdminDashboard,
@@ -99,6 +103,8 @@ const PAGES = {
     InventoryAnalytics: InventoryAnalytics,
     
     MarketTrends: MarketTrends,
+    
+    Bank: Bank,
     
     PublicVehicleView: PublicVehicleView,
     
@@ -178,6 +184,7 @@ function PagesContent() {
                 <Route path="/Deals" element={<Deals />} />
                 
                 <Route path="/DealRoom" element={<DealRoom />} />
+                <Route path="/PaymentCheckout" element={<PaymentCheckout />} />
                 
                 <Route path="/AdminPanel" element={<AdminPanel />} />
                 
@@ -191,6 +198,7 @@ function PagesContent() {
                 <Route path="/InventoryAnalytics" element={<InventoryAnalytics />} />
                 
                 <Route path="/MarketTrends" element={<MarketTrends />} />
+                <Route path="/Bank" element={<Bank />} />
                 
                 <Route path="/PublicVehicleView" element={<PublicVehicleView />} />
                 

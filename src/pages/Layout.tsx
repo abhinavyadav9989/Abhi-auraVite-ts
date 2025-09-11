@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import ErrorBoundary from "@/components/ErrorBoundary"; // Updated import path
 import { useAuth } from '@/hooks/useAuth';
-import {
+import { 
   LayoutDashboard, Car, Search, Handshake, Heart, User, Bell, Menu, X, BarChart2,
-  Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft
+  Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft,
+  CreditCard
 } from "lucide-react";
 import BottomNavigation from "@/components/ui/bottom-navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -26,6 +27,7 @@ const navigationItems = [
   { title: "Shortlists", url: createPageUrl("Shortlists"), icon: Heart },
   { title: "Analytics", url: createPageUrl("InventoryAnalytics"), icon: BarChart2 },
   { title: "Market Trends", url: createPageUrl("MarketTrends"), icon: TrendingUp },
+  { title: "Bank", url: createPageUrl("Bank"), icon: CreditCard },
 ];
 
 const adminNavigationItems = [

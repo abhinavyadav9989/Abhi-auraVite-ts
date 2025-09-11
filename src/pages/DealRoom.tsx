@@ -299,9 +299,9 @@ export default function DealRoom() {
   // const formatPrice = (price) => price ? `₹${(price / 100000).toFixed(1)}L` : 'N/A'; // This is now handled by the ribbon
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to={createPageUrl("Deals")}>
@@ -311,7 +311,7 @@ export default function DealRoom() {
             </Link>
 
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {vehicle && `${vehicle.year} ${vehicle.make} ${vehicle.model}`}
               </h1>
               <div className="flex items-center gap-3 mt-1">
@@ -321,7 +321,7 @@ export default function DealRoom() {
                 >
                   {transaction.status.replace('_', ' ').toUpperCase()}
                 </Badge>
-                <span className="text-slate-600">
+                <span className="text-slate-600 dark:text-slate-400">
                   {vehicle?.registration_number}
                 </span>
                 {/* Price display moved to DealRoomPricingRibbon */}
@@ -439,14 +439,14 @@ export default function DealRoom() {
                   </div>
 
                   {/* Message Input */}
-                  <div className="border-t p-4">
+                  <div className="border-t border-slate-200 dark:border-slate-800 p-4">
                     <div className="flex gap-2">
                       <Textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Type your message..."
-                        className="resize-none"
+                        className="resize-none bg-white dark:bg-slate-800 dark:text-slate-100"
                         rows={2}
                       />
                       <Button

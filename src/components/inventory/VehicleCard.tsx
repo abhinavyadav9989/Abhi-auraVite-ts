@@ -84,6 +84,11 @@ export default function VehicleCard({ vehicle, isSelected, onSelect, onShare, on
         <Badge className={`absolute top-2 right-2 z-10 ${getStatusColor(vehicle.status)} backdrop-blur bg-white/70`}> 
           {vehicle.status.replace('_', ' ').toUpperCase()}
         </Badge>
+        {((vehicle.custom_attributes && vehicle.custom_attributes.sold?.buyer_name) || vehicle.sold_to_name) && (
+          <div className="absolute bottom-2 left-2 right-2 text-xs px-2 py-1 rounded bg-purple-50/90 text-purple-800 border border-purple-200 dark:bg-slate-800/80 dark:text-purple-200 dark:border-slate-700">
+            Sold to {vehicle.custom_attributes?.sold?.buyer_name || vehicle.sold_to_name}
+          </div>
+        )}
 
         <Link to={createPageUrl(`VehicleDetail?id=${vehicle.id}`)} className="block">
           <CardContent className="p-0">

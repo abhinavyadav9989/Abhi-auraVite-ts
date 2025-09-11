@@ -220,6 +220,7 @@ export const Payment = new EntityAdapter('payments');
 export const LogisticsOrder = new EntityAdapter('logistics_orders');
 export const RTOApplication = new EntityAdapter('rto_applications');
 export const BankAccount = new EntityAdapter('bank_accounts');
+export const BankDetails = new EntityAdapter('bank_details');
 export const DealerPreferences = new EntityAdapter('dealer_preferences');
 export const UserSession = new EntityAdapter('user_sessions');
 export const TeamMember = new EntityAdapter('team_members');

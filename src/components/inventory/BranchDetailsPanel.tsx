@@ -39,6 +39,18 @@ interface Vehicle {
   hero_image_url?: string;
 }
 
+type BranchInfo = {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  contact_number?: string;
+  is_default?: boolean;
+  vehicle_count?: number;
+  team_member_count?: number;
+} & Record<string, any>;
+
 interface Branch {
   id: string;
   name: string;
@@ -123,18 +135,26 @@ export default function BranchDetailsPanel({
         </div>
         
         <div className="space-y-2 text-sm">
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-4 h-4" />
-            <span>{branch.address}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Phone className="w-4 h-4" />
-            <span>{branch.phone}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Mail className="w-4 h-4" />
-            <span>{branch.email}</span>
-          </div>
+          {(branch.address || (branch as any).city || (branch as any).state) && (
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4" />
+              <span>
+                {branch.address || [(branch as any).city, (branch as any).state].filter(Boolean).join(', ') || '—'}
+              </span>
+            </div>
+          )}
+          {((branch as any).contact_number) && (
+            <div className="flex items-center space-x-2">
+              <Phone className="w-4 h-4" />
+              <span>{(branch as any).contact_number}</span>
+            </div>
+          )}
+          {((branch as any).email || (branch as any).contact_email) && (
+            <div className="flex items-center space-x-2">
+              <Mail className="w-4 h-4" />
+              <span>{(branch as any).email || (branch as any).contact_email}</span>
+            </div>
+          )}
         </div>
       </div>
 
