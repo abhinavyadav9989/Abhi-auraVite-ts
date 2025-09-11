@@ -4,6 +4,7 @@ import { Vehicle } from "@/api/entities";
 import { Transaction } from "@/api/entities";
 import { Dealer } from "@/api/entities";
 import { User } from "@/api/entities";
+import { supabase } from "@/api/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ import OfflineBanner from '../components/dashboard/OfflineBanner';
 import VerificationStatus from '../components/dashboard/VerificationStatus';
 
 export default function Dashboard() {
+  console.log('Dashboard - Component mounting...');
+  
   const [dealer, setDealer] = useState(null);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +62,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('Dashboard - useEffect triggered, calling initializeDashboard...');
     initializeDashboard();
 
     // Set up 30-second refresh interval
@@ -82,15 +86,32 @@ export default function Dashboard() {
 
   const initializeDashboard = async () => {
     try {
+      console.log('Dashboard - Starting initialization...');
+      
+      // Check auth state first
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Dashboard - Current session:', session);
+      
+      if (!session) {
+        console.error('Dashboard - No session found, redirecting to auth');
+        window.location.href = '/Authentication';
+        return;
+      }
+      
       const currentUser = await User.me();
+      console.log('Dashboard - Current user loaded:', currentUser);
       setUser(currentUser);
 
+      console.log('Dashboard - Loading dealer profile...');
       const dealerProfile = await Dealer.filter({ created_by: currentUser.email });
+      console.log('Dashboard - Dealer profile query result:', dealerProfile);
+      
       if (dealerProfile.length > 0) {
         console.log('Dashboard - Dealer profile loaded:', dealerProfile[0]);
         console.log('Dashboard - branches_added flag:', dealerProfile[0].branches_added);
         setDealer(dealerProfile[0]);
         await loadDashboardData(dealerProfile[0]);
+        console.log('Dashboard - Dashboard data loaded successfully');
       } else {
         // This should not happen as AuthGuard should handle this
         console.error("No dealer profile found - this should be handled by AuthGuard");
@@ -99,16 +120,23 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Error initializing dashboard:", error);
+      setIsLoading(false);
+      return;
     }
     setIsLoading(false);
+    console.log('Dashboard - Initialization complete');
   };
 
   const loadDashboardData = async (dealerProfile = dealer) => {
     if (!dealerProfile) return;
 
     try {
+      console.log('Dashboard - Loading dashboard data for dealer:', dealerProfile.id);
+      
       // Load inventory data
       const vehicles = await Vehicle.filter({ dealer_id: dealerProfile.id });
+      console.log('Dashboard - Vehicles loaded:', vehicles.length);
+      
       const now = new Date();
       // Ensure date calculation does not mutate 'now' directly
       const sixtyDaysAgo = new Date(new Date().setDate(now.getDate() - 60));
@@ -126,6 +154,7 @@ export default function Dashboard() {
       ]);
       
       const transactions = [...sellerTransactions, ...buyerTransactions];
+      console.log('Dashboard - Transactions loaded:', transactions.length);
 
       const dealsStatus = {
         negotiating: transactions.filter((t) => ['offer_made', 'negotiating'].includes(t.status)).length,
@@ -150,8 +179,9 @@ export default function Dashboard() {
       });
 
       setLastUpdated(new Date());
+      console.log('Dashboard - Dashboard data loaded successfully');
     } catch (error) {
-      console.error("Error loading dashboard data: -", error);
+      console.error("Error loading dashboard data:", error);
     }
   };
 
@@ -246,13 +276,39 @@ export default function Dashboard() {
     return actualStatus === 'pending';
   };
 
-  // If dealer profile is not loaded and it's still loading, show nothing or a loading spinner
+  // If dealer profile is not loaded and it's still loading, show loading spinner
   if (!dealer && isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
-        <p>Loading dashboard...</p>
-      </div>);
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-300">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // If dealer profile is not loaded and not loading, show error message
+  if (!dealer && !isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Unable to Load Dashboard</h2>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">There was an issue loading your dealer profile.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

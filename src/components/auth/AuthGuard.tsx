@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { User } from '@/api/entities';
@@ -18,6 +18,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState<'unknown' | 'completed' | 'incomplete'>('unknown');
   const [hasNavigated, setHasNavigated] = useState(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // List of public routes that don't require authentication
   const publicRoutes = [
@@ -30,12 +31,25 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   // Check if current route is public
   const isPublicRoute = publicRoutes.some(route => 
-    location.pathname === route || location.pathname.includes(route.replace('/', ''))
+    location.pathname === route
   );
+  
+  console.log('AuthGuard - Route check:', {
+    pathname: location.pathname,
+    isPublicRoute,
+    isAuthenticated,
+    hasUser: !!user,
+    onboardingStatus
+  });
 
   // Reset navigation flag when location changes
   useEffect(() => {
     setHasNavigated(false);
+    // Clear any pending navigation timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -50,9 +64,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         // Only redirect to authentication if not already on a public route
         if (!isPublicRoute && !hasNavigated && location.pathname !== createPageUrl('Authentication')) {
           setHasNavigated(true);
-          setTimeout(() => {
-            navigate(createPageUrl('Authentication'), { replace: true });
-          }, 100);
+          navigate(createPageUrl('Authentication'), { replace: true });
         }
         return;
       }
@@ -109,24 +121,23 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           if (hasOnboardingCompleted && hasDealerProfileCreated) {
             // User has completed onboarding, redirect to dashboard
             console.log('AuthGuard - Onboarding completed, redirecting to dashboard');
-            setTimeout(() => {
-              navigate(createPageUrl('Dashboard'), { replace: true });
-            }, 100);
+            setHasNavigated(true);
+            console.log('AuthGuard - Navigating to:', createPageUrl('Dashboard'));
+            navigate(createPageUrl('Dashboard'), { replace: true });
             return;
           } else {
             // User needs to complete onboarding
             console.log('AuthGuard - Onboarding incomplete, redirecting to onboarding');
-            setTimeout(() => {
-              navigate(createPageUrl('OnboardingWizard'), { replace: true });
-            }, 100);
+            setHasNavigated(true);
+            console.log('AuthGuard - Navigating to:', createPageUrl('OnboardingWizard'));
+            navigate(createPageUrl('OnboardingWizard'), { replace: true });
             return;
           }
         } catch (error) {
           console.error('AuthGuard - Error checking onboarding status:', error);
           // Default to onboarding if there's an error
-          setTimeout(() => {
-            navigate(createPageUrl('OnboardingWizard'), { replace: true });
-          }, 100);
+          setHasNavigated(true);
+          navigate(createPageUrl('OnboardingWizard'), { replace: true });
           return;
         } finally {
           setIsCheckingOnboarding(false);
@@ -230,18 +241,17 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           // Redirect to simplified onboarding (with protection against loops)
           if (!hasNavigated && location.pathname !== createPageUrl('OnboardingWizard')) {
             setHasNavigated(true);
-            setTimeout(() => {
-              navigate(createPageUrl('OnboardingWizard'), { replace: true });
-            }, 100);
+            navigate(createPageUrl('OnboardingWizard'), { replace: true });
           }
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
         // If there's an error, assume onboarding is incomplete
         setOnboardingStatus('incomplete');
-        setTimeout(() => {
+        if (!hasNavigated) {
+          setHasNavigated(true);
           navigate(createPageUrl('OnboardingWizard'), { replace: true });
-        }, 100);
+        }
       } finally {
         setIsCheckingOnboarding(false);
       }
@@ -249,6 +259,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
     checkAuthAndOnboarding();
   }, [isAuthenticated, user?.email, loading, isPublicRoute]); // Removed navigate and location.pathname to prevent loops
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   // Show loading while checking authentication or onboarding
   if (loading || isCheckingOnboarding) {
@@ -276,6 +296,19 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       return <>{children}</>;
     }
     
+    // If we're already checking onboarding status, show loading
+    if (isCheckingOnboarding) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-50">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-slate-600">Checking onboarding status...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Show redirecting message briefly, then let the navigation happen
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
@@ -311,5 +344,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // If everything is good, render the protected content
+  console.log('AuthGuard - Rendering protected content for route:', location.pathname);
   return <>{children}</>;
 }
