@@ -464,35 +464,26 @@ const OnboardingWizard = () => {
       if (stepName === 'bank_details' && stepData) {
         console.log('Saving bank details:', stepData);
         try {
-          // First, try to delete any existing bank details for this dealer
-          const { error: deleteError } = await supabase
+          // Upsert using composite unique constraint (dealer_id, account_number)
+          const payload = {
+            dealer_id: dealer.id,
+            account_holder_name: stepData.accountHolderName,
+            account_number: stepData.accountNumber,
+            ifsc_code: stepData.ifscCode,
+            bank_name: stepData.bankName,
+            cancelled_cheque_url: stepData.cancelledCheque?.url || null,
+            is_verified: false,
+            updated_at: new Date().toISOString()
+          };
+
+          const { error: upsertError } = await supabase
             .from('bank_details')
-            .delete()
-            .eq('dealer_id', dealer.id);
-          
-          if (deleteError) {
-            console.error('Error deleting existing bank details:', deleteError);
-          }
-          
-          // Then insert new bank details
-          const { error: insertError } = await supabase
-            .from('bank_details')
-            .insert({
-              dealer_id: dealer.id,
-              account_holder_name: stepData.accountHolderName,
-              account_number: stepData.accountNumber,
-              ifsc_code: stepData.ifscCode,
-              bank_name: stepData.bankName,
-              cancelled_cheque_url: stepData.cancelledCheque?.url || null,
-              is_verified: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          
-          if (insertError) {
-            console.error('Error inserting bank details:', insertError);
+            .upsert(payload, { onConflict: 'dealer_id,account_number' });
+
+          if (upsertError) {
+            console.error('Error upserting bank details:', upsertError);
           } else {
-            console.log('Bank details saved successfully');
+            console.log('Bank details upserted successfully');
           }
         } catch (error) {
           console.error('Error saving bank details:', error);

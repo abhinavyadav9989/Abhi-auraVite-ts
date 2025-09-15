@@ -72,7 +72,7 @@ export default function ProgressiveVerificationBanner({ dealer, user, onUpdate }
       unlocks: ['🤝 Make Deals', '💳 Receive Payments', '🔒 Escrow Services', '📋 Transaction History'],
       estimatedTime: '3 min',
       priority: 'high',
-      action: () => setShowBankModal(true)
+      action: () => navigate(createPageUrl('Bank'))
     },
     {
       id: 'kyb',

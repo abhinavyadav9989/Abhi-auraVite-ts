@@ -131,7 +131,7 @@ export default function BankDetailsModal({ isOpen, onClose, onBankDetailsAdded, 
     try {
       setIsSubmitting(true);
       
-      // Persist to DB: upsert into public.bank_details (unique dealer_id)
+      // Persist to DB: upsert into public.bank_details (unique composite dealer_id + account_number)
       const payload: any = {
         dealer_id: dealerId,
         account_holder_name: bankData.beneficiaryName,
@@ -143,12 +143,11 @@ export default function BankDetailsModal({ isOpen, onClose, onBankDetailsAdded, 
         updated_at: new Date().toISOString(),
       };
 
-      // If row doesn't exist, created_at will be set by default; include it for completeness
-      payload.created_at = new Date().toISOString();
+      // created_at is handled by DB default
 
       const { data: saved, error } = await supabase
         .from('bank_details')
-        .upsert(payload, { onConflict: 'dealer_id' })
+        .upsert(payload, { onConflict: 'dealer_id,account_number' })
         .select()
         .single();
 

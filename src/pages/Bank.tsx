@@ -48,6 +48,13 @@ export default function Bank() {
         setDealer(d);
         const accs = await BankDetails.filter({ dealer_id: d.id });
         setAccounts(accs || []);
+        // Reconcile dealer flag based on accounts presence
+        try {
+          const shouldBeTrue = (accs && accs.length > 0) || false;
+          if (!!d.bank_details_added !== shouldBeTrue) {
+            await Dealer.update(d.id, { bank_details_added: shouldBeTrue });
+          }
+        } catch {}
 
         let txns = await Transaction.filter({ $or: [{ buyer_id: d.id }, { seller_id: d.id }] });
         txns = txns || [];
@@ -124,6 +131,7 @@ export default function Bank() {
       };
       const created = await BankDetails.create(payload);
       setAccounts(prev => [created, ...prev]);
+      try { await Dealer.update(dealer.id, { bank_details_added: true }); } catch {}
       setShowAdd(false);
       toast({ title: 'Bank Added', description: `${form.bank_name} • ${maskAcc(form.account_number)}` });
     } catch (e) {
@@ -162,6 +170,7 @@ export default function Bank() {
         return;
       }
       setAccounts(remaining);
+      try { await Dealer.update(dealer.id, { bank_details_added: remaining.length > 0 }); } catch {}
       toast({ title: 'Bank Deleted' });
     } catch (e) {
       toast({ title: 'Error', description: 'Could not delete bank account', variant: 'destructive' });

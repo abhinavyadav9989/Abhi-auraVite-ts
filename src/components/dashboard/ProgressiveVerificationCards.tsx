@@ -80,7 +80,7 @@ export default function ProgressiveVerificationCards({ dealer, user, onUpdate }:
       required: false,
       unlocks: ['Make Deals', 'Receive Payments', 'Escrow Services'],
       estimatedTime: '3 min',
-      action: () => setShowBankModal(true)
+      action: () => navigate(createPageUrl('Bank'))
     },
     {
       id: 'kyb',

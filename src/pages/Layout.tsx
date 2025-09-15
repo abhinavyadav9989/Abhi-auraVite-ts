@@ -204,7 +204,7 @@ export default function Layout({ children, currentPageName }) {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="lg:hidden fixed inset-0 z-40 h-screen bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50"
+                className="lg:hidden fixed inset-0 z-50 h-screen bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50"
                 onClick={(e) => {
                   // Close menu when clicking on the backdrop (not on the sidebar content)
                   if (e.target === e.currentTarget) {
@@ -213,7 +213,7 @@ export default function Layout({ children, currentPageName }) {
                 }}
               >
                 <SidebarContent isMobile={true} />
-                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-50">
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-[60]">
                   <X className="w-6 h-6" />
                 </Button>
               </motion.div>

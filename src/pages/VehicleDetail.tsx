@@ -32,6 +32,7 @@ import MarketplaceMetrics from '@/components/vehicle-view/MarketplaceMetrics';
 import ShareModal from '@/components/vehicle-view/ShareModal';
 import OfferModal from '@/components/marketplace/OfferModal';
 import InspectorPanel from '@/components/inventory/InspectorPanel';
+import DealerInfoModal from '@/components/dealers/DealerInfoModal';
 
 const CATEGORY_FIELD_LABELS = {
     engine_displacement: 'Engine (cc)',
@@ -87,6 +88,7 @@ export default function VehicleDetail() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showEMICalculator, setShowEMICalculator] = useState(false);
   const [isInShortlist, setIsInShortlist] = useState(false);
+  const [showDealerModal, setShowDealerModal] = useState(false);
   
   // Analytics & engagement
   const [viewCount, setViewCount] = useState(0);
@@ -98,6 +100,8 @@ export default function VehicleDetail() {
   const vehicleId = new URLSearchParams(location.search).get('id');
 
   useEffect(() => {
+    // Always start from top when opening a vehicle
+    try { window.scrollTo(0, 0); } catch {}
     if (!vehicleId) {
       setError('No vehicle ID provided.');
       setIsLoading(false);
@@ -590,16 +594,16 @@ export default function VehicleDetail() {
                 <CardContent className="p-3 pt-0">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium dark:text-white">{dealer.business_name}</span>
+                      <button className="font-medium dark:text-white text-left hover:underline" onClick={() => setShowDealerModal(true)}>
+                        {dealer.business_name}
+                      </button>
                       {dealer.verification_status === 'verified' && <Badge className="bg-green-100 text-green-700"><ShieldCheck className="w-3 h-3 mr-1" />Verified</Badge>}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><MapPin className="w-4 h-4" />{dealer.city}, {dealer.state}</div>
-                    {dealer.rating > 0 && (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1"><Star className="w-4 h-4 fill-current text-yellow-400" /><span className="font-medium">{dealer.rating.toFixed(1)}</span></div>
-                        <span className="text-sm text-slate-500">({dealer.total_deals} deals)</span>
-                      </div>
-                    )}
+                    <button className="flex items-center gap-2" onClick={() => setShowDealerModal(true)}>
+                      <div className="flex items-center gap-1"><Star className="w-4 h-4 fill-current text-yellow-400" /><span className="font-medium">{Number(dealer.rating_avg || 0).toFixed(1)}</span></div>
+                      <span className="text-sm text-slate-500">({dealer.rating_count || 0} reviews)</span>
+                    </button>
                     <div className="flex gap-2 pt-2">
                       <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-200"><Phone className="w-4 h-4 mr-2" />Call</Button>
                       <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-200"><MessageCircle className="w-4 h-4 mr-2" />Chat</Button>
@@ -715,6 +719,9 @@ export default function VehicleDetail() {
       )}
       {showShareModal && <ShareModal vehicle={vehicle} onClose={() => setShowShareModal(false)} />}
       {showEMICalculator && <EMICalculator vehiclePrice={vehicle?.asking_price || 0} onClose={() => setShowEMICalculator(false)} />}
+      {showDealerModal && dealer && (
+        <DealerInfoModal dealerId={dealer.id} open={showDealerModal} onClose={() => setShowDealerModal(false)} />
+      )}
       {showInspectorPanel && (
         <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
           <div className="min-h-screen px-4 py-8 flex items-center justify-center">
