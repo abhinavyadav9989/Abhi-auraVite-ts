@@ -360,10 +360,10 @@ export default function AddVehicle() {
   // Show loading while initializing
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">Setting up vehicle listing...</p>
+          <p className="text-slate-600 dark:text-slate-300">Setting up vehicle listing...</p>
         </div>
       </div>
     );
@@ -377,7 +377,7 @@ export default function AddVehicle() {
   const CurrentStepComponent: any = STEPS[currentStep].component;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -389,10 +389,10 @@ export default function AddVehicle() {
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Inventory
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             {isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
           </h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-300">
             {isEditMode 
               ? `Editing vehicle: ${vehicleData.registration_number || 'Loading...'}`
               : 'Follow the steps to create a new listing.'
@@ -403,18 +403,18 @@ export default function AddVehicle() {
         {/* Progress Bar */}
         <div className="mb-8">
           <Progress value={((currentStep + 1) / STEPS.length) * 100} className="h-2" />
-          <p className="text-sm text-center mt-2 text-slate-500">
+          <p className="text-sm text-center mt-2 text-slate-500 dark:text-slate-400">
             Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
           </p>
         </div>
         
         {/* Step Content */}
-        <Card>
+        <Card className="dark:bg-[#0d1a2b] dark:border-slate-700">
           <CardContent className="p-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center min-h-[300px]">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-                <p className="text-slate-600">Fetching vehicle details...</p>
+                <p className="text-slate-600 dark:text-slate-300">Fetching vehicle details...</p>
               </div>
             ) : (
               STEPS[currentStep].id === 'branch_selection' ? (

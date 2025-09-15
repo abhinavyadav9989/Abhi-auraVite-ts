@@ -31,24 +31,25 @@ export default function ConditionAndHistoryStep({ data, updateData }) {
   return (
     <div className="space-y-6">
       <div>
-        <Label htmlFor="description">Vehicle Condition & Description</Label>
+        <Label htmlFor="description" className="dark:text-slate-200">Vehicle Condition & Description</Label>
         <Textarea
           id="description"
           value={data.description}
           onChange={(e) => updateData({ description: e.target.value })}
           placeholder="Describe the vehicle's condition, highlighting any notable features, dents, scratches, or mechanical issues."
           rows={5}
+          className="min-h-[140px] dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200"
         />
       </div>
 
-      <Card>
+      <Card className="dark:bg-[#0d1a2b] dark:border-slate-700">
         <CardHeader>
-          <CardTitle>Service History</CardTitle>
+          <CardTitle className="dark:text-white">Service History</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {data.service_history && data.service_history.map((record, index) => (
-            <div key={index} className="flex items-center gap-4 p-2 border rounded-md">
-              <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+            <div key={index} className="flex items-center gap-4 p-2 border rounded-md dark:border-slate-700">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                 <span>Date: {record.date}</span>
                 <span>KMs: {record.kms}</span>
                 <span className="truncate">Details: {record.details}</span>
@@ -58,36 +59,40 @@ export default function ConditionAndHistoryStep({ data, updateData }) {
               </Button>
             </div>
           ))}
-          <div className="flex items-end gap-2 p-2 border-dashed border-2 rounded-md">
-            <div className="flex-1 space-y-1">
-                <Label className="text-xs">Date</Label>
-                <Input type="date" value={newRecord.date} onChange={(e) => setNewRecord({...newRecord, date: e.target.value})} />
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-2 border-dashed border-2 rounded-md dark:border-slate-700">
+            <div className="sm:col-span-3 space-y-1">
+                <Label className="text-xs dark:text-slate-300">Date</Label>
+                <Input type="date" value={newRecord.date} onChange={(e) => setNewRecord({...newRecord, date: e.target.value})} className="dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200" />
             </div>
-            <div className="flex-1 space-y-1">
-                <Label className="text-xs">KMs</Label>
-                <Input type="number" placeholder="e.g. 45000" value={newRecord.kms} onChange={(e) => setNewRecord({...newRecord, kms: e.target.value})} />
+            <div className="sm:col-span-3 space-y-1">
+                <Label className="text-xs dark:text-slate-300">KMs</Label>
+                <Input type="number" placeholder="e.g. 45000" value={newRecord.kms} onChange={(e) => setNewRecord({...newRecord, kms: e.target.value})} className="dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200" />
             </div>
-            <div className="flex-1 space-y-1">
-                <Label className="text-xs">Details</Label>
-                <Input placeholder="e.g. Oil Change" value={newRecord.details} onChange={(e) => setNewRecord({...newRecord, details: e.target.value})} />
+            <div className="sm:col-span-5 space-y-1">
+                <Label className="text-xs dark:text-slate-300">Details</Label>
+                <Input placeholder="e.g. Oil Change" value={newRecord.details} onChange={(e) => setNewRecord({...newRecord, details: e.target.value})} className="dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200" />
             </div>
-            <Button onClick={addServiceRecord} size="icon"><Plus className="w-4 h-4" /></Button>
+            <div className="sm:col-span-1 flex sm:items-end">
+              <Button onClick={addServiceRecord} className="w-full sm:w-auto">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <div>
-        <Label>Inspection Report (Optional)</Label>
+        <Label className="dark:text-slate-200">Inspection Report (Optional)</Label>
         {data.inspection_report_url ? (
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded border border-green-200">
+            <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                 <FileText className="w-4 h-4 text-green-600" />
-                <p className="text-sm font-medium text-green-800 truncate flex-1">{data.inspection_report_url.split('/').pop()}</p>
+                <p className="text-sm font-medium text-green-800 dark:text-green-300 truncate flex-1">{data.inspection_report_url.split('/').pop()}</p>
                 <Button variant="ghost" size="sm" onClick={() => updateData({ inspection_report_url: '' })}>Remove</Button>
             </div>
         ) : (
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center">
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-600 mb-2">Upload a detailed inspection report (PDF)</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">Upload a detailed inspection report (PDF)</p>
                 <input type="file" accept=".pdf" onChange={(e) => handleInspectionUpload(e.target.files[0])} className="hidden" id="inspection-upload" />
                 <Button variant="outline" size="sm" onClick={() => document.getElementById('inspection-upload').click()}>
                     Choose File

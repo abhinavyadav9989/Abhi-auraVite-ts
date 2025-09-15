@@ -418,6 +418,36 @@ export default function VehicleDetail() {
     );
   };
 
+  const renderServiceHistory = () => {
+    const history = ensureArray(vehicle?.service_history) as Array<{ date?: string; kms?: string | number; details?: string }>;
+    if (!history || history.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <History className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">No service records added.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {history
+          .slice()
+          .sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime())
+          .map((h, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 border rounded-md dark:border-slate-700">
+              <div className="w-2 h-2 mt-2 rounded-full bg-blue-500" />
+              <div className="flex-1">
+                <div className="text-sm text-slate-600 dark:text-slate-300">{formatDate(h.date)}</div>
+                <div className="text-sm">{h.kms ? `${h.kms} km` : ''}</div>
+                <div className="font-medium">{h.details || ''}</div>
+              </div>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] flex items-center justify-center">
@@ -657,8 +687,22 @@ export default function VehicleDetail() {
             </TabsContent>
 
             <TabsContent value="inspection" className="p-4 relative">{renderInspectionHistory()}</TabsContent>
-            <TabsContent value="documents" className="p-4 relative"><div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">Document management feature coming soon.</p></div></TabsContent>
-            <TabsContent value="history" className="p-4 relative"><div className="text-center py-8"><History className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">History tracking feature coming soon.</p></div></TabsContent>
+            <TabsContent value="documents" className="p-4 relative">
+              {vehicle.inspection_report_url ? (
+                <div className="flex items-center justify-between p-4 border rounded-md dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    <span className="text-sm">Inspection Report</span>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={vehicle.inspection_report_url} target="_blank" rel="noopener noreferrer"><Download className="w-4 h-4 mr-2" /> View</a>
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">No documents uploaded.</p></div>
+              )}
+            </TabsContent>
+            <TabsContent value="history" className="p-4 relative">{renderServiceHistory()}</TabsContent>
             
             <TabsContent value="analytics" className="p-4 relative">
               {permissions.canViewFinancials ? (

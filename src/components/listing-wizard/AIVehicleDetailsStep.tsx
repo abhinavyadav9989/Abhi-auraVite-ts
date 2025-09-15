@@ -35,31 +35,31 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-slate-800">Verify Vehicle Details</h2>
-        <p className="text-slate-500">
+        <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Verify Vehicle Details</h2>
+        <p className="text-slate-500 dark:text-slate-300">
           Our AI has pre-filled these details. Please verify and correct them as needed.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="make">Make</Label>
+          <Label htmlFor="make" className="dark:text-slate-200">Make</Label>
           <Input id="make" value={data.make || ''} onChange={e => handleUpdate('make', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="model">Model</Label>
+          <Label htmlFor="model" className="dark:text-slate-2 00">Model</Label>
           <Input id="model" value={data.model || ''} onChange={e => handleUpdate('model', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="variant">Variant</Label>
+          <Label htmlFor="variant" className="dark:text-slate-200">Variant</Label>
           <Input id="variant" value={data.variant || ''} onChange={e => handleUpdate('variant', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="year">Year</Label>
+          <Label htmlFor="year" className="dark:text-slate-200">Year</Label>
           <Input id="year" type="number" value={data.year || ''} onChange={e => handleUpdate('year', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="fuel_type">Fuel Type</Label>
+          <Label htmlFor="fuel_type" className="dark:text-slate-200">Fuel Type</Label>
           <Select value={data.fuel_type || ''} onValueChange={value => handleUpdate('fuel_type', value)}>
             <SelectTrigger id="fuel_type"><SelectValue placeholder="Select Fuel Type" /></SelectTrigger>
             <SelectContent>
@@ -73,7 +73,7 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="transmission">Transmission</Label>
+          <Label htmlFor="transmission" className="dark:text-slate-200">Transmission</Label>
           <Select value={data.transmission || ''} onValueChange={value => handleUpdate('transmission', value)}>
             <SelectTrigger id="transmission"><SelectValue placeholder="Select Transmission" /></SelectTrigger>
             <SelectContent>
@@ -85,7 +85,7 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="vehicle_type">Vehicle Type</Label>
+          <Label htmlFor="vehicle_type" className="dark:text-slate-200">Vehicle Type</Label>
           <Select value={data.vehicle_type || 'personal'} onValueChange={value => handleUpdate('vehicle_type', value)}>
             <SelectTrigger id="vehicle_type"><SelectValue placeholder="Select Vehicle Type" /></SelectTrigger>
             <SelectContent>
@@ -95,7 +95,7 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="kilometers">Kilometers Driven</Label>
+          <Label htmlFor="kilometers" className="dark:text-slate-200">Kilometers Driven</Label>
           <Input 
             id="kilometers" 
             type="number" 
@@ -105,7 +105,7 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
           />
         </div>
         <div>
-          <Label htmlFor="color">Color</Label>
+          <Label htmlFor="color" className="dark:text-slate-200">Color</Label>
           <Input 
             id="color" 
             placeholder="Enter vehicle color"
@@ -114,7 +114,7 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
           />
         </div>
         <div>
-          <Label htmlFor="ownership">Number of Owners</Label>
+          <Label htmlFor="ownership" className="dark:text-slate-200">Number of Owners</Label>
           <Select value={data.ownership || 'first'} onValueChange={value => handleUpdate('ownership', value)}>
             <SelectTrigger id="ownership"><SelectValue placeholder="Select Number of Owners" /></SelectTrigger>
             <SelectContent>
@@ -128,18 +128,18 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
         </div>
       </div>
 
-      <div className="space-y-3 pt-4 border-t">
-        <Label>Vehicle Categories</Label>
-        <p className="text-sm text-slate-500">Select all categories that apply to this vehicle. This will determine what extra information is required.</p>
+      <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <Label className="dark:text-slate-200">Vehicle Categories</Label>
+        <p className="text-sm text-slate-500 dark:text-slate-300">Select all categories that apply to this vehicle. This will determine what extra information is required.</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {ALL_CATEGORIES.map(category => (
-                <div key={category.id} className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg">
+                <div key={category.id} className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-white/5 border dark:border-slate-700 rounded-lg">
                     <Checkbox
                         id={`category-${category.id}`}
                         checked={(data.vehicle_category || []).includes(category.label)}
                         onCheckedChange={checked => handleCategoryChange(category.label, checked)}
                     />
-                    <Label htmlFor={`category-${category.id}`} className="font-medium cursor-pointer">
+                    <Label htmlFor={`category-${category.id}`} className="font-medium cursor-pointer dark:text-slate-200">
                         {category.label}
                     </Label>
                 </div>

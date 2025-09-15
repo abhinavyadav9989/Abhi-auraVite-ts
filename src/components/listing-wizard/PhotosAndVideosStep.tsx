@@ -49,19 +49,19 @@ export default function PhotosAndVideosStep({ data, updateData }) {
 
   return (
     <div className="space-y-6">
-        <Alert className="bg-blue-50 border-blue-200">
-            <Lightbulb className="h-4 w-4 text-blue-600" />
-            <AlertTitle>Pro Tip: More Photos = More Trust</AlertTitle>
-            <AlertDescription className="text-blue-700">
+        <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+            <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+            <AlertTitle className="dark:text-white">Pro Tip: More Photos = More Trust</AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-200">
                 Listings with 10+ high-quality photos get 3x more engagement. Ensure good lighting and show all angles.
             </AlertDescription>
         </Alert>
 
-        <Card>
+        <Card className="dark:bg-[#0d1a2b] dark:border-slate-700">
             <CardContent className="p-4">
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center">
                     <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                    <p className="text-sm text-slate-600 mb-3">Drag & drop photos and videos here, or click to browse.</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">Drag & drop photos and videos here, or click to browse.</p>
                     <input type="file" multiple accept="image/*,video/*" onChange={(e) => handleFileUpload(e.target.files)} className="hidden" id="media-upload" />
                     <Button onClick={() => document.getElementById('media-upload').click()} disabled={uploading}>
                         {uploading ? 'Uploading...' : 'Choose Files'}
@@ -72,7 +72,7 @@ export default function PhotosAndVideosStep({ data, updateData }) {
         
         {data.images.length > 0 && (
             <div>
-                <h3 className="font-semibold mb-2">Uploaded Photos ({data.images.length})</h3>
+                <h3 className="font-semibold mb-2 dark:text-white">Uploaded Photos ({data.images.length})</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {data.images.map((url, index) => (
                         <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
@@ -93,10 +93,10 @@ export default function PhotosAndVideosStep({ data, updateData }) {
         )}
 
         <div>
-            <h3 className="font-semibold mb-2">AI Photo Suggestions</h3>
+            <h3 className="font-semibold mb-2 dark:text-white">AI Photo Suggestions</h3>
             <div className="flex flex-wrap gap-2">
                 {AI_SUGGESTIONS.map(suggestion => (
-                    <Button key={suggestion} variant="outline" size="sm" className="bg-slate-100 cursor-default">
+                    <Button key={suggestion} variant="outline" size="sm" className="bg-slate-100 dark:bg-white/5 dark:text-slate-200 dark:border-slate-700 cursor-default">
                         {suggestion}
                     </Button>
                 ))}

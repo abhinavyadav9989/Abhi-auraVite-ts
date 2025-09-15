@@ -123,7 +123,7 @@ export default function BranchSelectionStep({
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading branches...</p>
+          <p className="text-gray-600 dark:text-slate-300">Loading branches...</p>
         </div>
       </div>
     );
@@ -133,44 +133,44 @@ export default function BranchSelectionStep({
   if (branches.length === 0) {
     return (
       <div className="max-w-2xl mx-auto">
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg dark:bg-[#0d1a2b]">
           <CardHeader className="text-center pb-6">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Building2 className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl text-gray-900">Branch Required</CardTitle>
-            <p className="text-gray-600 mt-2">
+            <CardTitle className="text-2xl text-gray-900 dark:text-white">Branch Required</CardTitle>
+            <p className="text-gray-600 dark:text-slate-300 mt-2">
               To add vehicles, you need at least one branch location
             </p>
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Benefits of adding a branch:</h3>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Benefits of adding a branch:</h3>
               <ul className="space-y-2">
                 <li className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
-                  <span className="text-gray-700">Organize inventory by location</span>
+                  <span className="text-gray-700 dark:text-slate-300">Organize inventory by location</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
-                  <span className="text-gray-700">Location-based search for customers</span>
+                  <span className="text-gray-700 dark:text-slate-300">Location-based search for customers</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
-                  <span className="text-gray-700">Better customer experience</span>
+                  <span className="text-gray-700 dark:text-slate-300">Better customer experience</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
-                  <span className="text-gray-700">Professional business presence</span>
+                  <span className="text-gray-700 dark:text-slate-300">Professional business presence</span>
                 </li>
               </ul>
             </div>
@@ -211,13 +211,13 @@ export default function BranchSelectionStep({
   // Has branches scenario
   return (
     <div className="max-w-2xl mx-auto">
-      <Card className="border-0 shadow-lg">
+      <Card className="border-0 shadow-lg dark:bg-[#0d1a2b] dark:border-slate-700">
         <CardHeader className="text-center pb-6">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <MapPin className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl text-gray-900">Select Branch Location</CardTitle>
-          <p className="text-gray-600 mt-2">
+          <CardTitle className="text-2xl text-gray-900 dark:text-white">Select Branch Location</CardTitle>
+          <p className="text-gray-600 dark:text-slate-300 mt-2">
             Choose which branch to add this vehicle to
           </p>
         </CardHeader>
@@ -230,8 +230,8 @@ export default function BranchSelectionStep({
                   htmlFor={`branch-${branch.id}`}
                   className={`flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
                     selectedBranch === branch.id 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
+                      : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-400'
                   }`}
                 >
                   <input
@@ -241,11 +241,11 @@ export default function BranchSelectionStep({
                     value={branch.id}
                     checked={selectedBranch === branch.id}
                     onChange={() => onBranchSelect(branch.id)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 focus:ring-blue-500"
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">{branch.name}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{branch.name}</span>
                       {branch.is_default && (
                         <Badge variant="secondary" className="text-xs">Default</Badge>
                       )}
@@ -253,11 +253,11 @@ export default function BranchSelectionStep({
                         <Badge variant="destructive" className="text-xs">Inactive</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
                       <MapPin className="w-4 h-4" />
                       <span>{branch.city}, {branch.state}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{branch.address}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{branch.address}</p>
                   </div>
                 </Label>
               </div>

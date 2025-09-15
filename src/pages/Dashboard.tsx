@@ -40,7 +40,7 @@ import NotificationsCenter from "../components/dashboard/NotificationsCenter";
 
 import ProgressiveVerificationBanner from "../components/dashboard/ProgressiveVerificationBanner";
 import OfflineBanner from '../components/dashboard/OfflineBanner';
-import VerificationStatus from '../components/dashboard/VerificationStatus';
+ 
 
 export default function Dashboard() {
   console.log('Dashboard - Component mounting...');
@@ -418,11 +418,8 @@ export default function Dashboard() {
 
             </div>
 
-            {/* Row 2: Verification Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <VerificationStatus dealer={dealer} user={user} />
-              </div>
+            {/* Row 2: Tips Carousel */}
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <AITipsCarousel dealer={dealer} />
               </div>

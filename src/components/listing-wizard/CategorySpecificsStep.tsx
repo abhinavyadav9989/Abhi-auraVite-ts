@@ -160,8 +160,8 @@ export default function CategorySpecificsStep({ data, updateData }: CategorySpec
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium mb-2">Select Vehicle Categories</h3>
-        <p className="text-sm text-slate-500 mb-4">
+        <h3 className="text-lg font-medium mb-2 dark:text-white">Select Vehicle Categories</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
           Choose one or more categories that apply. This helps buyers find your vehicle.
         </p>
         
@@ -174,7 +174,7 @@ export default function CategorySpecificsStep({ data, updateData }: CategorySpec
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                 selectedCategories.includes(category)
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-300'
+                  : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-300 dark:border-slate-700'
               }`}
             >
               {category}
@@ -191,20 +191,20 @@ export default function CategorySpecificsStep({ data, updateData }: CategorySpec
       </div>
 
       {selectedCategories.length > 0 && Object.keys(requiredFields as Record<string, RequiredFieldConfig>).length > 0 && (
-        <Card>
+        <Card className="dark:bg-[#0d1a2b] dark:border-slate-700">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 dark:text-white">
               <Info className="w-5 h-5" />
               Category-Specific Details
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="dark:text-slate-300">
               Please provide the following details based on your selected categories:
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {(Object.entries(requiredFields) as [string, RequiredFieldConfig][]).map(([fieldName, fieldConfig]) => (
               <div key={fieldName} className="space-y-2">
-                <Label htmlFor={fieldName} className="flex items-center gap-2">
+                <Label htmlFor={fieldName} className="flex items-center gap-2 dark:text-slate-200">
                   {getFieldLabel(fieldName)}
                   {fieldConfig.required && <span className="text-red-500">*</span>}
                   <Badge variant="secondary" className="text-xs">

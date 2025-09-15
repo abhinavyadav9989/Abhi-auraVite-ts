@@ -144,8 +144,9 @@ export default function Marketplace() {
         console.log(`Marketplace filtering: ${originalCount} total vehicles, ${filteredCount} after excluding current dealer's vehicles (${userVehicles.length} of your own vehicles hidden)`);
       }
       
-      // Sort newest first client-side and keep as-is (can paginate later)
-      const sorted = (vehicles || []).sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
+      // Sort newest first client-side by server timestamps
+      const getTs = (v: any) => new Date(v?.created_at || v?.updated_at || 0).getTime();
+      const sorted = (vehicles || []).sort((a, b) => getTs(b) - getTs(a));
       setAllVehicles(sorted);
 
       const dealerIds = [...new Set(vehicles.map(v => v.dealer_id).filter(Boolean))];

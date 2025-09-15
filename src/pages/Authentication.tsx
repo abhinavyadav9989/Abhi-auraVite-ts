@@ -160,9 +160,9 @@ export default function Authentication() {
       </div>
 
       {/* Content layer */}
-      <div className={`relative z-20 mx-auto px-4 py-8 min-h-screen transition-opacity duration-500 will-change-opacity ${showOverlay ? 'opacity-100' : 'opacity-0'} flex items-center justify-center`}> 
+      <div className={`relative z-20 mx-auto px-4 py-8 min-h-screen transition-opacity duration-500 will-change-opacity ${showOverlay ? 'opacity-100' : 'opacity-0'} flex items-center justify-center pt-28 md:pt-0`}> 
         {/* Brand compact header on small screens */}
-        <div className="md:hidden absolute top-12 left-0 right-0 flex justify-center">
+        <div className="md:hidden absolute top-12 left-0 right-0 flex justify-center pointer-events-none z-0">
           <div className="text-center">
             <div className="flex items-center justify-center mb-3">
               <Car className="w-8 h-8 text-blue-500" />
@@ -172,7 +172,7 @@ export default function Authentication() {
           </div>
         </div>
         {/* Brand pinned top-left on md+ */}
-        <div className="hidden md:flex absolute top-16 left-12 items-start">
+        <div className="hidden md:flex absolute top-16 left-12 items-start pointer-events-none z-0">
           <div className="text-left">
             <div className="flex items-center mb-4">
               <Car className="w-12 h-12 text-blue-500" />
@@ -183,7 +183,7 @@ export default function Authentication() {
         </div>
 
         {/* Auth column centered */}
-        <div className="w-full max-w-md md:max-w-lg mx-auto">
+        <div className="w-full max-w-md md:max-w-lg mx-auto relative z-10">
           {/* Registration Success Message */}
           {registrationSuccess && (
             <Card className="mb-6 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
