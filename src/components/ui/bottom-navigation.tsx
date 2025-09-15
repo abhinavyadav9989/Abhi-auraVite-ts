@@ -9,7 +9,8 @@ import {
   Handshake, 
   Users,
   Grid3X3,
-  List
+  List,
+  CreditCard
 } from 'lucide-react';
 
 interface BottomNavItem {
@@ -51,10 +52,10 @@ const navigationItems: BottomNavItem[] = [
     href: '/deals'
   },
   {
-    id: 'team',
-    label: 'Team',
-    icon: Users,
-    href: '/team'
+    id: 'bank',
+    label: 'Bank',
+    icon: CreditCard,
+    href: '/bank'
   }
 ];
 

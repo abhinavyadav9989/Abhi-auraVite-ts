@@ -30,15 +30,15 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
   return (
     <div className="relative w-full h-[600px] bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 p-4">
-        <div className="flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Branch Locations</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-300">{branches.length} branch{branches.length !== 1 ? 'es' : ''} found</p>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white leading-tight">Branch Locations</h3>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">{branches.length} branch{branches.length !== 1 ? 'es' : ''} found</p>
           </div>
           <button
             onClick={onAddBranch}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors self-start sm:self-auto w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             <span>Add Branch</span>
@@ -47,7 +47,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
       </div>
 
       {/* Map Container */}
-      <div className="absolute inset-0 pt-20 p-6">
+      <div className="absolute inset-0 pt-28 sm:pt-20 p-4 sm:p-6">
         {branches.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -64,7 +64,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-5 h-full overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4 sm:gap-5 h-full overflow-y-auto">
             {branches.map((branch) => {
               const isSelected = selectedBranch?.id === branch.id;
               const isHovered = hoveredBranch === branch.id;
@@ -72,7 +72,7 @@ export default function GlobeView({ branches, selectedBranch, onBranchSelect, on
               return (
                 <motion.div
                   key={branch.id}
-                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 min-w-[360px] ${
+                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 min-w-0 sm:min-w-[360px] w-full ${
                     isSelected
                       ? 'border-blue-400/60 bg-white/70 backdrop-blur-md shadow-lg ring-1 ring-blue-300/50'
                       : 'border-white/40 bg-white/40 backdrop-blur-md hover:border-blue-300/60 hover:ring-1 hover:ring-blue-200/60 hover:shadow-md'

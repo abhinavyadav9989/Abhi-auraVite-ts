@@ -113,20 +113,20 @@ export default function MarketplaceFilters({
   };
 
   return (
-    <Card className="border-slate-200 shadow-sm">
+    <Card className="border-slate-200 shadow-sm dark:bg-[#0d1a2b] dark:border-slate-700">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters
             {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
                 {activeFilterCount} active
               </Badge>
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-slate-50">
+            <Badge variant="outline" className="bg-slate-50 dark:bg-white/10 dark:text-slate-200">
               {resultsCount} results
             </Badge>
             {activeFilterCount > 0 && (
@@ -134,7 +134,7 @@ export default function MarketplaceFilters({
                 variant="ghost" 
                 size="sm" 
                 onClick={clearFilters}
-                className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <X className="w-4 h-4" />
                 Clear
@@ -147,48 +147,48 @@ export default function MarketplaceFilters({
       <CardContent className="pt-0 space-y-4">
         {/* Quick Filters - Always Visible */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-white/5 rounded-lg">
             <Checkbox
               id="verified-only"
               checked={filters.verified_only}
               onCheckedChange={(checked) => updateFilter('verified_only', checked)}
             />
-            <Label htmlFor="verified-only" className="text-sm font-medium cursor-pointer">
+            <Label htmlFor="verified-only" className="text-sm font-medium cursor-pointer dark:text-slate-200">
               Verified Sellers
             </Label>
           </div>
 
-          <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-white/5 rounded-lg">
             <Checkbox
               id="specialised-only"
               checked={filters.specialised_only}
               onCheckedChange={(checked) => updateFilter('specialised_only', checked)}
             />
-            <Label htmlFor="specialised-only" className="text-sm font-medium cursor-pointer">
+            <Label htmlFor="specialised-only" className="text-sm font-medium cursor-pointer dark:text-slate-200">
               Include Specialised
             </Label>
           </div>
 
-          <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-white/5 rounded-lg">
             <Checkbox
               id="price-drops"
               checked={filters.price_drops_only}
               onCheckedChange={(checked) => updateFilter('price_drops_only', checked)}
             />
-            <Label htmlFor="price-drops" className="text-sm font-medium cursor-pointer flex items-center gap-1">
+            <Label htmlFor="price-drops" className="text-sm font-medium cursor-pointer flex items-center gap-1 dark:text-slate-200">
               <TrendingDown className="w-3 h-3 text-green-600" />
               Recent Drops
             </Label>
           </div>
 
           {['exclusive_buyer', 'self_user'].includes(userClientType) && (
-            <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-white/5 rounded-lg">
               <Checkbox
                 id="financing-available"
                 checked={filters.financing_available}
                 onCheckedChange={(checked) => updateFilter('financing_available', checked)}
               />
-              <Label htmlFor="financing-available" className="text-sm font-medium cursor-pointer flex items-center gap-1">
+              <Label htmlFor="financing-available" className="text-sm font-medium cursor-pointer flex items-center gap-1 dark:text-slate-200">
                 <CreditCard className="w-3 h-3 text-blue-600" />
                 Financing
               </Label>
@@ -204,7 +204,7 @@ export default function MarketplaceFilters({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="price-min" className="text-xs text-slate-600 mb-1 block">
+                  <Label htmlFor="price-min" className="text-xs text-slate-600 dark:text-slate-300 mb-1 block">
                     Min Price (₹ Lakh)
                   </Label>
                   <Input
@@ -213,11 +213,11 @@ export default function MarketplaceFilters({
                     placeholder="e.g. 5"
                     value={filters.price_min}
                     onChange={(e) => updateFilter('price_min', e.target.value)}
-                    className="text-sm"
+                    className="text-sm dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price-max" className="text-xs text-slate-600 mb-1 block">
+                  <Label htmlFor="price-max" className="text-xs text-slate-600 dark:text-slate-300 mb-1 block">
                     Max Price (₹ Lakh)
                   </Label>
                   <Input
@@ -226,7 +226,7 @@ export default function MarketplaceFilters({
                     placeholder="e.g. 15"
                     value={filters.price_max}
                     onChange={(e) => updateFilter('price_max', e.target.value)}
-                    className="text-sm"
+                    className="text-sm dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200"
                   />
                 </div>
               </div>
@@ -246,13 +246,13 @@ export default function MarketplaceFilters({
                 { value: 'commercial_light', label: 'LCV', icon: '🚚' },
                 { value: 'specialised', label: 'Specialised', icon: '🏗️' }
               ].map(category => (
-                <div key={category.value} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                <div key={category.value} className="flex items-center space-x-2 p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
                   <Checkbox
                     id={`category-${category.value}`}
                     checked={(filters.vehicle_category || []).includes(category.value)}
                     onCheckedChange={(checked) => updateArrayFilter('vehicle_category', category.value, checked)}
                   />
-                  <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer flex items-center gap-1">
+                  <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer flex items-center gap-1 dark:text-slate-200">
                     <span>{category.icon}</span>
                     {category.label}
                   </Label>
@@ -266,16 +266,16 @@ export default function MarketplaceFilters({
             <div className="space-y-4">
               {/* Make */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Make</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Make</Label>
                 <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
                   {getUniqueValues('make').slice(0, 12).map(make => (
-                    <div key={make} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                    <div key={make} className="flex items-center space-x-2 p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
                       <Checkbox
                         id={`make-${make}`}
                         checked={(filters.make || []).includes(make)}
                         onCheckedChange={(checked) => updateArrayFilter('make', make, checked)}
                       />
-                      <Label htmlFor={`make-${make}`} className="text-sm cursor-pointer">{make}</Label>
+                      <Label htmlFor={`make-${make}`} className="text-sm cursor-pointer dark:text-slate-200">{make}</Label>
                     </div>
                   ))}
                 </div>
@@ -283,16 +283,16 @@ export default function MarketplaceFilters({
 
               {/* Fuel Type */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Fuel Type</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Fuel Type</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {['petrol', 'diesel', 'cng', 'electric', 'hybrid'].map(fuel => (
-                    <div key={fuel} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                    <div key={fuel} className="flex items-center space-x-2 p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
                       <Checkbox
                         id={`fuel-${fuel}`}
                         checked={(filters.fuel_type || []).includes(fuel)}
                         onCheckedChange={(checked) => updateArrayFilter('fuel_type', fuel, checked)}
                       />
-                      <Label htmlFor={`fuel-${fuel}`} className="text-sm cursor-pointer capitalize">{fuel}</Label>
+                      <Label htmlFor={`fuel-${fuel}`} className="text-sm cursor-pointer capitalize dark:text-slate-200">{fuel}</Label>
                     </div>
                   ))}
                 </div>
@@ -300,16 +300,16 @@ export default function MarketplaceFilters({
 
               {/* Transmission */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Transmission</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Transmission</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {['manual', 'automatic', 'amt', 'cvt'].map(trans => (
-                    <div key={trans} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                    <div key={trans} className="flex items-center space-x-2 p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
                       <Checkbox
                         id={`trans-${trans}`}
                         checked={(filters.transmission || []).includes(trans)}
                         onCheckedChange={(checked) => updateArrayFilter('transmission', trans, checked)}
                       />
-                      <Label htmlFor={`trans-${trans}`} className="text-sm cursor-pointer capitalize">{trans}</Label>
+                      <Label htmlFor={`trans-${trans}`} className="text-sm cursor-pointer capitalize dark:text-slate-200">{trans}</Label>
                     </div>
                   ))}
                 </div>
@@ -322,10 +322,10 @@ export default function MarketplaceFilters({
             <div className="space-y-4">
               {/* Year Range */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Year Range</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Year Range</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <Select value={filters.year_min} onValueChange={(value) => updateFilter('year_min', value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200">
                       <SelectValue placeholder="From" />
                     </SelectTrigger>
                     <SelectContent>
@@ -335,7 +335,7 @@ export default function MarketplaceFilters({
                     </SelectContent>
                   </Select>
                   <Select value={filters.year_max} onValueChange={(value) => updateFilter('year_max', value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200">
                       <SelectValue placeholder="To" />
                     </SelectTrigger>
                     <SelectContent>
@@ -349,14 +349,14 @@ export default function MarketplaceFilters({
 
               {/* Kilometers */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Kilometers Driven</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Kilometers Driven</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Input
                       placeholder="Min KMs"
                       value={filters.kms_min}
                       onChange={(e) => updateFilter('kms_min', e.target.value)}
-                      className="text-sm"
+                      className="text-sm dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200"
                     />
                   </div>
                   <div>
@@ -364,7 +364,7 @@ export default function MarketplaceFilters({
                       placeholder="Max KMs"
                       value={filters.kms_max}
                       onChange={(e) => updateFilter('kms_max', e.target.value)}
-                      className="text-sm"
+                      className="text-sm dark:bg-[#0b1220] dark:border-slate-700 dark:text-slate-200"
                     />
                   </div>
                 </div>
@@ -372,16 +372,16 @@ export default function MarketplaceFilters({
 
               {/* Ownership */}
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Ownership</Label>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Ownership</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {['first', 'second', 'third', 'fourth_plus'].map(owner => (
-                    <div key={owner} className="flex items-center space-x-2 p-2 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                    <div key={owner} className="flex items-center space-x-2 p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
                       <Checkbox
                         id={`owner-${owner}`}
                         checked={(filters.ownership || []).includes(owner)}
                         onCheckedChange={(checked) => updateArrayFilter('ownership', owner, checked)}
                       />
-                      <Label htmlFor={`owner-${owner}`} className="text-sm cursor-pointer capitalize">
+                      <Label htmlFor={`owner-${owner}`} className="text-sm cursor-pointer capitalize dark:text-slate-200">
                         {owner.replace('_', ' ')} owner
                       </Label>
                     </div>

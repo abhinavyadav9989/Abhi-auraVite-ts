@@ -377,7 +377,7 @@ export default function AddVehicle() {
   const CurrentStepComponent: any = STEPS[currentStep].component;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8 overflow-x-hidden">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -442,7 +442,7 @@ export default function AddVehicle() {
 
         {/* Navigation - Hide for branch selection step as it has its own buttons */}
         {STEPS[currentStep].id !== 'branch_selection' && (
-          <div className="mt-8 flex justify-between items-center">
+          <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3">
             <Button
               variant="outline"
               onClick={handleBack}
@@ -450,13 +450,13 @@ export default function AddVehicle() {
             >
             Back
           </Button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-end">
             {currentStep < STEPS.length - 1 && (
               <Button
                 variant="ghost"
                 onClick={() => handleSubmit('draft')}
                 disabled={isSubmitting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <Save className="w-4 h-4" /> Save as Draft
               </Button>
@@ -467,7 +467,7 @@ export default function AddVehicle() {
                 (STEPS[currentStep].id === 'category_specifics' && 
                  Object.keys(vehicleData.custom_attributes || {}).length === 0 && 
                  (vehicleData.vehicle_category || []).some(cat => CATEGORY_FIELDS[cat]))}
-              className="min-w-[120px]"
+              className="min-w-[120px] w-full sm:w-auto"
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

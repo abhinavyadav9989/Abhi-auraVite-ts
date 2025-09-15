@@ -69,6 +69,16 @@ export default function Inventory() {
   // Branch filter states
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
+
+  // Expand price range upper bound automatically when new vehicles exceed the default cap
+  useEffect(() => {
+    if (!Array.isArray(vehicles) || vehicles.length === 0) return;
+    const maxPriceInData = vehicles.reduce((m, v) => Math.max(m, Number(v?.asking_price || 0)), 0);
+    // If current upper bound is below data max, lift it so items aren't hidden by default
+    if (maxPriceInData > priceRange[1]) {
+      setPriceRange([priceRange[0], maxPriceInData]);
+    }
+  }, [vehicles]);
   const [branchVehicleCounts, setBranchVehicleCounts] = useState<{[key: string]: number}>({});
   
   // Advanced Mode states
@@ -174,7 +184,8 @@ export default function Inventory() {
 
   const filterAndSortVehicles = () => {
     const agingAlertDays = 60;
-    let filtered = vehicles.filter(vehicle => {
+
+    const computeFiltered = (typeKey: string) => vehicles.filter(vehicle => {
       // Safe property access
       const vehicleMake = vehicle?.make || '';
       const vehicleModel = vehicle?.model || '';
@@ -190,16 +201,16 @@ export default function Inventory() {
       const isAging = (nowMs - createdMs) / (1000 * 60 * 60 * 24) > agingAlertDays;
       // Align filters with card badge, which uses vehicle.status
       let matchesType = true;
-      if (inventoryType === "aging") {
+      if (typeKey === "aging") {
         matchesType = isAging;
-      } else if (inventoryType === "draft") {
+      } else if (typeKey === "draft") {
         matchesType = (vehicle?.status === 'draft');
-      } else if (inventoryType === "public") {
-        // Public excludes drafts
-        matchesType = (vehicle?.status !== 'draft');
-      } else if (inventoryType !== "all") {
+      } else if (typeKey === "public") {
+        // Public = live (published)
+        matchesType = (vehicle?.status === 'live');
+      } else if (typeKey !== "all") {
         // Fallback to legacy inventory_type for other filters like private/service
-        matchesType = (vehicle?.inventory_type === inventoryType);
+        matchesType = (vehicle?.inventory_type === typeKey);
       }
       
       // Price range filter
@@ -211,6 +222,8 @@ export default function Inventory() {
       
       return matchesSearch && matchesType && withinPriceRange && matchesBranch;
     });
+
+    let filtered = computeFiltered(inventoryType);
 
     // Deduplicate by registration number, keep most recently updated
     const byReg = new Map<string, any>();
@@ -332,15 +345,7 @@ export default function Inventory() {
   };
   
   const handleAddBranch = () => {
-    // In Basic mode, cap branches to 2
-    if (!isAdvancedMode && branches.length >= 2) {
-      toast({
-        title: "Branch Limit Reached",
-        description: "Basic mode supports up to 2 branches. Upgrade to add more.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Always allow adding branches
     setEditingBranch(null);
     setShowBranchModal(true);
   };
@@ -410,16 +415,31 @@ export default function Inventory() {
 
   // KPI metrics derived from vehicles
   const kpi = React.useMemo(() => {
-    // KPIs reflect the current filter/tab selection
-    const scope = filteredVehicles.length ? filteredVehicles : vehicles;
+    // Recompute KPIs from the same branch+type filter used for the list
+    const applyType = (typeKey: string, arr: any[]) => arr.filter(v => {
+      if (typeKey === 'public') return v?.status === 'live';
+      if (typeKey === 'draft') return v?.status === 'draft';
+      if (typeKey === 'private') return v?.inventory_type === 'private';
+      if (typeKey === 'service') return v?.inventory_type === 'service';
+      if (typeKey === 'aging') {
+        const agingAlertDays = 60;
+        const created = v?.created_date ? new Date(v.created_date) : new Date();
+        return (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24) > agingAlertDays;
+      }
+      return true; // all
+    });
+
+    const branchScope = vehicles.filter(v => selectedBranch === 'all' || v?.branch_id === selectedBranch);
+    const scope = applyType(inventoryType, branchScope);
+
     const total = scope.length;
-    const listed = scope.filter(v => v?.status === 'live' || v?.inventory_type === 'public').length;
+    const listed = scope.filter(v => v?.status === 'live').length;
     const internal = scope.filter(v => v?.inventory_type === 'private').length;
     const workshop = scope.filter(v => v?.inventory_type === 'service').length;
     const reserved = scope.filter(v => v?.status === 'reserved').length;
     const totalValue = scope.reduce((sum, v) => sum + (v?.asking_price || 0), 0);
     return { total, listed, internal, workshop, reserved, totalValue };
-  }, [vehicles, filteredVehicles]);
+  }, [vehicles, selectedBranch, inventoryType]);
 
   // Permissions derived flags
   const canAddOrEdit = true;
@@ -951,13 +971,13 @@ export default function Inventory() {
                       <h3 className="text-lg font-semibold">No Vehicles Found</h3>
                       <p className="text-slate-600 text-sm">Get started by adding your first vehicle to build your inventory.</p>
           </div>
-                    <div className="flex gap-2">
-                      <Link to={createPageUrl("AddVehicle")}>
-                        <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs sm:max-w-none justify-center">
+                      <Link to={createPageUrl("AddVehicle")} className="w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700">
                           <Plus className="w-4 h-4" /> Add Your First Vehicle
                         </Button>
                       </Link>
-                      <Button variant="outline" className="border-slate-200">Try Sample Data</Button>
+                      <Button variant="outline" className="w-full sm:w-auto border-slate-200">Try Sample Data</Button>
               </div>
             </div>
                 </CardContent>
