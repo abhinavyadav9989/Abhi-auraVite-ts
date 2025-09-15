@@ -34,6 +34,7 @@ import ActionPanel from "../components/deal-room/ActionPanel";
 import LogisticsBookingModal from "../components/deals/LogisticsBookingModal";
 import RTOApplicationModal from "../components/deals/RTOApplicationModal";
 import DealerRatingSystem from '../components/ratings/DealerRatingSystem';
+import { DealerRating } from '@/api/entities';
 import DisputeModal from '../components/deals/DisputeModal'; // New import
 import PaymentBreakdownModal from '../components/payments/PaymentBreakdownModal'; // New import
 import DealRoomPricingRibbon from '../components/deal-room/DealRoomPricingRibbon'; // Import the new ribbon
@@ -216,21 +217,46 @@ export default function DealRoom() {
 
   const handleRatingSubmitted = async (ratingData) => {
     try {
-      const ratingField = userRole === 'buyer' ? 'seller_rated' : 'buyer_rated';
+      // Insert into dealer_ratings (aggregates update via trigger)
+      const ratedDealerId = userRole === 'buyer' ? seller?.id : buyer?.id;
+      const raterDealerId = currentDealer?.id;
+      if (!ratedDealerId || !raterDealerId) throw new Error('Missing dealer ids for rating');
+
+      const payload = {
+        rated_dealer_id: ratedDealerId,
+        rater_dealer_id: raterDealerId,
+        transaction_id: transaction.id,
+        overall: Math.round((ratingData.overall_rating ?? ratingData.rating) as number),
+        communication: ratingData.category_ratings?.communication,
+        vehicle_condition: ratingData.category_ratings?.vehicle_condition,
+        professionalism: ratingData.category_ratings?.professionalism,
+        transaction_experience: ratingData.category_ratings?.transaction,
+        comment: ratingData.review_text ?? ratingData.comment ?? null
+      } as any;
+
+      // Idempotent upsert: update existing rating if present
+      const existing = await DealerRating.filter({
+        rater_dealer_id: raterDealerId,
+        rated_dealer_id: ratedDealerId,
+        transaction_id: transaction.id
+      });
+      if (Array.isArray(existing) && existing.length > 0) {
+        await DealerRating.update(existing[0].id, payload);
+      } else {
+        await DealerRating.create(payload);
+      }
+
+      const ratingField = userRole === 'buyer' ? 'buyer_rated' : 'seller_rated';
       await Transaction.update(transaction.id, { [ratingField]: true });
 
-      // Update dealer's rating (simplified logic)
-      const counterParty = userRole === 'buyer' ? seller : buyer;
-      const currentRating = counterParty.rating || 0;
-      const totalDeals = (counterParty.total_deals || 0) + 1;
-      const newRating = ((currentRating * (totalDeals - 1)) + ratingData.rating) / totalDeals;
-
-      await Dealer.update(counterParty.id, {
-        rating: parseFloat(newRating.toFixed(2)),
-        total_deals: totalDeals
-      });
-
       setShowRatingModal(false);
+      // Refresh dealer summaries
+      const [buyerData, sellerData] = await Promise.all([
+        Dealer.get(transaction.buyer_id),
+        Dealer.get(transaction.seller_id)
+      ]);
+      setBuyer(buyerData);
+      setSeller(sellerData);
       refreshData();
     } catch (e) {
       console.error("Failed to submit rating", e);
@@ -421,13 +447,13 @@ export default function DealRoom() {
             </div>
 
             {/* Center - Chat & Timeline */}
-            <div className="lg:col-span-2">
-              <Card className="h-[600px] flex flex-col">
+            <div className="lg:col-span-2 min-h-0">
+              <Card className="h-[600px] flex flex-col min-h-0">
                 <CardHeader className="border-b">
                   <CardTitle className="text-base">Negotiation & Updates</CardTitle>
                 </CardHeader>
 
-                <CardContent className="p-0 flex-1 flex flex-col">
+                <CardContent className="p-0 flex-1 flex flex-col min-h-0">
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-4">
                     <ChatMessages

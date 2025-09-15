@@ -227,6 +227,7 @@ export const TeamMember = new EntityAdapter('team_members');
 export const DealerDocument = new EntityAdapter('dealer_documents');
 export const DealerHours = new EntityAdapter('dealer_hours');
 export const DealerReview = new EntityAdapter('dealer_reviews');
+export const DealerRating = new EntityAdapter('dealer_ratings');
 export const DealerInquiry = new EntityAdapter('dealer_inquiries');
 export const AuditLog = new EntityAdapter('audit_logs');
 export const Shortlist = new EntityAdapter('shortlists');

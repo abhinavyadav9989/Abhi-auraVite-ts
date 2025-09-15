@@ -147,7 +147,7 @@ export default function ChatMessages({ messages = [], timeline = [], currentUser
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 break-words">
       {allEvents.map(event => 
         event.eventType === 'message' 
           ? renderMessage(event)
