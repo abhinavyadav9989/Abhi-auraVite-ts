@@ -162,6 +162,13 @@ button:focus-visible {
   /* Remove overly aggressive global dark text override to preserve contrast for pills/badges/buttons */
 }
 
+/* Hide scrollbar but keep scroll functionality for mobile drawers */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Respect safe areas on modern mobile browsers */
+:root { padding-bottom: env(safe-area-inset-bottom); }
+
 /* App gradients and premium animations */
 @layer utilities {
   .app-gradient {

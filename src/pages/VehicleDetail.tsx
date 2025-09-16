@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Vehicle } from '@/api/entities';
+import { Vehicle, VehicleCondition, VehicleAsset, VehicleDocument, Branch } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
 import { Transaction } from '@/api/entities';
@@ -68,6 +68,9 @@ export default function VehicleDetail() {
   
   // Inspections state
   const [inspections, setInspections] = useState([]);
+  const [condition, setCondition] = useState<any>(null);
+  const [audioUrls, setAudioUrls] = useState<string[]>([]);
+  const [docUrls, setDocUrls] = useState<{ rc: string[]; insurance: string[] }>({ rc: [], insurance: [] });
   const [showInspectorPanel, setShowInspectorPanel] = useState(false);
   
   // Permissions & security
@@ -89,6 +92,7 @@ export default function VehicleDetail() {
   const [showEMICalculator, setShowEMICalculator] = useState(false);
   const [isInShortlist, setIsInShortlist] = useState(false);
   const [showDealerModal, setShowDealerModal] = useState(false);
+  const [branch, setBranch] = useState<any>(null);
   
   // Analytics & engagement
   const [viewCount, setViewCount] = useState(0);
@@ -125,11 +129,33 @@ export default function VehicleDetail() {
       
       setUser(currentUser);
       setVehicle(vehicleData);
+
+      // Load condition, audio assets and documents
+      try {
+        const [condRows, assets, documents] = await Promise.all([
+          VehicleCondition.filter({ vehicle_id: vehicleData.id }).catch(() => []),
+          VehicleAsset.filter({ vehicle_id: vehicleData.id }).catch(() => []),
+          VehicleDocument.filter({ vehicle_id: vehicleData.id }).catch(() => []),
+        ]);
+        setCondition(condRows?.[0] || null);
+        setAudioUrls((assets || []).filter((a: any) => a.media_type === 'audio').map((a: any) => a.file_url));
+        setDocUrls({
+          rc: (documents || []).filter((d: any) => d.document_type === 'rc').map((d: any) => d.file_url),
+          insurance: (documents || []).filter((d: any) => d.document_type === 'insurance').map((d: any) => d.file_url),
+        });
+      } catch {}
       
       const [dealerData, currentDealerDataArray] = await Promise.all([
         Dealer.get(vehicleData.dealer_id),
         currentUser ? Dealer.filter({ created_by: currentUser.email }) : Promise.resolve([])
       ]);
+      // Load branch details if available
+      try {
+        if (vehicleData.branch_id) {
+          const b = await Branch.get(vehicleData.branch_id);
+          setBranch(b);
+        }
+      } catch {}
       
       const currentDealerData = currentDealerDataArray.length > 0 ? currentDealerDataArray[0] : null;
 
@@ -479,10 +505,16 @@ export default function VehicleDetail() {
             <div className="space-y-3">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{vehicle.year} {vehicle.make} {vehicle.model}</h1>
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <MapPin className="w-4 h-4" />
-                  <span>{vehicle.location_city}, {vehicle.location_state}</span>
-                </div>
+                {(() => {
+                  const city = vehicle.rto_location_city || vehicle.location_city;
+                  const state = vehicle.rto_location_state || vehicle.location_state;
+                  return (
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <MapPin className="w-4 h-4" />
+                      <span>{[city, state].filter(Boolean).join(', ')}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className={getStatusColor(vehicle.status)}>{vehicle.status.replace('_', ' ').toUpperCase()}</Badge>
@@ -520,6 +552,16 @@ export default function VehicleDetail() {
                 }}
               />
             </div>
+            {audioUrls.length > 0 && (
+              <div className="mt-3 p-3 border rounded-md dark:border-slate-700">
+                <h4 className="font-medium mb-2">Engine Sound</h4>
+                <div className="space-y-2">
+                  {audioUrls.map((u, i) => (
+                    <audio key={i} controls src={u} className="w-full" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 min-w-0">
@@ -629,7 +671,15 @@ export default function VehicleDetail() {
                       </button>
                       {dealer.verification_status === 'verified' && <Badge className="bg-green-100 text-green-700"><ShieldCheck className="w-3 h-3 mr-1" />Verified</Badge>}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><MapPin className="w-4 h-4" />{dealer.city}, {dealer.state}</div>
+                    {(() => {
+                      const branchCity = vehicle.location_city;
+                      const branchState = vehicle.location_state;
+                      const city = branchCity || dealer.city;
+                      const state = branchState || dealer.state;
+                      return (
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><MapPin className="w-4 h-4" />{[city, state].filter(Boolean).join(', ')}</div>
+                      );
+                    })()}
                     <button className="flex items-center gap-2" onClick={() => setShowDealerModal(true)}>
                       <div className="flex items-center gap-1"><Star className="w-4 h-4 fill-current text-yellow-400" /><span className="font-medium">{Number(dealer.rating_avg || 0).toFixed(1)}</span></div>
                       <span className="text-sm text-slate-500">({dealer.rating_count || 0} reviews)</span>
@@ -639,6 +689,16 @@ export default function VehicleDetail() {
                       <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-200"><MessageCircle className="w-4 h-4 mr-2" />Chat</Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+            {branch && (
+              <Card className="dark:bg-black dark:border-slate-700">
+                <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2 dark:text-white"><MapPin className="w-4 h-4" />Branch</CardTitle></CardHeader>
+                <CardContent className="p-3 pt-0 text-sm">
+                  <div className="font-medium dark:text-white">{branch.name}</div>
+                  <div className="text-slate-600 dark:text-slate-300">{[branch.city, branch.state].filter(Boolean).join(', ')}</div>
+                  {branch.address && <div className="mt-1 text-slate-500">{branch.address}</div>}
                 </CardContent>
               </Card>
             )}
@@ -660,6 +720,24 @@ export default function VehicleDetail() {
             <TabsContent value="overview" className="p-4 relative">
               <div className="grid md:grid-cols-1 gap-6">
                 <div><h3 className="text-lg font-semibold mb-4">Description</h3><p className="text-slate-600 leading-relaxed">{vehicle.description || 'No description provided.'}</p></div>
+                {condition && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Condition Summary</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                      <div className="flex justify-between"><span className="text-slate-600">Tyres OK:</span><span className="font-medium">{condition.tyres_ok ? 'Yes' : 'No'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Brakes OK:</span><span className="font-medium">{condition.brakes_ok ? 'Yes' : 'No'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Flood Damage:</span><span className="font-medium">{condition.flood_damage ? 'Yes' : 'No'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Accident History:</span><span className="font-medium">{condition.accident_history ? 'Yes' : 'No'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Structural Damage:</span><span className="font-medium">{condition.structural_damage ? 'Yes' : 'No'}</span></div>
+                      {typeof condition.number_of_keys !== 'undefined' && (
+                        <div className="flex justify-between"><span className="text-slate-600">Number of Keys:</span><span className="font-medium">{condition.number_of_keys}</span></div>
+                      )}
+                      {typeof condition.overall_rating !== 'undefined' && (
+                        <div className="flex justify-between"><span className="text-slate-600">Condition Rating:</span><span className="font-medium">{condition.overall_rating}/5</span></div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -680,6 +758,15 @@ export default function VehicleDetail() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-slate-600">Transmission:</span><span className="font-medium capitalize">{vehicle.transmission}</span></div>
                     <div className="flex justify-between"><span className="text-slate-600">Fuel Type:</span><span className="font-medium capitalize">{vehicle.fuel_type}</span></div>
+                    {vehicle.engine_cc !== null && <div className="flex justify-between"><span className="text-slate-600">Engine CC:</span><span className="font-medium">{vehicle.engine_cc}</span></div>}
+                    {vehicle.drivetrain && <div className="flex justify-between"><span className="text-slate-600">Drivetrain:</span><span className="font-medium uppercase">{vehicle.drivetrain}</span></div>}
+                    {vehicle.seating_capacity !== null && <div className="flex justify-between"><span className="text-slate-600">Seating Capacity:</span><span className="font-medium">{vehicle.seating_capacity}</span></div>}
+                    {vehicle.airbags_count !== null && <div className="flex justify-between"><span className="text-slate-600">Airbags:</span><span className="font-medium">{vehicle.airbags_count}</span></div>}
+                    {vehicle.registration_date && <div className="flex justify-between"><span className="text-slate-600">Registration Date:</span><span className="font-medium">{formatDate(vehicle.registration_date)}</span></div>}
+                    {vehicle.owner_count && <div className="flex justify-between"><span className="text-slate-600">Owner Count:</span><span className="font-medium">{vehicle.owner_count}</span></div>}
+                    {(vehicle.rto_location_city || vehicle.rto_location_state) && <div className="flex justify-between"><span className="text-slate-600">RTO Location:</span><span className="font-medium">{vehicle.rto_location_city || ''}{vehicle.rto_location_city && vehicle.rto_location_state ? ', ' : ''}{vehicle.rto_location_state || ''}</span></div>}
+                    <div className="flex justify-between"><span className="text-slate-600">Insurance:</span><span className="font-medium">{vehicle.insurance_available ? `Yes${vehicle.insurance_valid_until ? ' (valid until ' + formatDate(vehicle.insurance_valid_until) + ')' : ''}` : 'No'}</span></div>
+                    {vehicle.permit_type && <div className="flex justify-between"><span className="text-slate-600">Permit Type:</span><span className="font-medium capitalize">{vehicle.permit_type.replace('_', ' ')}</span></div>}
                     {renderCustomAttributes()}
                   </div>
                 </div>
@@ -687,8 +774,8 @@ export default function VehicleDetail() {
             </TabsContent>
 
             <TabsContent value="inspection" className="p-4 relative">{renderInspectionHistory()}</TabsContent>
-            <TabsContent value="documents" className="p-4 relative">
-              {vehicle.inspection_report_url ? (
+            <TabsContent value="documents" className="p-4 relative space-y-4">
+              {vehicle.inspection_report_url && (
                 <div className="flex items-center justify-between p-4 border rounded-md dark:border-slate-700">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
@@ -698,8 +785,53 @@ export default function VehicleDetail() {
                     <a href={vehicle.inspection_report_url} target="_blank" rel="noopener noreferrer"><Download className="w-4 h-4 mr-2" /> View</a>
                   </Button>
                 </div>
+              )}
+
+              {(docUrls.rc.length > 0 || docUrls.insurance.length > 0) ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-md dark:border-slate-700">
+                    <h4 className="font-medium mb-2">RC Documents</h4>
+                    {docUrls.rc[0] ? (
+                      (() => {
+                        const url = docUrls.rc[0];
+                        const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                        const isPdf = /\.(pdf)$/i.test(url);
+                        const isTrusted = url.includes('.supabase.co');
+                        if (isImage) {
+                          return <img src={url} alt="RC" className="w-full max-h-64 object-contain rounded" />;
+                        }
+                        if (isPdf && isTrusted) {
+                          return <iframe src={url} className="w-full h-64 border rounded" title="RC Document" />;
+                        }
+                        return <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">Open RC</a>;
+                      })()
+                    ) : (
+                      <div className="text-sm text-slate-500">No RC uploaded.</div>
+                    )}
+                  </div>
+                  <div className="p-4 border rounded-md dark:border-slate-700">
+                    <h4 className="font-medium mb-2">Insurance Documents</h4>
+                    {docUrls.insurance[0] ? (
+                      (() => {
+                        const url = docUrls.insurance[0];
+                        const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                        const isPdf = /\.(pdf)$/i.test(url);
+                        const isTrusted = url.includes('.supabase.co');
+                        if (isImage) {
+                          return <img src={url} alt="Insurance" className="w-full max-h-64 object-contain rounded" />;
+                        }
+                        if (isPdf && isTrusted) {
+                          return <iframe src={url} className="w-full h-64 border rounded" title="Insurance Document" />;
+                        }
+                        return <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">Open Insurance</a>;
+                      })()
+                    ) : (
+                      <div className="text-sm text-slate-500">No Insurance uploaded.</div>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <div className="text-center py-8"><FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" /><p className="text-slate-500">No documents uploaded.</p></div>
+                <div className="text-sm text-slate-500">No RC/Insurance documents uploaded.</div>
               )}
             </TabsContent>
             <TabsContent value="history" className="p-4 relative">{renderServiceHistory()}</TabsContent>

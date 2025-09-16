@@ -3,6 +3,7 @@ import {
   Dealer,
   Vehicle,
   VehicleAsset,
+  VehicleDocument,
   Transaction,
   Payment,
   LogisticsOrder,
@@ -20,6 +21,8 @@ import {
   AuditLog,
   Shortlist,
   VehicleInspection,
+  VehicleCondition,
+  Branch,
   AppConfig,
   User
 } from './entityAdapters';
@@ -29,6 +32,7 @@ export {
   Dealer,
   Vehicle,
   VehicleAsset,
+  VehicleDocument,
   Transaction,
   Payment,
   LogisticsOrder,
@@ -46,6 +50,8 @@ export {
   AuditLog,
   Shortlist,
   VehicleInspection,
+  VehicleCondition,
+  Branch,
   AppConfig,
   User
 };

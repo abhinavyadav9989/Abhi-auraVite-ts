@@ -21,10 +21,20 @@ class CoreAdapter {
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       ];
-      const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes, ...allowedDataTypes];
+      // Audio for engine sound uploads
+      const allowedAudioTypes = [
+        'audio/mpeg',
+        'audio/mp3',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/webm',
+        'audio/ogg',
+        'audio/mp4',
+      ];
+      const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes, ...allowedDataTypes, ...allowedAudioTypes];
       
       if (!allowedTypes.includes(file.type)) {
-        throw new Error(`File type ${file.type} is not supported. Allowed: images (JPEG, PNG, GIF, WebP), documents (PDF, DOC, DOCX), and bulk data (CSV, XLS, XLSX).`);
+        throw new Error(`File type ${file.type} is not supported. Allowed: images (JPEG, PNG, GIF, WebP), documents (PDF, DOC, DOCX), bulk data (CSV, XLS, XLSX), and audio (MP3, WAV, OGG, WEBM, MP4).`);
       }
       
       // Generate default path if not provided, preserving original file extension

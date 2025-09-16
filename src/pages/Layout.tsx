@@ -129,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   const SidebarContent = ({ isMobile = false }) => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-[100dvh] overflow-y-auto no-scrollbar pb-[max(env(safe-area-inset-bottom),1rem)]">
       <div className={cn("flex items-center border-b border-slate-200", (isCollapsed && !isMobile) ? "justify-center h-16" : "justify-between h-16 px-4")}>
         {(!isCollapsed || isMobile) && (
           <Link to={createPageUrl("Dashboard")} className="flex items-center gap-2">

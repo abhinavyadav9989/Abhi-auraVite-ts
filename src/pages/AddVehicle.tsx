@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Vehicle } from '@/api/entities';
+import { Vehicle, VehicleAsset, VehicleDocument, VehicleCondition } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
 import { useToast } from '@/components/ui/use-toast';
@@ -67,21 +67,31 @@ export default function AddVehicle() {
   const [vehicleData, setVehicleData] = useState<any>({
     branch_id: '', // New field for branch association
     registration_number: '',
+    registration_date: null,
     make: '',
     model: '',
     variant: '',
     year: '',
     fuel_type: '',
     transmission: '',
+    drivetrain: null,
+    engine_cc: '',
     kilometers: '',
     ownership: 'first',
+    owner_count: 1,
     color: '',
     vehicle_type: 'personal',
     description: '',
+    rto_location_city: '',
+    rto_location_state: '',
+    insurance_available: false,
+    insurance_valid_until: null,
+    permit_type: null,
     service_history: [],
     inspection_report_url: '',
     images: [],
     videos: [],
+    audio: [],
     hero_image_url: '',
     landed_cost_components: { procurement: 0, refurbishment: 0, logistics: 0, other: 0 },
     asking_price: 0,
@@ -184,7 +194,16 @@ export default function AddVehicle() {
     setIsLoading(true);
     try {
       const vehicle = await Vehicle.get(vehicleId);
-      setVehicleData(vehicle);
+      // Prefill existing engine audio assets
+      try {
+        const assets = await VehicleAsset.filter({ vehicle_id: vehicleId });
+        const existingAudio = (assets || [])
+          .filter((a: any) => a.media_type === 'audio')
+          .map((a: any) => a.file_url);
+        setVehicleData({ ...vehicle, audio: existingAudio });
+      } catch {
+        setVehicleData(vehicle);
+      }
       setIsEditMode(true);
       toast({
         title: "Editing Existing Vehicle",
@@ -300,7 +319,9 @@ export default function AddVehicle() {
       if (cleanData.mileage === '') cleanData.mileage = null;
       if (cleanData.year === '') cleanData.year = null;
       if (cleanData.seating_capacity === '') cleanData.seating_capacity = null;
+      if (cleanData.airbags_count === '') cleanData.airbags_count = null;
       if (cleanData.condition_rating === '') cleanData.condition_rating = null;
+      if (cleanData.engine_cc === '') cleanData.engine_cc = null;
       
       // Convert empty strings to null for decimal fields
       if (cleanData.price === '') cleanData.price = null;
@@ -314,8 +335,36 @@ export default function AddVehicle() {
       if (cleanData.publish_at === '') cleanData.publish_at = null;
       if (cleanData.publish_schedule === '') cleanData.publish_schedule = null;
       
+      // Remove UI-only and condition fields not present in vehicles table
+      const {
+        audio,
+        rc_docs,
+        insurance_docs,
+        tyres_ok,
+        brakes_ok,
+        flood_damage,
+        accident_history,
+        structural_damage,
+        number_of_keys,
+        condition_rating,
+        condition_notes,
+        ...dbData
+      } = cleanData as any;
+
+      // Normalize service history records
+      if (Array.isArray(dbData.service_history)) {
+        const normalized = dbData.service_history
+          .filter((r: any) => r && (r.date || r.details))
+          .map((r: any) => ({
+            date: r.date || null,
+            kms: r.kms !== '' && r.kms !== undefined ? Number(r.kms) : null,
+            details: r.details || ''
+          }));
+        dbData.service_history = normalized.length > 0 ? normalized : null;
+      }
+
       const finalPayload = { 
-        ...cleanData, 
+        ...dbData, 
         status: pendingStatus, 
         dealer_id: dealer.id,
         location_city: dealer.city,
@@ -326,18 +375,86 @@ export default function AddVehicle() {
       console.log('AddVehicle - Dealer ID being used:', dealer.id);
       console.log('AddVehicle - Final payload being sent to database:', finalPayload);
       
+      let createdOrUpdated: any;
       if (isEditMode && vehicleId) {
-        await Vehicle.update(vehicleId, finalPayload);
+        createdOrUpdated = await Vehicle.update(vehicleId, finalPayload);
         toast({
           title: `Listing ${pendingStatus === 'draft' ? 'Saved' : 'Published'}!`,
           description: `Your vehicle has been successfully ${pendingStatus === 'draft' ? 'saved as a draft' : 'updated'}.`,
         });
       } else {
-        await Vehicle.create(finalPayload);
+        createdOrUpdated = await Vehicle.create(finalPayload);
         toast({
           title: `Listing ${pendingStatus === 'draft' ? 'Saved' : 'Published'}!`,
           description: `Your vehicle has been successfully ${pendingStatus === 'draft' ? 'saved as a draft' : 'added to the marketplace'}.`,
         });
+      }
+
+      const currentVehicleId = isEditMode && vehicleId ? vehicleId : createdOrUpdated?.id;
+
+      // Sync engine audio assets: insert new and delete removed
+      if (currentVehicleId) {
+        try {
+          const existingAssets = await VehicleAsset.filter({ vehicle_id: currentVehicleId });
+          const existingAudio = (existingAssets || []).filter((a: any) => a.media_type === 'audio');
+          const existingUrls = new Set(existingAudio.map((a: any) => a.file_url));
+          const desiredUrls = new Set((vehicleData.audio || []) as string[]);
+
+          const toInsert = [...desiredUrls].filter((u) => !existingUrls.has(u));
+          const toDelete = existingAudio.filter((a: any) => !desiredUrls.has(a.file_url));
+
+          if (toInsert.length > 0) {
+            const rows = toInsert.map((url: string) => ({
+              vehicle_id: currentVehicleId,
+              file_url: url,
+              file_type: 'audio',
+              media_type: 'audio',
+              purpose: 'engine_idle',
+              transcoding_status: 'ready',
+              is_primary: false,
+            }));
+            await VehicleAsset.create(rows);
+          }
+          for (const a of toDelete) {
+            try { await VehicleAsset.delete(a.id); } catch {}
+          }
+        } catch (e) {
+          console.error('Failed syncing audio assets:', e);
+        }
+      }
+
+      // Persist RC/Insurance docs to vehicle_documents if captured in wizard state
+      if (currentVehicleId && Array.isArray((vehicleData as any).rc_docs)) {
+        const rows = (vehicleData as any).rc_docs.map((url: string) => ({
+          vehicle_id: currentVehicleId,
+          document_type: 'rc',
+          file_url: url,
+        }));
+        try { const saved = await VehicleDocument.create(rows); console.log('RC docs saved:', saved); } catch (e) { console.error('Failed saving RC docs:', e); }
+      }
+
+      // Upsert vehicle_condition from wizard fields (subset)
+      if (currentVehicleId) {
+        const conditionPayload: any = {
+          vehicle_id: currentVehicleId,
+          tyres_ok: !!vehicleData.tyres_ok,
+          brakes_ok: !!vehicleData.brakes_ok,
+          flood_damage: !!vehicleData.flood_damage,
+          accident_history: !!vehicleData.accident_history,
+          structural_damage: !!vehicleData.structural_damage,
+          number_of_keys: vehicleData.number_of_keys ?? null,
+          overall_rating: vehicleData.condition_rating ?? null,
+          notes: vehicleData.condition_notes ?? null,
+        };
+        try { const up = await VehicleCondition.upsert(conditionPayload); console.log('Condition upserted:', up); } catch (e) { console.error('Failed upserting condition:', e); }
+      }
+      if (currentVehicleId && Array.isArray((vehicleData as any).insurance_docs)) {
+        const rows = (vehicleData as any).insurance_docs.map((url: string) => ({
+          vehicle_id: currentVehicleId,
+          document_type: 'insurance',
+          file_url: url,
+        }));
+        try { const saved = await VehicleDocument.create(rows); console.log('Insurance docs saved:', saved); } catch (e) { console.error('Failed saving insurance docs:', e); }
       }
       
       navigate(createPageUrl('Inventory'));

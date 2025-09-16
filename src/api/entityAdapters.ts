@@ -69,6 +69,16 @@ class EntityAdapter {
     return result;
   }
 
+  // Simple upsert helper for tables with unique keys (e.g., vehicle_id in vehicle_condition)
+  async upsert(data: any | any[]) {
+    const { data: result, error } = await supabase
+      .from(this.tableName)
+      .upsert(data)
+      .select();
+    if (error) throw error;
+    return result;
+  }
+
   // Mimic Base44's delete() method
   async delete(id: string) {
     const { error } = await supabase
@@ -215,6 +225,7 @@ class AuthAdapter {
 export const Dealer = new EntityAdapter('dealers');
 export const Vehicle = new EntityAdapter('vehicles');
 export const VehicleAsset = new EntityAdapter('vehicle_assets');
+export const VehicleDocument = new EntityAdapter('vehicle_documents');
 export const Transaction = new EntityAdapter('transactions');
 export const Payment = new EntityAdapter('payments');
 export const LogisticsOrder = new EntityAdapter('logistics_orders');
@@ -232,6 +243,8 @@ export const DealerInquiry = new EntityAdapter('dealer_inquiries');
 export const AuditLog = new EntityAdapter('audit_logs');
 export const Shortlist = new EntityAdapter('shortlists');
 export const VehicleInspection = new EntityAdapter('vehicle_inspections');
+export const VehicleCondition = new EntityAdapter('vehicle_condition');
+export const Branch = new EntityAdapter('branches');
 export const AppConfig = new EntityAdapter('app_configs');
 
 // Auth instance

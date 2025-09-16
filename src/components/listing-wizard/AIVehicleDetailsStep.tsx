@@ -86,11 +86,33 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
         </div>
         <div>
           <Label htmlFor="vehicle_type" className="dark:text-slate-200">Vehicle Type</Label>
-          <Select value={data.vehicle_type || 'personal'} onValueChange={value => handleUpdate('vehicle_type', value)}>
+          <Select value={data.vehicle_type || 'personal'} onValueChange={value => {
+            if (value !== 'commercial') {
+              updateData({ vehicle_type: value, permit_type: null });
+            } else {
+              updateData({ vehicle_type: value });
+            }
+          }}>
             <SelectTrigger id="vehicle_type"><SelectValue placeholder="Select Vehicle Type" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="personal">Personal Vehicle</SelectItem>
               <SelectItem value="commercial">Commercial Vehicle</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">Engine CC</Label>
+          <Input type="number" min={1} value={data.engine_cc || ''} onChange={e => handleUpdate('engine_cc', e.target.value ? Number(e.target.value) : '')} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">Drivetrain</Label>
+          <Select value={data.drivetrain || ''} onValueChange={value => handleUpdate('drivetrain', value)}>
+            <SelectTrigger><SelectValue placeholder="Select Drivetrain" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fwd">FWD</SelectItem>
+              <SelectItem value="rwd">RWD</SelectItem>
+              <SelectItem value="awd">AWD</SelectItem>
+              <SelectItem value="4wd">4WD</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -113,6 +135,54 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
             onChange={e => handleUpdate('color', e.target.value)} 
           />
         </div>
+        <div>
+          <Label className="dark:text-slate-200">Seating Capacity</Label>
+          <Input type="number" min={1} value={data.seating_capacity || ''} onChange={e => handleUpdate('seating_capacity', e.target.value ? Number(e.target.value) : '')} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">Airbags</Label>
+          <Input type="number" min={0} value={data.airbags_count || ''} onChange={e => handleUpdate('airbags_count', e.target.value ? Number(e.target.value) : '')} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">Registration Date</Label>
+          <Input type="date" value={data.registration_date || ''} onChange={e => handleUpdate('registration_date', e.target.value || null)} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">RTO City</Label>
+          <Input value={data.rto_location_city || ''} onChange={e => handleUpdate('rto_location_city', e.target.value)} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">RTO State</Label>
+          <Input value={data.rto_location_state || ''} onChange={e => handleUpdate('rto_location_state', e.target.value)} />
+        </div>
+        <div>
+          <Label className="dark:text-slate-200">Insurance Available</Label>
+          <Select value={data.insurance_available ? 'yes' : 'no'} onValueChange={v => handleUpdate('insurance_available', v === 'yes')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="yes">Yes</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {data.insurance_available && (
+          <div>
+            <Label className="dark:text-slate-200">Insurance Valid Until</Label>
+            <Input type="date" value={data.insurance_valid_until || ''} onChange={e => handleUpdate('insurance_valid_until', e.target.value || null)} />
+          </div>
+        )}
+        {data.vehicle_type === 'commercial' && (
+          <div>
+            <Label className="dark:text-slate-200">Permit Type</Label>
+            <Select value={data.permit_type || ''} onValueChange={v => handleUpdate('permit_type', v)}>
+              <SelectTrigger><SelectValue placeholder="Select Permit" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_india">All India Permit</SelectItem>
+                <SelectItem value="state">State Permit</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label htmlFor="ownership" className="dark:text-slate-200">Number of Owners</Label>
           <Select value={data.ownership || 'first'} onValueChange={value => handleUpdate('ownership', value)}>
