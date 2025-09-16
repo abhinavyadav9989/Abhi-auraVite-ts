@@ -61,6 +61,8 @@ export default function AddVehicle() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [preloadedAssets, setPreloadedAssets] = useState(false);
+  const [preloadedDocuments, setPreloadedDocuments] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<'draft' | 'live' | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
@@ -200,7 +202,17 @@ export default function AddVehicle() {
         const existingAudio = (assets || [])
           .filter((a: any) => a.media_type === 'audio')
           .map((a: any) => a.file_url);
-        setVehicleData({ ...vehicle, audio: existingAudio });
+        // Prefill existing documents
+        let rcDocs: string[] = [];
+        let insDocs: string[] = [];
+        try {
+          const docs = await VehicleDocument.filter({ vehicle_id: vehicleId });
+          rcDocs = (docs || []).filter((d: any) => d.document_type === 'rc').map((d: any) => d.file_url);
+          insDocs = (docs || []).filter((d: any) => d.document_type === 'insurance').map((d: any) => d.file_url);
+          setPreloadedDocuments(true);
+        } catch {}
+        setVehicleData({ ...vehicle, audio: existingAudio, rc_docs: rcDocs, insurance_docs: insDocs });
+        setPreloadedAssets(true);
       } catch {
         setVehicleData(vehicle);
       }
@@ -395,42 +407,87 @@ export default function AddVehicle() {
       // Sync engine audio assets: insert new and delete removed
       if (currentVehicleId) {
         try {
-          const existingAssets = await VehicleAsset.filter({ vehicle_id: currentVehicleId });
-          const existingAudio = (existingAssets || []).filter((a: any) => a.media_type === 'audio');
-          const existingUrls = new Set(existingAudio.map((a: any) => a.file_url));
-          const desiredUrls = new Set((vehicleData.audio || []) as string[]);
+          const desiredUrls: string[] = (vehicleData.audio || []) as string[];
+          if (!isEditMode || preloadedAssets) {
+            const existingAssets = await VehicleAsset.filter({ vehicle_id: currentVehicleId });
+            const existingAudio = (existingAssets || []).filter((a: any) => a.media_type === 'audio');
+            const existingUrls = new Set(existingAudio.map((a: any) => a.file_url));
+            const desiredSet = new Set(desiredUrls);
 
-          const toInsert = [...desiredUrls].filter((u) => !existingUrls.has(u));
-          const toDelete = existingAudio.filter((a: any) => !desiredUrls.has(a.file_url));
+            const toInsert = [...desiredSet].filter((u) => !existingUrls.has(u));
+            const toDelete = existingAudio.filter((a: any) => !desiredSet.has(a.file_url));
 
-          if (toInsert.length > 0) {
-            const rows = toInsert.map((url: string) => ({
-              vehicle_id: currentVehicleId,
-              file_url: url,
-              file_type: 'audio',
-              media_type: 'audio',
-              purpose: 'engine_idle',
-              transcoding_status: 'ready',
-              is_primary: false,
-            }));
-            await VehicleAsset.create(rows);
-          }
-          for (const a of toDelete) {
-            try { await VehicleAsset.delete(a.id); } catch {}
+            if (toInsert.length > 0) {
+              const rows = toInsert.map((url: string) => ({
+                vehicle_id: currentVehicleId,
+                file_url: url,
+                file_type: 'audio',
+                media_type: 'audio',
+                purpose: 'engine_idle',
+                transcoding_status: 'ready',
+                is_primary: false,
+              }));
+              await VehicleAsset.create(rows);
+            }
+            for (const a of toDelete) {
+              try { await VehicleAsset.delete(a.id); } catch {}
+            }
+          } else {
+            // Preload failed (likely RLS); avoid deletions and append desired audio only
+            if (desiredUrls.length > 0) {
+              const rows = desiredUrls.map((url: string) => ({
+                vehicle_id: currentVehicleId,
+                file_url: url,
+                file_type: 'audio',
+                media_type: 'audio',
+                purpose: 'engine_idle',
+                transcoding_status: 'ready',
+                is_primary: false,
+              }));
+              await VehicleAsset.create(rows);
+            }
           }
         } catch (e) {
           console.error('Failed syncing audio assets:', e);
         }
       }
 
-      // Persist RC/Insurance docs to vehicle_documents if captured in wizard state
-      if (currentVehicleId && Array.isArray((vehicleData as any).rc_docs)) {
-        const rows = (vehicleData as any).rc_docs.map((url: string) => ({
-          vehicle_id: currentVehicleId,
-          document_type: 'rc',
-          file_url: url,
-        }));
-        try { const saved = await VehicleDocument.create(rows); console.log('RC docs saved:', saved); } catch (e) { console.error('Failed saving RC docs:', e); }
+      // Sync RC/Insurance documents
+      if (currentVehicleId) {
+        const desiredRcs: string[] = (vehicleData.rc_docs || []) as string[];
+        const desiredIns: string[] = (vehicleData.insurance_docs || []) as string[];
+        try {
+          if (!isEditMode || preloadedDocuments) {
+            const existingDocs = await VehicleDocument.filter({ vehicle_id: currentVehicleId });
+            const existingMap = new Map<string, any>();
+            for (const d of existingDocs || []) {
+              existingMap.set(`${d.document_type}|${d.file_url}`, d);
+            }
+            const desiredPairs: Array<{ type: string; url: string }> = [];
+            for (const url of desiredRcs) desiredPairs.push({ type: 'rc', url });
+            for (const url of desiredIns) desiredPairs.push({ type: 'insurance', url });
+            const desiredKeySet = new Set(desiredPairs.map(p => `${p.type}|${p.url}`));
+            const toInsertRows = desiredPairs
+              .filter(p => !existingMap.has(`${p.type}|${p.url}`))
+              .map(p => ({ vehicle_id: currentVehicleId, document_type: p.type, file_url: p.url }));
+            const toDeleteRows = (existingDocs || [])
+              .filter((d: any) => !desiredKeySet.has(`${d.document_type}|${d.file_url}`));
+            if (toInsertRows.length > 0) {
+              await VehicleDocument.create(toInsertRows);
+            }
+            for (const d of toDeleteRows) {
+              try { await VehicleDocument.delete(d.id); } catch {}
+            }
+          } else {
+            // Preload failed (likely due to RLS earlier). Avoid deletions; only append desired docs.
+            const rows: any[] = [];
+            for (const url of desiredRcs) rows.push({ vehicle_id: currentVehicleId, document_type: 'rc', file_url: url });
+            for (const url of desiredIns) rows.push({ vehicle_id: currentVehicleId, document_type: 'insurance', file_url: url });
+            if (rows.length > 0) await VehicleDocument.create(rows);
+          }
+        } catch (e) {
+          console.error('Failed syncing vehicle documents:', e);
+        }
       }
 
       // Upsert vehicle_condition from wizard fields (subset)
@@ -448,14 +505,7 @@ export default function AddVehicle() {
         };
         try { const up = await VehicleCondition.upsert(conditionPayload); console.log('Condition upserted:', up); } catch (e) { console.error('Failed upserting condition:', e); }
       }
-      if (currentVehicleId && Array.isArray((vehicleData as any).insurance_docs)) {
-        const rows = (vehicleData as any).insurance_docs.map((url: string) => ({
-          vehicle_id: currentVehicleId,
-          document_type: 'insurance',
-          file_url: url,
-        }));
-        try { const saved = await VehicleDocument.create(rows); console.log('Insurance docs saved:', saved); } catch (e) { console.error('Failed saving insurance docs:', e); }
-      }
+      
       
       navigate(createPageUrl('Inventory'));
     } catch (error) {

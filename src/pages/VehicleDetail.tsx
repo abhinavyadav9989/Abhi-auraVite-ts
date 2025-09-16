@@ -337,9 +337,15 @@ export default function VehicleDetail() {
   const renderCustomAttributes = () => {
     const attributes = safeGet(vehicle, 'custom_attributes', {});
     if (!attributes || Object.keys(attributes).length === 0) return null;
+    const blacklist = new Set(['rc', 'rc_url', 'insurance', 'insurance_url', 'url', 'document_url']);
+    const entries = Object.entries(attributes).filter(([key, value]) => {
+      if (blacklist.has(String(key).toLowerCase())) return false;
+      if (typeof value === 'string' && /^https?:\/\//i.test(value)) return false;
+      return true;
+    });
     return (
       <div className="grid grid-cols-2 gap-4">
-        {Object.entries(attributes).map(([key, value]) => (
+        {entries.map(([key, value]) => (
           <div key={key} className="flex justify-between">
             <span className="text-slate-600">{CATEGORY_FIELD_LABELS[key] || key.replace(/_/g, ' ')}:</span>
             <span className="font-medium">{String(value ?? '')}</span>
@@ -509,10 +515,10 @@ export default function VehicleDetail() {
                   const city = vehicle.rto_location_city || vehicle.location_city;
                   const state = vehicle.rto_location_state || vehicle.location_state;
                   return (
-                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                      <MapPin className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <MapPin className="w-4 h-4" />
                       <span>{[city, state].filter(Boolean).join(', ')}</span>
-                    </div>
+                </div>
                   );
                 })()}
               </div>
@@ -803,7 +809,11 @@ export default function VehicleDetail() {
                         if (isPdf && isTrusted) {
                           return <iframe src={url} className="w-full h-64 border rounded" title="RC Document" />;
                         }
-                        return <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">Open RC</a>;
+                        return (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} target="_blank" rel="noreferrer">Open RC</a>
+                          </Button>
+                        );
                       })()
                     ) : (
                       <div className="text-sm text-slate-500">No RC uploaded.</div>
@@ -823,7 +833,11 @@ export default function VehicleDetail() {
                         if (isPdf && isTrusted) {
                           return <iframe src={url} className="w-full h-64 border rounded" title="Insurance Document" />;
                         }
-                        return <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">Open Insurance</a>;
+                        return (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} target="_blank" rel="noreferrer">Open Insurance</a>
+                          </Button>
+                        );
                       })()
                     ) : (
                       <div className="text-sm text-slate-500">No Insurance uploaded.</div>
