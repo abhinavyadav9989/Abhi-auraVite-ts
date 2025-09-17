@@ -75,9 +75,10 @@ export default function VehicleCard({
     business_name: dealer?.business_name || 'Unknown Dealer'
   };
 
+  const canonicalSold = vehicle?.sold ? { buyer_name: undefined } : null;
   const soldAttr = vehicle?.custom_attributes?.sold || null;
-  const combinedSold: any = soldInfo || soldAttr;
-  const isSold = !!combinedSold;
+  const combinedSold: any = soldInfo || soldAttr || canonicalSold;
+  const isSold = !!(vehicle?.sold || combinedSold);
 
   const formatPrice = (price) => {
     if (!price || price === 0) return 'On Request';

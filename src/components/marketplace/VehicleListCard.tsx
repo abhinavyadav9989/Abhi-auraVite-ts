@@ -25,7 +25,8 @@ export default function VehicleListCard({
   onCompareToggle,
   onMakeOffer,
   isUserVerified,
-  isUnderReview
+  isUnderReview,
+  soldInfo
 }) {
   const formatPrice = (price: number | null | undefined) => {
     if (!price) return 'Price on request';
@@ -45,6 +46,8 @@ export default function VehicleListCard({
   };
 
   const hasPriceDrop = vehicle.original_price && vehicle.asking_price && vehicle.asking_price < vehicle.original_price;
+
+  const isSold = !!vehicle?.sold;
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-black">
@@ -71,6 +74,11 @@ export default function VehicleListCard({
               {isNewVehicle() && (
                 <Badge className="bg-green-500 text-white text-xs px-2 py-1">
                   New
+                </Badge>
+              )}
+              {isSold && (
+                <Badge className="bg-purple-600 text-white text-xs px-2 py-1">
+                  Sold
                 </Badge>
               )}
               {dealer?.verification_status === 'verified' && (
@@ -107,8 +115,11 @@ export default function VehicleListCard({
               {/* Price */}
               <div className="flex-shrink-0 ml-4 text-right">
                 <div className="text-xl font-bold text-slate-900 dark:text-white">
-                  {isUserVerified ? formatPrice(vehicle.asking_price) : 'Price Hidden'}
+                  {isSold ? 'Sold' : (isUserVerified ? formatPrice(vehicle.asking_price) : 'Price Hidden')}
                 </div>
+                {isSold && soldInfo?.buyer_name && (
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">to {soldInfo.buyer_name}</div>
+                )}
                 {hasPriceDrop && isUserVerified && (
                   <div className="text-sm text-red-600 line-through">
                     {formatPrice(vehicle.original_price)}
@@ -150,7 +161,7 @@ export default function VehicleListCard({
 
           {/* Actions */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            {isUserVerified && (
+            {isUserVerified && !isSold && (
               <Button
                 onClick={() => onMakeOffer(vehicle)}
                 size="sm"

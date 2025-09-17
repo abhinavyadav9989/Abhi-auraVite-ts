@@ -133,8 +133,7 @@ export default function PaymentCheckout() {
         await Vehicle.update(transaction.vehicle_id, {
           sold: true,
           sold_at: timestamp,
-          sold_to_dealer_id: transaction.buyer_id,
-          inventory_type: 'private'
+          sold_to_dealer_id: transaction.buyer_id
         });
       } catch (e) {
         console.warn('Vehicle update to sold failed (non-blocking):', e);

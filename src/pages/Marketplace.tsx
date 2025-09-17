@@ -130,10 +130,18 @@ export default function Marketplace() {
         }
       }
 
-      // Load only public, live vehicles from all dealers EXCEPT current user's vehicles
-      // Also exclude vehicles that are sold or tied to completed deals if backend marks them accordingly
-      let vehicles = await Vehicle.filter({ status: 'live', inventory_type: 'public' });
-      vehicles = (vehicles || []).filter(v => v.status !== 'sold');
+      // Load live vehicles and sold vehicles separately (avoids server-side OR limitations in wrappers)
+      const liveList = await Vehicle.filter({ status: 'live' }).catch(() => []);
+      const soldList = await Vehicle.filter({ sold: true }).catch(() => []);
+      const map: Record<string, any> = {};
+      [...(liveList || []), ...(soldList || [])].forEach(v => { if (v && v.id) map[v.id] = v; });
+      let vehicles = Object.values(map);
+      console.log('Marketplace fetch:', {
+        liveCount: (liveList || []).length,
+        soldCount: (soldList || []).length,
+        mergedCount: vehicles.length,
+        sample: vehicles.slice(0, 3).map((v:any) => ({ id: v.id, status: v.status, sold: v.sold }))
+      });
       
       // Filter out current user's vehicles so they don't see their own cars in marketplace
       if (currentDealerData) {
@@ -157,31 +165,20 @@ export default function Marketplace() {
       });
       setDealers(dealersMap);
 
-      // Fetch sold/completed transactions for these vehicles to flag sold state in marketplace
+      // Enrich sold info using canonical vehicle.sold_to_dealer_id (avoids RLS on transactions)
       try {
-        const vehicleIds = vehicles.map(v => v.id).filter(Boolean);
-        const chunk = 20;
-        const allTxns: any[] = [];
-        for (let i = 0; i < vehicleIds.length; i += chunk) {
-          const slice = vehicleIds.slice(i, i + chunk);
-          const orFilters = slice.map(id => ({ vehicle_id: id }));
-          // @ts-ignore Transaction imported via entities
-          const { Transaction } = await import('@/api/entities');
-          const txns = await Transaction.filter({ $or: orFilters, status: 'completed' }).catch(() => []);
-          allTxns.push(...(txns || []));
-        }
-        const buyerIds = [...new Set(allTxns.map(t => t.buyer_id).filter(Boolean))];
+        const buyerIds = [...new Set(vehicles.map((v:any) => v?.sold_to_dealer_id).filter(Boolean))];
         const buyerMap: Record<string, any> = {};
-        await Promise.all(buyerIds.map(async (id) => {
-          try { buyerMap[id] = await Dealer.get(id); } catch {}
-        }));
+        await Promise.all(buyerIds.map(async (id) => { try { buyerMap[id] = await Dealer.get(id); } catch {} }));
         const soldMap: Record<string, { buyer_name?: string }> = {};
-        allTxns.forEach(t => {
-          soldMap[t.vehicle_id] = { buyer_name: buyerMap[t.buyer_id]?.business_name };
+        vehicles.forEach((v:any) => {
+          if (v?.sold && v?.sold_to_dealer_id) {
+            soldMap[v.id] = { buyer_name: buyerMap[v.sold_to_dealer_id]?.business_name };
+          }
         });
         setSoldByVehicleId(soldMap);
       } catch (e) {
-        console.warn('Sold state enrichment failed', e);
+        console.warn('Sold enrichment via vehicles failed', e);
         setSoldByVehicleId({});
       }
 
@@ -625,6 +622,7 @@ export default function Marketplace() {
                       onMakeOffer={() => handleMakeOffer(vehicle)}
                       isUserVerified={isUserVerified}
                       isUnderReview={isUnderReview}
+                      soldInfo={soldByVehicleId[vehicle.id]}
                     />
                   ))}
                 </motion.div>

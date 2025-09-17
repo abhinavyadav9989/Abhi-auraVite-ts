@@ -153,8 +153,7 @@ export default function ActionPanel({
         await Vehicle.update(transaction.vehicle_id, {
           sold: true,
           sold_at: timestamp,
-          sold_to_dealer_id: transaction.buyer_id,
-          inventory_type: 'private'
+          sold_to_dealer_id: transaction.buyer_id
         });
       } catch {}
 
