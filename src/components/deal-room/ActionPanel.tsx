@@ -151,16 +151,10 @@ export default function ActionPanel({
         // @ts-ignore Vehicle imported from entities
         const { Vehicle } = await import('@/api/entities');
         await Vehicle.update(transaction.vehicle_id, {
-          inventory_type: 'private',
-          custom_attributes: {
-            ...(transaction?.vehicle_custom_attributes || {}),
-            sold: {
-              buyer_id: transaction.buyer_id,
-              buyer_name: currentDealer?.business_name || undefined,
-              transaction_id: transaction.id,
-              paid_at: timestamp
-            }
-          }
+          sold: true,
+          sold_at: timestamp,
+          sold_to_dealer_id: transaction.buyer_id,
+          inventory_type: 'private'
         });
       } catch {}
 

@@ -131,17 +131,10 @@ export default function PaymentCheckout() {
       // Also mark vehicle as sold and store buyer info for inventory visibility
       try {
         await Vehicle.update(transaction.vehicle_id, {
-          // Hide from marketplace by making it non-public
-          inventory_type: 'private',
-          custom_attributes: {
-            ...(vehicle?.custom_attributes || {}),
-            sold: {
-              buyer_id: transaction.buyer_id,
-              buyer_name: buyer?.business_name || null,
-              transaction_id: transaction.id,
-              paid_at: timestamp
-            }
-          }
+          sold: true,
+          sold_at: timestamp,
+          sold_to_dealer_id: transaction.buyer_id,
+          inventory_type: 'private'
         });
       } catch (e) {
         console.warn('Vehicle update to sold failed (non-blocking):', e);
