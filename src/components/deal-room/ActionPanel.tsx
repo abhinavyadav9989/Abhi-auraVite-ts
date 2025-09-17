@@ -9,6 +9,7 @@ import { Transaction, Payment } from '@/api/entities';
 import EscrowVisual from '../payments/EscrowVisual';
 import { useToast } from "@/components/ui/use-toast";
 import { createPageUrl } from '@/utils';
+import { NotificationService } from '@/services/notificationService';
 import { Download, Eye } from "lucide-react";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -103,6 +104,20 @@ export default function ActionPanel({
         title: "Action Successful",
         description: details || `Deal status updated successfully.`,
       });
+
+      // Notify counterparty on key milestones
+      try {
+        const recipientId = userRole === 'buyer' ? transaction.seller_id : transaction.buyer_id;
+        const actorName = currentDealer?.business_name || 'Dealer';
+        if (recipientId && newStatus === 'accepted') {
+          NotificationService.createStatusChangeNotification(
+            recipientId,
+            transaction.id,
+            'accepted',
+            actorName
+          ).catch(() => {});
+        }
+      } catch {}
 
     } catch (error) {
       console.error(`Failed to perform action: ${newStatus}`, error);
@@ -406,6 +421,20 @@ export default function ActionPanel({
             userRole={userRole}
             onCounter={(amount) => {
               handleAction('negotiating', { current_offer: amount }, `Counter offer of ₹${(amount / 100000).toFixed(1)}L made.`);
+              // Fire a counter-offer notification to the counterparty (recipient)
+              try {
+                const recipientId = userRole === 'buyer' ? transaction.seller_id : transaction.buyer_id;
+                const senderName = currentDealer?.business_name || 'Dealer';
+                if (recipientId) {
+                  NotificationService.createCounterOfferNotification(
+                    /* buyerId: send to recipient dealer */ recipientId,
+                    /* sellerId: sender dealer id */ currentDealer.id,
+                    transaction.id,
+                    amount,
+                    senderName
+                  ).catch(() => {});
+                }
+              } catch {}
             }}
             onCancel={() => setShowCounter(false)}
           />

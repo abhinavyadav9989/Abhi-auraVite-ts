@@ -110,6 +110,9 @@ export default function VehicleListCard({
                   {vehicle.variant && `${vehicle.variant} • `}
                   {vehicle.registration_number}
                 </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Wishlisted {Number(vehicle?.wishlists_count || 0)}
+                  </p>
               </div>
               
               {/* Price */}

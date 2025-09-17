@@ -11,6 +11,7 @@ import { ArrowLeft, CreditCard, IndianRupee, Download, Building, CheckCircle } f
 import { createPageUrl } from '@/utils';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { NotificationService } from '@/services/notificationService';
 
 export default function PaymentCheckout() {
   const location = useLocation();
@@ -159,6 +160,18 @@ export default function PaymentCheckout() {
           }
         }
       }));
+
+      // Notify seller about payment received
+      try {
+        if (transaction?.seller_id) {
+          await NotificationService.createStatusChangeNotification(
+            transaction.seller_id,
+            transaction.id,
+            'paid',
+            buyer?.business_name || 'Buyer'
+          );
+        }
+      } catch {}
     } catch (e) {
       console.error('Payment simulation failed', e);
       setError('Payment failed. Please try again.');

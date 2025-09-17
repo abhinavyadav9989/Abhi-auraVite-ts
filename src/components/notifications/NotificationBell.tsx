@@ -30,7 +30,15 @@ export default function NotificationBell() {
 
   useEffect(() => {
     loadNotifications();
-    setupRealtimeSubscription();
+    const unsubscribe = setupRealtimeSubscription();
+    // Gentle polling fallback to catch any missed realtime events
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 15000);
+    return () => {
+      try { unsubscribe && unsubscribe(); } catch {}
+      clearInterval(interval);
+    };
   }, []);
 
   const loadNotifications = async () => {
@@ -66,7 +74,20 @@ export default function NotificationBell() {
           setNotifications(prev => [payload.new as Notification, ...prev.slice(0, 9)]);
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications'
+        },
+        (payload) => {
+          setNotifications(prev => prev.map(n => n.id === (payload.new as any)?.id ? (payload.new as any) : n));
+        }
+      )
+      .subscribe((status) => {
+        console.log('Notifications realtime status:', status);
+      });
 
     return () => subscription.unsubscribe();
   };

@@ -13,14 +13,15 @@ export interface CreateNotificationData {
 export class NotificationService {
   static async createNotification(data: CreateNotificationData) {
     try {
-      const { data: notification, error } = await supabase
+      // Important: do not call .select() here. The sender may not have SELECT
+      // permission on the inserted row (recipient-only), which would cause 403.
+      // We use return=minimal to avoid a follow-up read.
+      const { error } = await supabase
         .from('notifications')
-        .insert([data])
-        .select()
-        .single();
+        .insert([data]);
 
       if (error) throw error;
-      return notification;
+      return { ok: true } as any;
     } catch (error) {
       console.error('Error creating notification:', error);
       throw error;

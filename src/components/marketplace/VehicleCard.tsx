@@ -21,6 +21,7 @@ import {
   GitCompareArrows
 } from 'lucide-react';
 import { Shortlist } from '@/api/entities';
+import { NotificationService } from '@/services/notificationService';
 
 type VehicleCardProps = {
   vehicle: any;
@@ -137,6 +138,21 @@ export default function VehicleCard({
       await Shortlist.update(favShortlist.id, { vehicle_ids: updatedIds });
       setIsInShortlist(!isCurrentlyInList);
       
+      // Send wishlist notification to the vehicle owner when added (not on remove)
+      if (!isCurrentlyInList && vehicleData.dealer_id && currentDealer?.id) {
+        try {
+          await NotificationService.createNotification({
+            user_id: vehicleData.dealer_id,
+            type: 'wishlist',
+            title: 'Vehicle wishlisted',
+            message: `${currentDealer.business_name || 'A dealer'} wishlisted your vehicle ${vehicleData.year} ${vehicleData.make} ${vehicleData.model}`,
+            deal_id: undefined,
+            related_user_id: currentDealer.id,
+            metadata: { vehicle_id: vehicleData.id, vehicle_title: `${vehicleData.year} ${vehicleData.make} ${vehicleData.model}` }
+          } as any);
+        } catch {}
+      }
+
       toast({
         title: !isCurrentlyInList ? "Added to Shortlist" : "Removed from Shortlist",
         description: `${vehicleData.make} ${vehicleData.model} has been updated in your favorites.`,
@@ -292,6 +308,11 @@ export default function VehicleCard({
                   <span>{dealerData.business_name}</span>
                 </div>
               )}
+
+              {/* Wishlists count */}
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Wishlisted {Number((vehicle as any)?.wishlists_count || 0)}
+              </div>
             </div>
 
             {/* KYB Verification Notice for Unverified Users */}
