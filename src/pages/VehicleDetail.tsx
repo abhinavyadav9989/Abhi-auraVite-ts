@@ -176,9 +176,18 @@ export default function VehicleDetail() {
         });
       }
 
-      // Determine sold state via custom_attributes or completed transaction
+      // Determine sold state: prefer canonical fields, then fall back to legacy/custom or transactions
       let computedSoldInfo: { buyer_name?: string } | null = null;
-      if (vehicleData?.custom_attributes && vehicleData.custom_attributes.sold) {
+      if (vehicleData?.sold) {
+        if (vehicleData?.sold_to_dealer_id) {
+          try {
+            const buyerDealer = await Dealer.get(vehicleData.sold_to_dealer_id);
+            computedSoldInfo = { buyer_name: buyerDealer?.business_name };
+          } catch { computedSoldInfo = { buyer_name: undefined }; }
+        } else {
+          computedSoldInfo = { buyer_name: undefined };
+        }
+      } else if (vehicleData?.custom_attributes && vehicleData.custom_attributes.sold) {
         computedSoldInfo = { buyer_name: vehicleData.custom_attributes.sold?.buyer_name };
       } else {
         try {
