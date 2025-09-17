@@ -89,12 +89,22 @@ export default function ActionPanel({
       
       const updatedTimeline = [...(transaction.timeline || []), timelineEvent];
 
-      await Transaction.update(transaction.id, {
-        status: newStatus,
+      // Important: spread caller-provided updates first so explicit fields below cannot be overridden
+      const payload: any = {
+        ...updateData,
         last_action_by: currentDealer.id,
         timeline: updatedTimeline,
-        ...updateData,
-      });
+        status: newStatus,
+      };
+
+      // Guard against accidental empty-string status
+      if (typeof payload.status !== 'string' || payload.status.trim() === '') {
+        delete payload.status;
+      }
+
+      // Debug: log payload before sending to backend
+      try { console.log('Transaction.update payload', JSON.parse(JSON.stringify(payload))); } catch {}
+      await Transaction.update(transaction.id, payload);
       
       onUpdate();
       setShowCounter(false);

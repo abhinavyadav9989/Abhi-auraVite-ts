@@ -58,9 +58,27 @@ class EntityAdapter {
 
   // Mimic Base44's update() method
   async update(id: string, data: any) {
+    // Defensive sanitation: remove empty-string enum values and coerce numbers
+    const sanitized: any = { ...data };
+    // Known enum-like fields that must not be empty strings
+    const enumFields = new Set(['status']);
+    for (const key of Object.keys(sanitized)) {
+      const value = sanitized[key];
+      if (enumFields.has(key) && typeof value === 'string' && value.trim() === '') {
+        delete sanitized[key];
+      }
+      // Coerce numeric strings with commas to numbers (e.g., "5,57,70,000")
+      if (typeof value === 'string' && /[0-9],[0-9]/.test(value)) {
+        const numeric = Number(value.replace(/,/g, ''));
+        if (!Number.isNaN(numeric)) sanitized[key] = numeric;
+      }
+    }
+
+    // Debug: log sanitized object
+    try { console.log(`EntityAdapter.update(${this.tableName}) sanitized`, JSON.parse(JSON.stringify(sanitized))); } catch {}
     const { data: result, error } = await supabase
       .from(this.tableName)
-      .update(data)
+      .update(sanitized)
       .eq('id', id)
       .select()
       .single();
