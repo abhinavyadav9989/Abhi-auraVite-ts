@@ -77,6 +77,7 @@ export default function Bank() {
           const counterparty = dealerMap[counterpartyId];
           const vehicle = vehicleMap[t.vehicle_id];
           const amount = Number(t.final_price || t.current_offer || t.amount || 0);
+          const asking = Number(vehicle?.asking_price || t.asking_price || 0);
           return {
             ...t,
             type: isPurchase ? 'purchase' : 'sale',
@@ -88,7 +89,8 @@ export default function Bank() {
             buyer_name: dealerMap[t.buyer_id]?.business_name,
             buyer_address: dealerMap[t.buyer_id] ? `${dealerMap[t.buyer_id]?.city || ''}${dealerMap[t.buyer_id]?.state ? ', ' + dealerMap[t.buyer_id]?.state : ''}` : '—',
             vehicle_title: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : (t.vehicle_title || t.vehicle_id),
-            amount_number: amount
+            amount_number: amount,
+            asking_price_number: asking
           };
         });
 
@@ -338,7 +340,7 @@ export default function Bank() {
                                       <Detail label="Buyer ID" value={tx.buyer_id || '—'} mono />
                                       <Detail label="Buyer name" value={tx.buyer_name || '—'} />
                                       <Detail label="Payment mode" value={tx.payment_method || '—'} />
-                                      <Detail label="Actual price" value={`₹${(tx.amount_number || 0).toLocaleString('en-IN')}`} />
+                                      <Detail label="Actual price (asking)" value={`₹${(tx.asking_price_number || 0).toLocaleString('en-IN')}`} />
                                       <Detail label="Selling/Buying price (final)" value={`₹${(tx.amount_number || 0).toLocaleString('en-IN')}`} />
                                       <Detail label="Counterparty address" value={tx.type === 'purchase' ? (tx.seller_address || '—') : (tx.buyer_address || '—')} />
                                     </div>

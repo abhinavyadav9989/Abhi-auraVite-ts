@@ -8,10 +8,8 @@ import CounterOfferPanel from './CounterOfferPanel';
 import { Transaction, Payment } from '@/api/entities';
 import EscrowVisual from '../payments/EscrowVisual';
 import { useToast } from "@/components/ui/use-toast";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { createPageUrl } from '@/utils';
-import { CreditCard, QrCode, Download, Eye } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -30,7 +28,6 @@ export default function ActionPanel({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [paymentMode, setPaymentMode] = useState<'card' | 'upi'>('card');
   const [paymentMeta, setPaymentMeta] = useState<{ id: string; timestamp: string; mode: string } | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -126,7 +123,7 @@ export default function ActionPanel({
     try {
       const updatedTimeline = [
         ...(transaction.timeline || []),
-        { timestamp, status: 'paid', user_id: currentDealer.id, details: `Payment via ${paymentMode.toUpperCase()} (${txnId}).` },
+        { timestamp, status: 'paid', user_id: currentDealer.id, details: `Payment processed (${txnId}).` },
         { timestamp, status: 'completed', user_id: currentDealer.id, details: 'Deal closed after payment.' }
       ];
 
@@ -135,13 +132,13 @@ export default function ActionPanel({
         amount_paid: transaction.final_price || transaction.current_offer,
         last_action_by: currentDealer.id,
         timeline: updatedTimeline,
-        payment_method: paymentMode === 'card' ? 'card' : 'upi',
+        payment_method: 'bank_transfer',
         transaction_date: timestamp,
         metadata: {
           ...(transaction.metadata || {}),
           payment: {
             txn_id: txnId,
-            mode: paymentMode === 'card' ? 'card' : 'upi',
+            mode: 'bank_transfer',
             paid_at: timestamp,
             amount: transaction.final_price || transaction.current_offer,
             currency: transaction.currency || 'INR'
@@ -167,7 +164,7 @@ export default function ActionPanel({
         });
       } catch {}
 
-      setPaymentMeta({ id: txnId, timestamp, mode: paymentMode === 'card' ? 'Credit Card' : 'UPI' });
+      setPaymentMeta({ id: txnId, timestamp, mode: 'Bank Transfer' });
       toast({ title: 'Payment Successful', description: 'Receipt is ready below.' });
       onUpdate();
     } catch (error) {
@@ -276,16 +273,6 @@ export default function ActionPanel({
           return (
             <div className="space-y-3">
               <p className="text-sm text-center font-medium">Payment Required</p>
-              <RadioGroup value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)} className="grid grid-cols-2 gap-2">
-                <Label htmlFor="card" className="border border-slate-200 dark:border-slate-700 rounded p-2 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
-                  <RadioGroupItem id="card" value="card" />
-                  <CreditCard className="w-4 h-4" /> Card
-                </Label>
-                <Label htmlFor="upi" className="border border-slate-200 dark:border-slate-700 rounded p-2 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
-                  <RadioGroupItem id="upi" value="upi" />
-                  <QrCode className="w-4 h-4" /> UPI
-                </Label>
-              </RadioGroup>
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700" 
                 onClick={() => {

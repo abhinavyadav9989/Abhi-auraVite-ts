@@ -204,9 +204,9 @@ export default function DealRoom() {
 
       const updatedMessages = [...(transaction.messages || []), message];
 
+      // Only update messages. Do NOT touch last_action_by so action buttons don't disappear
       await Transaction.update(transaction.id, {
-        messages: updatedMessages,
-        last_action_by: currentDealer.id
+        messages: updatedMessages
       });
 
       setTransaction(prev => ({

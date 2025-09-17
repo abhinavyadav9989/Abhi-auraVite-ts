@@ -32,14 +32,14 @@ export default function CounterOfferPanel({ currentOffer, userRole, onCounter, o
   };
   
   return (
-    <Card className="bg-blue-50 border-blue-200">
+    <Card className="bg-blue-50 border-blue-200 dark:bg-slate-800/80 dark:border-slate-700">
       <CardHeader>
-        <CardTitle>Counter Offer</CardTitle>
+        <CardTitle className="dark:text-slate-100">Counter Offer</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="counter-offer-amount">Your Counter Offer Amount</Label>
+            <Label htmlFor="counter-offer-amount" className="dark:text-slate-200">Your Counter Offer Amount</Label>
             <div className="flex items-center gap-2 mt-1">
                {/* MP-15: Quick Offer Buttons */}
               <Button type="button" variant="outline" size="icon" onClick={() => adjustOffer(-10000)}>
@@ -50,7 +50,7 @@ export default function CounterOfferPanel({ currentOffer, userRole, onCounter, o
                 type="text"
                 value={formatCurrency(counterAmount)}
                 onChange={handleAmountChange}
-                className="text-center text-lg font-bold"
+                className="text-center text-lg font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
               />
               <Button type="button" variant="outline" size="icon" onClick={() => adjustOffer(10000)}>
                 <ArrowUp className="w-4 h-4" />

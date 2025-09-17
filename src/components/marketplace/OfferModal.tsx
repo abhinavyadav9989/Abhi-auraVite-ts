@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import Numpad from './Numpad';
+import { NotificationService } from '@/services/notificationService';
 
 const formatCurrency = (amount) => `₹ ${amount.toLocaleString('en-IN')}`;
 
@@ -69,6 +70,17 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
         }]
       });
       
+      // Notify seller about new deal/offer
+      try {
+        await NotificationService.createNewDealNotification(
+          vehicle.dealer_id, // recipient (seller)
+          currentDealer.id,  // sender (buyer)
+          newTransaction.id,
+          `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+          currentDealer?.business_name || 'Buyer'
+        );
+      } catch (e) { console.warn('Notification create failed', e); }
+
       toast({
         title: 'Offer Sent!',
         description: `Your offer for the ${vehicle.make} ${vehicle.model} has been sent.`,
