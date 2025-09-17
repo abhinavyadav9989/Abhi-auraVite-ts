@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { X, Star, MapPin, Phone, Users } from 'lucide-react';
+import { X, Star, MapPin, Phone, Users, Building2 } from 'lucide-react';
+import { supabase } from '@/api/supabaseClient';
 
 type Props = {
   dealerId: string;
@@ -16,6 +17,7 @@ export default function DealerInfoModal({ dealerId, open, onClose }: Props) {
   const [dealer, setDealer] = useState<any>(null);
   const [inventory, setInventory] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [yourRating, setYourRating] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [tab, setTab] = useState('overview');
@@ -33,6 +35,20 @@ export default function DealerInfoModal({ dealerId, open, onClose }: Props) {
 
         setDealer(d);
         setInventory(inv || []);
+
+        // Fetch branches for this dealer
+        const { data: branchesData, error: branchesError } = await supabase
+          .from('branches')
+          .select('*')
+          .eq('dealer_id', dealerId)
+          .order('created_at', { ascending: true });
+
+        if (branchesError) {
+          console.error('Error loading branches:', branchesError);
+          setBranches([]);
+        } else {
+          setBranches(branchesData || []);
+        }
 
         const revs = await DealerRating.filter({ rated_dealer_id: dealerId }).catch(() => []);
         setReviews(revs || []);
@@ -105,10 +121,45 @@ export default function DealerInfoModal({ dealerId, open, onClose }: Props) {
               <TabsContent value="branches" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Branches</CardTitle>
+                    <CardTitle className="text-base">Branches ({branches.length})</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-sm text-slate-600">No branches listed.</div>
+                    {branches.length === 0 ? (
+                      <div className="text-sm text-slate-600">No branches listed.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {branches.map((branch: any) => (
+                          <div key={branch.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                            <div className="flex items-start gap-3">
+                              <Building2 className="w-5 h-5 text-slate-500 mt-0.5" />
+                              <div className="flex-1">
+                                <div className="font-medium text-slate-900 dark:text-white">
+                                  {branch.name}
+                                  {branch.is_default && (
+                                    <Badge variant="secondary" className="ml-2 text-xs">Main</Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                                  <div className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {branch.address}
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    {branch.city}, {branch.state}
+                                  </div>
+                                  {branch.contact_number && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <Phone className="w-3 h-3" />
+                                      <span className="text-xs">{branch.contact_number}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
