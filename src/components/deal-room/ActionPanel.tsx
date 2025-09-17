@@ -10,6 +10,7 @@ import EscrowVisual from '../payments/EscrowVisual';
 import { useToast } from "@/components/ui/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { createPageUrl } from '@/utils';
 import { CreditCard, QrCode, Download, Eye } from "lucide-react";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -287,10 +288,13 @@ export default function ActionPanel({
               </RadioGroup>
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700" 
-                onClick={simulatePayment}
+                onClick={() => {
+                  // Navigate to the dedicated payment checkout page
+                  navigate(createPageUrl('PaymentCheckout') + `?id=${transaction.id}`);
+                }}
                 disabled={isProcessing}
               >
-                {isProcessing ? 'Processing…' : 'Pay Now'}
+                Proceed to Payment
               </Button>
               {showReceipt && paymentMeta && (
                 <div className="text-xs p-3 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">

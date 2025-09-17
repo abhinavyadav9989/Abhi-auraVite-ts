@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Dealer, Transaction, Vehicle } from '@/api/entities';
-import { ArrowLeft, CreditCard, IndianRupee, Download, QrCode } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Dealer, Transaction, Vehicle, BankDetails, User } from '@/api/entities';
+import { ArrowLeft, CreditCard, IndianRupee, Download, Building, CheckCircle } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -19,11 +20,12 @@ export default function PaymentCheckout() {
   const [vehicle, setVehicle] = useState<any>(null);
   const [buyer, setBuyer] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
+  const [buyerBankAccounts, setBuyerBankAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [paymentMode, setPaymentMode] = useState<'card' | 'upi'>('card');
-  const [paymentMeta, setPaymentMeta] = useState<{ id: string; mode: string; timestamp: string } | null>(null);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
+  const [paymentMeta, setPaymentMeta] = useState<{ id: string; bankAccount: any; timestamp: string } | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -45,14 +47,22 @@ export default function PaymentCheckout() {
           return;
         }
         setTransaction(tx);
-        const [veh, buyerDealer, sellerDealer] = await Promise.all([
+        const [veh, buyerDealer, sellerDealer, bankAccounts] = await Promise.all([
           Vehicle.get(tx.vehicle_id),
           Dealer.get(tx.buyer_id),
           Dealer.get(tx.seller_id),
+          BankDetails.filter({ dealer_id: tx.buyer_id }),
         ]);
         setVehicle(veh);
         setBuyer(buyerDealer);
         setSeller(sellerDealer);
+        setBuyerBankAccounts(bankAccounts || []);
+        
+        // Set default selected bank account to primary if available
+        const primaryAccount = (bankAccounts || []).find(acc => acc.is_primary);
+        if (primaryAccount) {
+          setSelectedBankAccount(primaryAccount.id);
+        }
       } catch (e) {
         console.error(e);
         setError('Failed to load payment details.');
@@ -63,13 +73,21 @@ export default function PaymentCheckout() {
   }, [params]);
 
   const formatLakh = (amount?: number) => (amount ? `₹${(amount / 100000).toFixed(2)}L` : '₹0.00L');
+  
+  const maskAccountNumber = (accountNumber: string) => {
+    if (!accountNumber) return '';
+    return accountNumber.replace(/.(?=.{4})/g, '•');
+  };
 
   const handlePay = async () => {
-    if (!transaction || !vehicle) return;
+    if (!transaction || !vehicle || !selectedBankAccount) return;
+
+    const selectedBank = buyerBankAccounts.find(acc => acc.id === selectedBankAccount);
+    if (!selectedBank) return;
 
     const txnId = `TXN-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     const timestamp = new Date().toISOString();
-    setPaymentMeta({ id: txnId, mode: paymentMode === 'card' ? 'Credit Card' : 'UPI', timestamp });
+    setPaymentMeta({ id: txnId, bankAccount: selectedBank, timestamp });
 
     // Mark paid and completed, set amount_paid and add timeline event
     try {
@@ -79,7 +97,7 @@ export default function PaymentCheckout() {
           timestamp,
           status: 'paid',
           user_id: transaction.buyer_id,
-          details: `Payment completed via ${paymentMode === 'card' ? 'Credit Card' : 'UPI'} (${txnId}).`,
+          details: `Payment completed via ${selectedBank.bank_name} (${txnId}).`,
         },
         {
           timestamp,
@@ -94,13 +112,15 @@ export default function PaymentCheckout() {
         amount_paid: transaction.final_price || transaction.current_offer,
         last_action_by: transaction.buyer_id,
         timeline: updatedTimeline,
-        payment_method: paymentMode === 'card' ? 'card' : 'upi',
+        payment_method: 'bank_transfer',
         transaction_date: timestamp,
         metadata: {
           ...(transaction.metadata || {}),
           payment: {
             txn_id: txnId,
-            mode: paymentMode === 'card' ? 'card' : 'upi',
+            bank_account_id: selectedBank.id,
+            bank_name: selectedBank.bank_name,
+            account_number: selectedBank.account_number,
             paid_at: timestamp,
             amount: transaction.final_price || transaction.current_offer,
             currency: transaction.currency || 'INR'
@@ -132,13 +152,15 @@ export default function PaymentCheckout() {
         status: 'completed',
         amount_paid: prev.final_price || prev.current_offer,
         timeline: updatedTimeline,
-        payment_method: paymentMode === 'card' ? 'card' : 'upi',
+        payment_method: 'bank_transfer',
         transaction_date: timestamp,
         metadata: {
           ...(prev?.metadata || {}),
           payment: {
             txn_id: txnId,
-            mode: paymentMode === 'card' ? 'card' : 'upi',
+            bank_account_id: selectedBank.id,
+            bank_name: selectedBank.bank_name,
+            account_number: selectedBank.account_number,
             paid_at: timestamp,
             amount: prev.final_price || prev.current_offer,
             currency: prev.currency || 'INR'
@@ -165,7 +187,8 @@ export default function PaymentCheckout() {
         <table style="width:100%; border-collapse:collapse;">
           <tr><td style="padding:6px; font-weight:600; background:#f1f5f9;">Transaction ID</td><td style="padding:6px;">${paymentMeta.id}</td></tr>
           <tr><td style="padding:6px; font-weight:600; background:#f1f5f9;">Payment Time</td><td style="padding:6px;">${new Date(paymentMeta.timestamp).toLocaleString()}</td></tr>
-          <tr><td style="padding:6px; font-weight:600; background:#f1f5f9;">Payment Mode</td><td style="padding:6px;">${paymentMeta.mode}</td></tr>
+          <tr><td style="padding:6px; font-weight:600; background:#f1f5f9;">Payment Mode</td><td style="padding:6px;">Bank Transfer - ${paymentMeta.bankAccount.bank_name}</td></tr>
+          <tr><td style="padding:6px; font-weight:600; background:#f1f5f9;">Account Number</td><td style="padding:6px;">${maskAccountNumber(paymentMeta.bankAccount.account_number)}</td></tr>
         </table>
         <h2 style="margin-top:16px; font-weight:700;">Buyer</h2>
         <table style="width:100%; border-collapse:collapse;">
@@ -275,22 +298,55 @@ export default function PaymentCheckout() {
             <Separator className="dark:bg-slate-800" />
 
             <section>
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Payment Method</h3>
-              <RadioGroup value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)} className="grid md:grid-cols-2 gap-3">
-                <Label htmlFor="card" className="border border-slate-200 dark:border-slate-700 rounded p-3 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
-                  <RadioGroupItem id="card" value="card" />
-                  <CreditCard className="w-4 h-4" /> Credit Card
-                </Label>
-                <Label htmlFor="upi" className="border border-slate-200 dark:border-slate-700 rounded p-3 flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800">
-                  <RadioGroupItem id="upi" value="upi" />
-                  <QrCode className="w-4 h-4" /> UPI
-                </Label>
-              </RadioGroup>
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Select Bank Account</h3>
+              {buyerBankAccounts.length === 0 ? (
+                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">No bank accounts found.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate(createPageUrl('Bank'))}
+                  >
+                    Add Bank Account
+                  </Button>
+                </div>
+              ) : (
+                <RadioGroup value={selectedBankAccount} onValueChange={setSelectedBankAccount} className="space-y-3">
+                  {buyerBankAccounts.map((account) => (
+                    <Label 
+                      key={account.id} 
+                      htmlFor={account.id} 
+                      className="border border-slate-200 dark:border-slate-700 rounded p-3 flex items-center gap-3 cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                      <RadioGroupItem id={account.id} value={account.id} />
+                      <Building className="w-4 h-4 text-slate-500" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{account.bank_name}</span>
+                          {account.is_primary && (
+                            <Badge variant="secondary" className="text-xs">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Primary
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-slate-600 dark:text-slate-300">
+                          {maskAccountNumber(account.account_number)} • {account.account_type || 'Current'}
+                        </div>
+                      </div>
+                    </Label>
+                  ))}
+                </RadioGroup>
+              )}
             </section>
 
             <div className="flex items-center justify-between pt-2">
               {!paymentMeta ? (
-                <Button className="gap-2" onClick={handlePay}>
+                <Button 
+                  className="gap-2" 
+                  onClick={handlePay}
+                  disabled={!selectedBankAccount || buyerBankAccounts.length === 0}
+                >
                   Pay Now
                 </Button>
               ) : (

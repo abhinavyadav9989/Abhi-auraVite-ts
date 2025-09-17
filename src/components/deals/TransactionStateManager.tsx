@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Transaction } from '@/api/entities';
 import { AuditLog } from '@/api/entities';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/components/formatters';
+import { createPageUrl } from '@/utils';
 
 // Define valid state transitions for transactions
 const TRANSACTION_STATE_MACHINE = {
@@ -70,6 +72,7 @@ const STATUS_ICONS = {
 export default function TransactionStateManager({ transaction, user, userRole, onStateChange }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const currentStatus = transaction?.status || 'offer_made';
   const allowedTransitions = TRANSACTION_STATE_MACHINE[currentStatus] || [];
@@ -167,7 +170,10 @@ export default function TransactionStateManager({ transaction, user, userRole, o
       buttons.push(
         <Button 
           key="proceed-payment"
-          onClick={() => handleStatusTransition('payment_pending')}
+          onClick={() => {
+            // Navigate to the dedicated payment checkout page
+            navigate(createPageUrl('PaymentCheckout') + `?id=${transaction.id}`);
+          }}
           disabled={isProcessing}
           className="bg-blue-600 hover:bg-blue-700"
         >
