@@ -68,6 +68,7 @@ import Authentication from "./Authentication";
 import AdminUserDetails from "./AdminUserDetails";
 import BusinessVerification from "./BusinessVerification";
 import Bank from "./Bank";
+import Notifications from "./Notifications";
 
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -141,6 +142,8 @@ const PAGES = {
     DataMigrationPanel: DataMigrationPanel,
     
     Authentication: Authentication,
+    
+    Notifications: Notifications,
     
 }
 
@@ -236,6 +239,8 @@ function PagesContent() {
                 <Route path="/DataMigrationPanel" element={<DataMigrationPanel />} />
                 
                 <Route path="/Authentication" element={<Authentication />} />
+                
+                <Route path="/Notifications" element={<Notifications />} />
                 
                 {/* Catch-all route - auth-aware redirect */}
                 <Route path="*" element={<AuthAwareFallback />} />

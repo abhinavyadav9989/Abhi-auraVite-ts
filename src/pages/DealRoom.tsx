@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Transaction, Vehicle, Dealer, Payment, LogisticsOrder, RTOApplication } from "@/api/entities";
 import { User } from "@/api/entities";
+import { supabase } from "@/api/supabaseClient";
+import { NotificationService } from "@/services/notificationService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,7 @@ export default function DealRoom() {
 
   const [newMessage, setNewMessage] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
   
   // Modal states
   const [showLogisticsModal, setShowLogisticsModal] = useState(false);
@@ -69,14 +72,49 @@ export default function DealRoom() {
 
   useEffect(() => {
     loadDealRoomData();
-
-    // Set up real-time updates (mock WebSocket)
-    const wsInterval = setInterval(() => {
-      refreshData();
-    }, 10000);
-
-    return () => clearInterval(wsInterval);
   }, [location.search]);
+
+  // Set up real-time subscription for transaction updates
+  useEffect(() => {
+    if (!transaction?.id) return;
+
+    console.log('Setting up real-time subscription for transaction:', transaction.id);
+    
+    // Subscribe to changes on the specific transaction
+    const subscription = supabase
+      .channel(`transaction-${transaction.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'transactions',
+          filter: `id=eq.${transaction.id}`
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          setRealtimeStatus('connected');
+          
+          // Update the transaction data with the new changes
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setTransaction(prev => ({
+              ...prev,
+              ...payload.new
+            }));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+        setRealtimeStatus(status);
+      });
+
+    // Cleanup subscription on unmount or transaction change
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      subscription.unsubscribe();
+    };
+  }, [transaction?.id]);
 
   const loadDealRoomData = async () => {
     setIsLoading(true);
@@ -177,6 +215,27 @@ export default function DealRoom() {
       }));
 
       setNewMessage("");
+      
+      // Create notification for the other party
+      try {
+        const recipientId = userRole === 'buyer' ? seller?.id : buyer?.id;
+        const senderName = currentDealer?.business_name || 'Unknown';
+        
+        if (recipientId) {
+          await NotificationService.createMessageNotification(
+            recipientId,
+            currentDealer.id,
+            transaction.id,
+            senderName,
+            newMessage.trim()
+          );
+        }
+      } catch (error) {
+        console.error('Error creating message notification:', error);
+      }
+      
+      // Show a brief notification that message was sent
+      console.log('Message sent successfully - real-time update will be triggered');
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -356,6 +415,20 @@ export default function DealRoom() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Real-time status indicator */}
+            <div className="flex items-center gap-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${
+                realtimeStatus === 'connected' ? 'bg-green-500' : 
+                realtimeStatus === 'connecting' ? 'bg-yellow-500' : 
+                'bg-red-500'
+              }`} />
+              <span className="text-slate-600 dark:text-slate-400">
+                {realtimeStatus === 'connected' ? 'Live' : 
+                 realtimeStatus === 'connecting' ? 'Connecting...' : 
+                 'Offline'}
+              </span>
+            </div>
+            
             <Button
               variant="outline"
               size="sm"

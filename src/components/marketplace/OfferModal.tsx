@@ -99,7 +99,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] dark:bg-slate-900 dark:text-slate-100">
           <DialogHeader>
             <DialogTitle>Make an Offer</DialogTitle>
             <DialogDescription>
@@ -107,7 +107,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
               <br />
               Asking Price: {formatCurrency(vehicle.asking_price)}
               {aiMedian !== vehicle.asking_price && (
-                <span className="block text-sm text-blue-600 mt-1">
+                <span className="block text-sm text-blue-600 dark:text-blue-400 mt-1">
                   AI Market Value: {formatCurrency(aiMedian)}
                 </span>
               )}
@@ -124,7 +124,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
           ) : (
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="offer-amount">Your Offer</Label>
+                <Label htmlFor="offer-amount" className="dark:text-slate-200">Your Offer</Label>
                 <div className="flex items-center gap-2">
                   {/* MP-15: Quick adjustment buttons */}
                   <Button
@@ -141,7 +141,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
                     type="number"
                     value={offerAmount}
                     onChange={(e) => setOfferAmount(Number(e.target.value))}
-                    className="flex-1 text-center font-bold"
+                    className="flex-1 text-center font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                     step="1000"
                   />
                   <Button
@@ -191,7 +191,7 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
                     +₹50K
                   </Button>
                 </div>
-                <p className="text-center text-lg font-bold text-blue-600">
+                <p className="text-center text-lg font-bold text-blue-600 dark:text-blue-400">
                   {formatCurrency(offerAmount)}
                 </p>
               </div>

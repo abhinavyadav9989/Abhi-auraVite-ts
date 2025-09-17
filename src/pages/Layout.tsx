@@ -16,6 +16,7 @@ import {
   Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft,
   CreditCard
 } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import BottomNavigation from "@/components/ui/bottom-navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 
@@ -188,6 +189,7 @@ export default function Layout({ children, currentPageName }) {
                 <span className="font-bold text-slate-900 dark:text-white">Aura</span>
               </Link>
               <div className="flex items-center gap-2">
+                <NotificationBell />
                 <ThemeToggle />
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
                   <Menu className="w-6 h-6" />
@@ -228,8 +230,9 @@ export default function Layout({ children, currentPageName }) {
           </main>
         </div>
 
-        {/* Theme toggle floating on desktop */}
-        <div className="hidden lg:block fixed top-4 right-4 z-40">
+        {/* Theme toggle and notifications floating on desktop */}
+        <div className="hidden lg:block fixed top-4 right-4 z-40 flex items-center gap-2">
+          <NotificationBell />
           <ThemeToggle />
         </div>
 
