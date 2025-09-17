@@ -102,8 +102,7 @@ export default function ActionPanel({
         delete payload.status;
       }
 
-      // Debug: log payload before sending to backend
-      try { console.log('Transaction.update payload', JSON.parse(JSON.stringify(payload))); } catch {}
+      // Debug log removed after fix
       await Transaction.update(transaction.id, payload);
       
       onUpdate();

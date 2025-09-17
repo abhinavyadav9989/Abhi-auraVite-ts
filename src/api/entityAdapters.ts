@@ -74,8 +74,7 @@ class EntityAdapter {
       }
     }
 
-    // Debug: log sanitized object
-    try { console.log(`EntityAdapter.update(${this.tableName}) sanitized`, JSON.parse(JSON.stringify(sanitized))); } catch {}
+    // Debug log removed after fix
     const { data: result, error } = await supabase
       .from(this.tableName)
       .update(sanitized)
