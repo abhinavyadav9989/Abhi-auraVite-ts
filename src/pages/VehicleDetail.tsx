@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Vehicle, VehicleCondition, VehicleAsset, VehicleDocument, Branch } from '@/api/entities';
+import { Vehicle, VehicleAsset, VehicleDocument, Branch } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
 import { Transaction } from '@/api/entities';
@@ -68,7 +68,7 @@ export default function VehicleDetail() {
   
   // Inspections state
   const [inspections, setInspections] = useState([]);
-  const [condition, setCondition] = useState<any>(null);
+  // Condition data is now stored directly in the vehicle record
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
   const [docUrls, setDocUrls] = useState<{ rc: string[]; insurance: string[] }>({ rc: [], insurance: [] });
   const [showInspectorPanel, setShowInspectorPanel] = useState(false);
@@ -130,14 +130,12 @@ export default function VehicleDetail() {
       setUser(currentUser);
       setVehicle(vehicleData);
 
-      // Load condition, audio assets and documents
+      // Load audio assets and documents
       try {
-        const [condRows, assets, documents] = await Promise.all([
-          VehicleCondition.filter({ vehicle_id: vehicleData.id }).catch(() => []),
+        const [assets, documents] = await Promise.all([
           VehicleAsset.filter({ vehicle_id: vehicleData.id }).catch(() => []),
           VehicleDocument.filter({ vehicle_id: vehicleData.id }).catch(() => []),
         ]);
-        setCondition(condRows?.[0] || null);
         setAudioUrls((assets || []).filter((a: any) => a.media_type === 'audio').map((a: any) => a.file_url));
         setDocUrls({
           rc: (documents || []).filter((d: any) => d.document_type === 'rc').map((d: any) => d.file_url),
@@ -726,22 +724,32 @@ export default function VehicleDetail() {
             <TabsContent value="overview" className="p-4 relative">
               <div className="grid md:grid-cols-1 gap-6">
                 <div><h3 className="text-lg font-semibold mb-4">Description</h3><p className="text-slate-600 leading-relaxed">{vehicle.description || 'No description provided.'}</p></div>
-                {condition && (
+                {(vehicle?.tyres_ok !== undefined || vehicle?.accident_history !== undefined || vehicle?.condition_rating !== undefined) && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Condition Summary</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      <div className="flex justify-between"><span className="text-slate-600">Tyres OK:</span><span className="font-medium">{condition.tyres_ok ? 'Yes' : 'No'}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Brakes OK:</span><span className="font-medium">{condition.brakes_ok ? 'Yes' : 'No'}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Flood Damage:</span><span className="font-medium">{condition.flood_damage ? 'Yes' : 'No'}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Accident History:</span><span className="font-medium">{condition.accident_history ? 'Yes' : 'No'}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Structural Damage:</span><span className="font-medium">{condition.structural_damage ? 'Yes' : 'No'}</span></div>
-                      {typeof condition.number_of_keys !== 'undefined' && (
-                        <div className="flex justify-between"><span className="text-slate-600">Number of Keys:</span><span className="font-medium">{condition.number_of_keys}</span></div>
+                      {vehicle?.tyres_ok !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Tyres OK:</span><span className="font-medium">{vehicle.tyres_ok ? 'Yes' : 'No'}</span></div>
                       )}
-                      {typeof condition.overall_rating !== 'undefined' && (
-                        <div className="flex justify-between"><span className="text-slate-600">Condition Rating:</span><span className="font-medium">{condition.overall_rating}/5</span></div>
+                      {vehicle?.paint_ok !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Paint OK:</span><span className="font-medium">{vehicle.paint_ok ? 'Yes' : 'No'}</span></div>
+                      )}
+                      {vehicle?.accident_history !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Accident History:</span><span className="font-medium">{vehicle.accident_history ? 'Yes' : 'No'}</span></div>
+                      )}
+                      {vehicle?.service_history_available !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Service History:</span><span className="font-medium">{vehicle.service_history_available ? 'Available' : 'Not Available'}</span></div>
+                      )}
+                      {vehicle?.condition_rating !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Condition Rating:</span><span className="font-medium">{vehicle.condition_rating}/5</span></div>
                       )}
                     </div>
+                    {vehicle?.condition_notes && (
+                      <div className="mt-3">
+                        <h4 className="text-sm font-medium text-slate-600 mb-1">Condition Notes:</h4>
+                        <p className="text-sm text-slate-700 dark:text-slate-300">{vehicle.condition_notes}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

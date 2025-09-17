@@ -13,6 +13,7 @@ import {
   Settings2, 
   Eye, 
   IndianRupee,
+  Building2,
   Star,
   ShieldCheck,
   Zap,
@@ -58,12 +59,15 @@ export default function VehicleCard({
     kilometers: vehicle?.kilometers || 0,
     fuel_type: vehicle?.fuel_type || 'N/A',
     transmission: vehicle?.transmission || 'N/A',
-    location_city: vehicle?.location_city || 'N/A',
+    // Use RTO location first, fallback to vehicle location (same logic as VehicleDetail page)
+    location_city: vehicle?.rto_location_city || vehicle?.location_city || 'N/A',
+    location_state: vehicle?.rto_location_state || vehicle?.location_state || 'N/A',
     images: Array.isArray(vehicle?.images) ? vehicle.images : [],
     hero_image_url: vehicle?.hero_image_url || '',
     created_date: vehicle?.created_date || new Date().toISOString(),
     status: vehicle?.status || 'draft',
     dealer_id: vehicle?.dealer_id || '',
+    vehicle_type: vehicle?.vehicle_type || 'personal', // Add vehicle type
   };
 
   const dealerData = {
@@ -272,15 +276,20 @@ export default function VehicleCard({
               </div>
             </div>
 
-            {/* Location */}
-            <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
-              <MapPin className="w-4 h-4" />
-              <span>{vehicleData.location_city}</span>
+            {/* Location and Dealer Info */}
+            <div className="space-y-1">
+              {/* Location */}
+              <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                <MapPin className="w-4 h-4" />
+                <span>{[vehicleData.location_city, vehicleData.location_state].filter(Boolean).join(', ')}</span>
+              </div>
+              
+              {/* Dealer Name */}
               {isUserVerified && (
-                <>
-                  <span>•</span>
+                <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+                  <Building2 className="w-4 h-4" />
                   <span>{dealerData.business_name}</span>
-                </>
+                </div>
               )}
             </div>
 
@@ -313,7 +322,11 @@ export default function VehicleCard({
           ) : isUserVerified ? (
             <Button 
               size="sm" 
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
+              className={`flex-1 text-white ${
+                vehicleData.vehicle_type === 'commercial' 
+                  ? 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-600' 
+                  : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600'
+              }`}
               onClick={handleMakeOfferClick}
               title="Make an offer on this vehicle"
             >

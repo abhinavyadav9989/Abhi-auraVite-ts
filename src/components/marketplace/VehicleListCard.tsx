@@ -133,7 +133,7 @@ export default function VehicleListCard({
               </div>
               <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                 <MapPin className="w-3 h-3" />
-                <span>{vehicle.location_city || 'N/A'}</span>
+                <span>{[vehicle.rto_location_city || vehicle.location_city, vehicle.rto_location_state || vehicle.location_state].filter(Boolean).join(', ') || 'N/A'}</span>
               </div>
             </div>
 
