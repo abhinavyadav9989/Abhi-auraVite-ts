@@ -72,22 +72,37 @@ export function useAuth() {
       });
       
       if (error) {
-        // Check if it's an unverified email error
-        if (error.message.includes('Email not confirmed') || error.message.includes('Invalid login credentials')) {
-          // Try to resend verification email
+        // Handle different types of errors with specific messages
+        if (error.message.includes('Email not confirmed')) {
+          // Only resend verification if it's specifically an unverified email
           const { error: resendError } = await supabase.auth.resend({
             type: 'signup',
             email: email
           });
           
           if (resendError) {
-            throw new Error('Failed to resend verification email. Please try again.');
+            throw new Error('Email not verified. Please check your inbox for verification email.');
           }
           
           throw new Error('Email not verified. A new verification email has been sent to your inbox.');
+        } else if (error.message.includes('Invalid login credentials')) {
+          // Check if email exists in our system to provide better error message
+          try {
+            const emailExists = await checkDealerEmailExists(email);
+            if (emailExists) {
+              throw new Error('Incorrect password. Please check your password and try again.');
+            } else {
+              throw new Error('No account found with this email address. Please check your email or register for a new account.');
+            }
+          } catch (checkError) {
+            // If we can't check email existence, fall back to generic message
+            throw new Error('Incorrect email or password. Please check your credentials and try again.');
+          }
+        } else if (error.message.includes('Too many requests')) {
+          throw new Error('Too many login attempts. Please wait a few minutes before trying again.');
+        } else {
+          throw new Error(error.message || 'Sign in failed. Please try again.');
         }
-        
-        throw error;
       }
       
       return data;

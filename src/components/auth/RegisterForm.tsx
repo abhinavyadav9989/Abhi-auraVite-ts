@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock, User, LogIn, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, User, LogIn, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PasswordStrengthIndicator, validatePassword } from './PasswordStrengthIndicator';
 
 export function RegisterForm() {
   const { signUpWithEmailCheck, checkDealerEmailExists, checkDealerEmailExistsDirect, loading, error, clearError } = useAuth();
@@ -13,6 +14,8 @@ export function RegisterForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'exists' | 'available'>('idle');
   const [emailValidationTimeout, setEmailValidationTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -71,6 +74,13 @@ export function RegisterForm() {
     e.preventDefault();
     clearError();
     
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      alert(`Password requirements not met:\n${passwordValidation.errors.join('\n')}`);
+      return;
+    }
+    
     if (password !== confirmPassword) {
       alert('Passwords do not match');
       return;
@@ -92,6 +102,7 @@ export function RegisterForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -184,15 +195,23 @@ export function RegisterForm() {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-12 !px-0"
+                style={{ paddingLeft: '2.5rem', paddingRight: '3rem' }}
                 required
-                minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-50 bg-white border border-gray-300 rounded"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+            <PasswordStrengthIndicator password={password} />
           </div>
           
           <div className="space-y-2">
@@ -203,21 +222,47 @@ export function RegisterForm() {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-12 !px-0"
+                style={{ paddingLeft: '2.5rem', paddingRight: '3rem' }}
                 required
-                minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-50 bg-white border border-gray-300 rounded"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-sm text-red-600 flex items-center">
+                <XCircle className="mr-1 h-3 w-3" />
+                Passwords do not match
+              </p>
+            )}
+            {confirmPassword && password === confirmPassword && password && (
+              <p className="text-sm text-green-600 flex items-center">
+                <CheckCircle className="mr-1 h-3 w-3" />
+                Passwords match
+              </p>
+            )}
           </div>
           
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={loading || emailStatus === 'exists'}
+            disabled={
+              loading || 
+              emailStatus === 'exists' || 
+              !validatePassword(password).isValid ||
+              password !== confirmPassword ||
+              !email ||
+              !fullName
+            }
             variant={emailStatus === 'exists' ? 'outline' : 'default'}
           >
             {loading ? (
@@ -227,6 +272,10 @@ export function RegisterForm() {
               </>
             ) : emailStatus === 'exists' ? (
               'Email Already Registered'
+            ) : !validatePassword(password).isValid ? (
+              'Password Requirements Not Met'
+            ) : password !== confirmPassword ? (
+              'Passwords Do Not Match'
             ) : (
               'Create Account'
             )}

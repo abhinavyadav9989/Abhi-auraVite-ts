@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock, RefreshCw } from 'lucide-react';
+import { Loader2, Mail, Lock, RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 export function LoginForm() {
   const { signIn, resendVerificationEmail, loading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isVerificationError, setIsVerificationError] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
@@ -22,8 +23,12 @@ export function LoginForm() {
       await signIn(email, password);
       // On successful login, the auth state will update automatically
     } catch (error) {
-      // Check if it's a verification error
-      if (error instanceof Error && error.message.includes('Email not verified')) {
+      // Check if it's a verification error specifically
+      if (error instanceof Error && (
+        error.message.includes('Email not confirmed') || 
+        error.message.includes('Email not verified') ||
+        error.message.includes('verification email has been sent')
+      )) {
         setIsVerificationError(true);
       }
       console.error('Login failed:', error);
@@ -107,13 +112,20 @@ export function LoginForm() {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-10 bg-white rounded"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           

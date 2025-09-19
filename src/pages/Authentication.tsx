@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Lock, User, CheckCircle, Car } from 'lucide-react';
+import { Loader2, Mail, Lock, User, CheckCircle, Car, Eye, EyeOff } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { PasswordStrengthIndicator, validatePassword } from '@/components/auth/PasswordStrengthIndicator';
 
 export default function Authentication() {
   const navigate = useNavigate();
@@ -21,12 +22,15 @@ export default function Authentication() {
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Registration form state
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regFullName, setRegFullName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,6 +50,13 @@ export default function Authentication() {
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+
+    // Validate password strength
+    const passwordValidation = validatePassword(regPassword);
+    if (!passwordValidation.isValid) {
+      alert(`Password requirements not met:\n${passwordValidation.errors.join('\n')}`);
+      return;
+    }
 
     if (regPassword !== regConfirmPassword) {
       alert('Passwords do not match');
@@ -248,13 +259,20 @@ export default function Authentication() {
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="login-password"
-                          type="password"
+                          type={showLoginPassword ? "text" : "password"}
                           placeholder="Enter your password"
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 pr-12"
                           required
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-50 bg-white border border-gray-300 rounded"
+                        >
+                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
 
@@ -328,15 +346,23 @@ export default function Authentication() {
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="reg-password"
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           placeholder="Create a password"
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 pr-12"
                           required
                           minLength={6}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-50 bg-white border border-gray-300 rounded"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
+                      {regPassword && <PasswordStrengthIndicator password={regPassword} />}
                     </div>
 
                     <div className="space-y-2">
@@ -347,14 +373,21 @@ export default function Authentication() {
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="reg-confirm-password"
-                          type="password"
+                          type={showConfirmPassword ? "text" : "password"}
                           placeholder="Confirm your password"
                           value={regConfirmPassword}
                           onChange={(e) => setRegConfirmPassword(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 pr-12"
                           required
                           minLength={6}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600 focus:outline-none flex items-center justify-center z-50 bg-white border border-gray-300 rounded"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
 
