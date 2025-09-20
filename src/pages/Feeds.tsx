@@ -126,11 +126,24 @@ export default function Feeds() {
     if (!e.target.files) return;
     const picked = Array.from(e.target.files).slice(0, 6);
     setFiles(picked);
-    // Build local previews
+    // Build local previews using data URLs to avoid CSP issues with blob: on some hosts
     try {
-      const urls = picked.map((f) => URL.createObjectURL(f));
-      setPreviews(urls);
-    } catch {}
+      Promise.all(
+        picked.map(
+          (file) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result || ''));
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            })
+        )
+      )
+        .then((urls) => setPreviews(urls))
+        .catch(() => setPreviews([]));
+    } catch {
+      setPreviews([]);
+    }
   };
 
   const canShare = composerText.trim().length > 0 || files.length > 0;
@@ -229,7 +242,6 @@ export default function Feeds() {
       // Always reset composer UI so selections don’t stick around
       setComposerText('');
       setFiles([]);
-      try { previews.forEach((u) => URL.revokeObjectURL(u)); } catch {}
       setPreviews([]);
       try { if (fileInputRef.current) fileInputRef.current.value = ''; } catch {}
     }
@@ -242,11 +254,12 @@ export default function Feeds() {
         <Card className="rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-md">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
+              
+              <div className="flex-1">
               <Avatar className="h-9 w-9">
                 <AvatarImage src="" />
                 <AvatarFallback>U</AvatarFallback>
               </Avatar>
-              <div className="flex-1">
                 <textarea
                   placeholder="Write something here..."
                   value={composerText}
@@ -416,39 +429,59 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     )}
                   </div>
                 </div>
-                {editingPostId === p.id ? (
-                  <div className="mt-2">
-                    <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full resize-none bg-transparent outline-none text-sm md:text-base border rounded-md p-2 border-slate-200 dark:border-slate-700" />
-                    <div className="mt-2 flex items-center gap-2">
-                      <Button size="sm" onClick={() => onSaveEdit(p.id, editText)}>Save</Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditingPostId(null)}>Cancel</Button>
-                    </div>
-                  </div>
-                ) : (
-                  p.content && <div className="mt-2 text-slate-900 dark:text-slate-100 whitespace-pre-wrap text-sm md:text-base">{p.content}</div>
-                )}
-                {Array.isArray(p.feeds_media) && p.feeds_media.length > 0 && (
-                  <div className="mt-3 grid grid-cols-1 gap-2">
-                    {p.feeds_media.sort((a,b) => (a.sort_order||0)-(b.sort_order||0)).map((m) => (
-                      <div key={m.id} className="overflow-hidden rounded-xl border border-slate-200/60 dark:border-slate-800/60">
-                        {m.media_type === 'video' ? (
-                          <video controls className="w-full max-h-[420px] bg-black">
+              </div>
+            </div>
+            {/* Post body below header so it aligns with card padding (no avatar offset) */}
+            <div className="mt-2 w-full px-0">
+                  {/* Media first - square like Instagram */}
+                  {Array.isArray(p.feeds_media) && p.feeds_media.length > 0 && (
+                    <div className="mt-2 w-full aspect-square overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                      {(() => {
+                        const m = [...p.feeds_media].sort((a,b) => (a.sort_order||0)-(b.sort_order||0))[0];
+                        return m.media_type === 'video' ? (
+                          <video controls className="w-full h-full object-cover">
                             <source src={m.file_url} />
                           </video>
                         ) : (
-                          <img src={m.file_url} alt="post" className="w-full h-auto object-cover" />
-                        )}
-                      </div>
-                    ))}
+                          <img src={m.file_url} alt="post" className="w-full h-full object-cover" />
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Action bar */}
+                  <div className="mt-3 flex items-center gap-5 text-slate-700 dark:text-slate-300">
+                    <button className="hover:opacity-80" aria-label="Like"><Heart className="w-5 h-5" /></button>
+                    <button className="hover:opacity-80" aria-label="Comment"><MessageCircle className="w-5 h-5" /></button>
                   </div>
-                )}
-                {/* Actions row */}
-                <div className="mt-3 flex items-center gap-6 text-slate-600 dark:text-slate-300 text-sm">
-                  <button className="flex items-center gap-2 hover:text-blue-600"><Heart className="w-4 h-4" /> 0</button>
-                  <button className="flex items-center gap-2 hover:text-blue-600"><MessageCircle className="w-4 h-4" /> 0</button>
+
+                  {/* Likes count */}
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">0 likes</div>
+
+                  {/* Caption (business name bold + text) */}
+                  {editingPostId === p.id ? (
+                    <div className="mt-2">
+                      <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full resize-none bg-transparent outline-none text-sm md:text-base border rounded-md p-2 border-slate-200 dark:border-slate-700" />
+                      <div className="mt-2 flex items-center gap-2">
+                        <Button size="sm" onClick={() => onSaveEdit(p.id, editText)}>Save</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingPostId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    p.content && (
+                      <div className="mt-2 text-slate-900 dark:text-slate-100 text-sm md:text-base">
+                        <span className="font-semibold mr-2">{p.dealer?.business_name || p.dealer?.name || 'Business'}</span>
+                        <span className="whitespace-pre-wrap">{p.content}</span>
+                      </div>
+                    )
+                  )}
+
+                  {/* View comments link */}
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">View all 0 comments</div>
+
+                  {/* Timestamp */}
+                  <div className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">{formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}</div>
                 </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       ))}
