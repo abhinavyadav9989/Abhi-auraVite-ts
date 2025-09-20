@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { 
   LayoutDashboard, Car, Search, Handshake, Heart, User, Bell, Menu, X, BarChart2,
   Shield, Settings, LogOut, Loader2, WifiOff, Package, TrendingUp, FileText, AlertTriangle, ChevronLeft,
-  CreditCard
+  CreditCard, Newspaper
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { NotificationService } from '@/services/notificationService';
@@ -26,6 +26,7 @@ const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
   { title: "My Inventory", url: createPageUrl("Inventory"), icon: Package },
   { title: "Marketplace", url: createPageUrl("Marketplace"), icon: Search },
+  { title: "Feeds", url: createPageUrl("Feeds"), icon: Newspaper },
   { title: "My Deals", url: createPageUrl("Deals"), icon: Handshake },
   { title: "Shortlists", url: createPageUrl("Shortlists"), icon: Heart },
   { title: "Analytics", url: createPageUrl("InventoryAnalytics"), icon: BarChart2 },

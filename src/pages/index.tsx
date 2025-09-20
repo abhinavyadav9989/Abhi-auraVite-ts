@@ -69,6 +69,7 @@ import AdminUserDetails from "./AdminUserDetails";
 import BusinessVerification from "./BusinessVerification";
 import Bank from "./Bank";
 import Notifications from "./Notifications";
+import Feeds from "./Feeds";
 
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -144,6 +145,7 @@ const PAGES = {
     Authentication: Authentication,
     
     Notifications: Notifications,
+    Feeds: Feeds,
     
 }
 
@@ -241,6 +243,7 @@ function PagesContent() {
                 <Route path="/Authentication" element={<Authentication />} />
                 
                 <Route path="/Notifications" element={<Notifications />} />
+                <Route path="/Feeds" element={<Feeds />} />
                 
                 {/* Catch-all route - auth-aware redirect */}
                 <Route path="*" element={<AuthAwareFallback />} />
