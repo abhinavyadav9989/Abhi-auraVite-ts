@@ -16,7 +16,6 @@ import {
   Building2,
   Star,
   ShieldCheck,
-  Zap,
   Camera,
   GitCompareArrows
 } from 'lucide-react';
@@ -288,20 +287,16 @@ export default function VehicleCard({
                 <Fuel className="w-4 h-4" />
                 <span className="capitalize">{vehicleData.fuel_type}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Settings2 className="w-4 h-4" />
-                <span>{vehicleData.kilometers > 0 ? `${Math.floor(vehicleData.kilometers / 1000)}k km` : '0k km'}</span>
-              </div>
-              {vehicleData.mileage !== null && (
-                <div className="flex items-center gap-1">
-                  <Zap className="w-4 h-4" />
-                  <span>{vehicleData.mileage} km/l</span>
-                </div>
-              )}
+              {/* Mileage removed as requested to declutter the card */}
             </div>
 
             {/* Location and Dealer Info */}
             <div className="space-y-1">
+              {/* Odometer moved below as requested */}
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+                <Settings2 className="w-4 h-4" />
+                <span>{vehicleData.kilometers > 0 ? `${Math.floor(vehicleData.kilometers / 1000)}k km` : '0k km'}</span>
+              </div>
               {/* Location */}
               <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                 <MapPin className="w-4 h-4" />

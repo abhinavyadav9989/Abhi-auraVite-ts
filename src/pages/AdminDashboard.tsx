@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { NotificationService } from '@/services/notificationService';
 
 // Import admin components
 import KpiCard from '../components/admin/KpiCard';
@@ -158,6 +159,15 @@ export default function AdminDashboard() {
       
       await Dealer.update(dealerId, updateData);
       toast({ title: 'Success', description: `KYB ${action}d successfully` });
+      try {
+        if (action === 'approve') {
+          const fresh = await Dealer.get(dealerId);
+          const ownerUserId = (fresh as any)?.owner_user_id;
+          if (ownerUserId) {
+            try { await NotificationService.createKybVerifiedNotification(ownerUserId, (fresh as any)?.business_name || (fresh as any)?.name); } catch {}
+          }
+        }
+      } catch {}
       loadAdminData(); // Refresh data
     } catch (error) {
       toast({ title: 'Error', description: `Failed to ${action} KYB`, variant: 'destructive' });

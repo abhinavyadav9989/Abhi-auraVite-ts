@@ -13,6 +13,8 @@ import { createPageUrl } from '@/utils';
 import { InvokeLLM } from '@/api/integrations';
 import { getCategoryRequiredFields } from '@/components/vehicle-safety/VehicleCategoryValidator';
 import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
+import { NotificationService } from '@/services/notificationService';
+import { supabase } from '@/api/supabaseClient';
 
 // Import step components
 import BranchSelectionStep from '@/components/addvehicle/BranchSelectionStep';
@@ -419,6 +421,11 @@ export default function AddVehicle() {
       console.log('AddVehicle - Final payload being sent to database:', finalPayload);
       
       let createdOrUpdated: any;
+      let wasFirstVehicle = false;
+      try {
+        const existingVehicles = await Vehicle.filter({ dealer_id: dealer.id });
+        wasFirstVehicle = (existingVehicles || []).length === 0;
+      } catch {}
       if (isEditMode && vehicleId) {
         createdOrUpdated = await Vehicle.update(vehicleId, finalPayload);
         toast({
@@ -545,6 +552,17 @@ export default function AddVehicle() {
       
       
       navigate(createPageUrl('Inventory'));
+
+      // First vehicle notification (only if at least one was not present earlier and we published or saved any listing)
+      try {
+        if (wasFirstVehicle) {
+          const { data: auth } = await supabase.auth.getUser();
+          const authUserId = auth.user?.id;
+          if (authUserId) {
+            try { await NotificationService.createFirstVehicleNotification(authUserId, `${vehicleData?.year || ''} ${vehicleData?.make || ''} ${vehicleData?.model || ''}`.trim()); } catch {}
+          }
+        }
+      } catch {}
     } catch (error) {
       console.error('Error submitting listing:', error);
       toast({ 

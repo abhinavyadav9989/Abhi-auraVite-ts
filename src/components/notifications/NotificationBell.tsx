@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Notification {
   id: string;
@@ -25,12 +27,15 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
+    if (!user?.id) return;
     loadNotifications();
-    const unsubscribe = setupRealtimeSubscription();
+    const unsubscribe = setupRealtimeSubscription(user.id);
     // Gentle polling fallback to catch any missed realtime events
     const interval = setInterval(() => {
       loadNotifications();
@@ -39,13 +44,14 @@ export default function NotificationBell() {
       try { unsubscribe && unsubscribe(); } catch {}
       clearInterval(interval);
     };
-  }, []);
+  }, [user?.id]);
 
   const loadNotifications = async () => {
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('user_id', user?.id || '')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -58,7 +64,7 @@ export default function NotificationBell() {
     }
   };
 
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = (currentUserId: string) => {
     const subscription = supabase
       .channel('notifications')
       .on(
@@ -66,12 +72,17 @@ export default function NotificationBell() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications'
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`
         },
         (payload) => {
           console.log('New notification received:', payload);
           // Add new notification to the top of the list
           setNotifications(prev => [payload.new as Notification, ...prev.slice(0, 9)]);
+          try {
+            const n = payload.new as Notification;
+            toast({ title: n.title, description: n.message });
+          } catch {}
         }
       )
       .on(
@@ -79,7 +90,8 @@ export default function NotificationBell() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'notifications'
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`
         },
         (payload) => {
           setNotifications(prev => prev.map(n => n.id === (payload.new as any)?.id ? (payload.new as any) : n));
@@ -118,6 +130,12 @@ export default function NotificationBell() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'welcome':
+        return '✨';
+      case 'kyb_verified':
+        return '✅';
+      case 'first_vehicle':
+        return '🚗';
       case 'counter_offer':
         return '💰';
       case 'new_deal':
@@ -133,6 +151,12 @@ export default function NotificationBell() {
 
   const getNotificationColor = (type: string) => {
     switch (type) {
+      case 'welcome':
+        return 'text-indigo-600';
+      case 'kyb_verified':
+        return 'text-emerald-600';
+      case 'first_vehicle':
+        return 'text-sky-600';
       case 'counter_offer':
         return 'text-green-600';
       case 'new_deal':

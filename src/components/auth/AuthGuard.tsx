@@ -270,15 +270,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }, []);
 
 
-  // Show loading while checking authentication or onboarding
-  if (loading || isCheckingOnboarding) {
+  // Show loading while checking authentication only. For onboarding checks on
+  // protected routes, allow rendering and redirect later to avoid UI lock.
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">
-            {loading ? 'Checking authentication...' : 'Checking onboarding status...'}
-          </p>
+          <p className="text-slate-600">Checking authentication...</p>
         </div>
       </div>
     );

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/api/supabaseClient'; // Added supabase import
+import { NotificationService } from '@/services/notificationService';
 
 export default function AdminKYBVerification() {
   const [searchParams] = useSearchParams();
@@ -93,6 +94,21 @@ export default function AdminKYBVerification() {
       }
 
       toast({ title: toastTitle, description: notes });
+
+      // Fire KYB approved notification for dealer owner if available
+      try {
+        if (status === 'verified') {
+          // Dealer state may or may not be loaded; fetch fresh to be safe
+          const fresh = dealerId ? await Dealer.get(dealerId) : null;
+          const ownerUserId = (fresh as any)?.owner_user_id || (dealer as any)?.owner_user_id;
+          const dealerName = (fresh as any)?.business_name || (fresh as any)?.name || (dealer as any)?.business_name || (dealer as any)?.name;
+          if (ownerUserId) {
+            try { await NotificationService.createKybVerifiedNotification(ownerUserId, dealerName); } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to create KYB verified notification:', e);
+      }
       navigate(createPageUrl('AdminDashboard'));
 
     } catch (error) {

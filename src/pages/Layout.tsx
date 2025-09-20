@@ -17,8 +17,10 @@ import {
   CreditCard
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { NotificationService } from '@/services/notificationService';
 import BottomNavigation from "@/components/ui/bottom-navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { supabase } from '@/api/supabaseClient';
 
 const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
@@ -46,6 +48,7 @@ export default function Layout({ children, currentPageName }) {
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const { user: authUser, loading: authLoading, isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -77,6 +80,53 @@ export default function Layout({ children, currentPageName }) {
       setIsCollapsed(false);
     }
   }, []);
+
+  // Realtime watchers for KYB status changes and first vehicle insert
+  useEffect(() => {
+    let cleanup: Array<() => void> = [];
+    const setup = async () => {
+      try {
+        if (!authUser?.id) return;
+        // When dealer is loaded we can subscribe to their rows and vehicles
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.id) return;
+        // Fetch dealer id for current user to scope subscriptions
+        try {
+          const current = await UserEntity.me();
+          const dealers = await Dealer.filter({ created_by: current.email });
+          const d = dealers?.[0];
+          if (!d?.id) return;
+          // Dealers verification status changes
+          const ch1 = supabase
+            .channel(`dealer-${d.id}-verification`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'dealers', filter: `id=eq.${d.id}` }, (payload) => {
+              try {
+                const newStatus = (payload.new as any)?.verification_status;
+                const oldStatus = (payload.old as any)?.verification_status;
+                if (oldStatus !== 'verified' && newStatus === 'verified') {
+                  toast({ title: 'Verification Approved', description: 'Congratulations! Your verification is approved.' });
+                }
+              } catch {}
+            })
+            .subscribe();
+          cleanup.push(() => ch1.unsubscribe());
+
+          // Vehicles insert (first vehicle toast)
+          const ch2 = supabase
+            .channel(`dealer-${d.id}-vehicles`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicles', filter: `dealer_id=eq.${d.id}` }, (payload) => {
+              try {
+                toast({ title: 'First Vehicle Added', description: 'Congrats! Your vehicle is added.' });
+              } catch {}
+            })
+            .subscribe();
+          cleanup.push(() => ch2.unsubscribe());
+        } catch {}
+      } catch {}
+    };
+    setup();
+    return () => { cleanup.forEach(fn => { try { fn(); } catch {} }); };
+  }, [authUser?.id]);
 
   // Wait for authentication state to be established before loading user data
   useEffect(() => {
@@ -120,14 +170,7 @@ export default function Layout({ children, currentPageName }) {
     });
   };
 
-  // If on auth/onboarding routes, don't show loading spinner - let the auth pages handle their own loading
-  if ((isLoading || authLoading) && !isAuthOnboardingRoute) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  // Do not block rendering here; child pages handle their own loading states.
 
   const SidebarContent = ({ isMobile = false }) => (
     <div className="flex flex-col h-full max-h-[100dvh] overflow-y-auto no-scrollbar pb-[max(env(safe-area-inset-bottom),1rem)]">
@@ -169,7 +212,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen app-gradient text-slate-900 dark:text-slate-100">
+      <div className="min-h-screen app-gradient text-slate-900 dark:text-slate-100 overscroll-y-none">
         {/* Desktop Sidebar - Only show if authenticated and not on auth/onboarding routes */}
         {shouldShowSidebar && (
           <aside className={cn(
@@ -231,7 +274,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Theme toggle and notifications floating on desktop */}
-        <div className="hidden lg:block fixed top-4 right-4 z-40 flex items-center gap-2">
+        <div className="hidden lg:flex fixed top-4 right-4 z-40 items-center gap-2">
           <NotificationBell />
           <ThemeToggle />
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import type { User, Session } from '@supabase/supabase-js';
+import { NotificationService } from '@/services/notificationService';
 
 interface AuthState {
   user: User | null;
@@ -53,6 +54,21 @@ export function useAuth() {
           loading: false,
           error: null
         });
+
+        // First-login welcome: create once per device or if not present in DB
+        try {
+          if (event === 'SIGNED_IN' && session?.user?.id) {
+            const storageKey = `aura_welcome_shown_${session.user.id}`;
+            const hasShown = localStorage.getItem(storageKey) === '1';
+            if (!hasShown) {
+              // Try to create a welcome notification; ignore RLS/dup errors
+              try { await NotificationService.createWelcomeNotification(session.user.id, session.user.user_metadata?.full_name); } catch {}
+              localStorage.setItem(storageKey, '1');
+            }
+          }
+        } catch (e) {
+          console.warn('Welcome notification setup failed:', e);
+        }
       }
     );
 

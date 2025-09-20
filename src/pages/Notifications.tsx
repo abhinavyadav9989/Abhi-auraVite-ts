@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Bell, Check, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Notification {
   id: string;
@@ -25,6 +26,7 @@ export default function Notifications() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -35,9 +37,11 @@ export default function Notifications() {
 
   const loadNotifications = async () => {
     try {
+      const { data: auth } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('user_id', auth.user?.id || '')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -49,7 +53,9 @@ export default function Notifications() {
     }
   };
 
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user?.id) return () => {};
     const subscription = supabase
       .channel('notifications-center')
       .on(
@@ -57,12 +63,14 @@ export default function Notifications() {
         {
           event: '*',
           schema: 'public',
-          table: 'notifications'
+          table: 'notifications',
+          filter: `user_id=eq.${auth.user.id}`
         },
         (payload) => {
           console.log('Notification update received:', payload);
           if (payload.eventType === 'INSERT') {
             setNotifications(prev => [payload.new as Notification, ...prev]);
+            try { const n = payload.new as Notification; toast({ title: n.title, description: n.message }); } catch {}
           } else if (payload.eventType === 'UPDATE') {
             setNotifications(prev => 
               prev.map(n => n.id === payload.new.id ? payload.new as Notification : n)
@@ -138,6 +146,12 @@ export default function Notifications() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'welcome':
+        return '✨';
+      case 'kyb_verified':
+        return '✅';
+      case 'first_vehicle':
+        return '🚗';
       case 'counter_offer':
         return '💰';
       case 'new_deal':
@@ -153,6 +167,12 @@ export default function Notifications() {
 
   const getNotificationColor = (type: string) => {
     switch (type) {
+      case 'welcome':
+        return 'text-indigo-600';
+      case 'kyb_verified':
+        return 'text-emerald-600';
+      case 'first_vehicle':
+        return 'text-sky-600';
       case 'counter_offer':
         return 'text-green-600';
       case 'new_deal':

@@ -1,13 +1,24 @@
 import { supabase } from '@/api/supabaseClient';
 
+// Centralized notification type union for app-wide consistency
+export type NotificationType =
+  | 'welcome'
+  | 'kyb_verified'
+  | 'first_vehicle'
+  | 'counter_offer'
+  | 'new_deal'
+  | 'message'
+  | 'status_change'
+  | 'wishlist';
+
 export interface CreateNotificationData {
   user_id: string;
-  type: 'counter_offer' | 'new_deal' | 'message' | 'status_change';
+  type: NotificationType;
   title: string;
   message: string;
   deal_id?: string;
   related_user_id?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class NotificationService {
@@ -26,6 +37,37 @@ export class NotificationService {
       console.error('Error creating notification:', error);
       throw error;
     }
+  }
+
+  // Convenience helpers
+  static async createWelcomeNotification(userId: string, dealerName?: string) {
+    return this.createNotification({
+      user_id: userId,
+      type: 'welcome',
+      title: 'Welcome to Aura',
+      message: `Hello${dealerName ? `, ${dealerName}` : ''}! Welcome to Aura.`,
+      metadata: { dealerName }
+    });
+  }
+
+  static async createKybVerifiedNotification(userId: string, dealerName?: string) {
+    return this.createNotification({
+      user_id: userId,
+      type: 'kyb_verified',
+      title: 'Verification Approved',
+      message: `Congratulations${dealerName ? `, ${dealerName}` : ''}! Your verification is approved.`,
+      metadata: { dealerName }
+    });
+  }
+
+  static async createFirstVehicleNotification(userId: string, vehicleTitle?: string) {
+    return this.createNotification({
+      user_id: userId,
+      type: 'first_vehicle',
+      title: 'First Vehicle Added',
+      message: `Congrats! Your first vehicle${vehicleTitle ? ` (${vehicleTitle})` : ''} is added.`,
+      metadata: { vehicleTitle }
+    });
   }
 
   static async createCounterOfferNotification(
