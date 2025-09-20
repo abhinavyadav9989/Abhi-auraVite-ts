@@ -40,12 +40,9 @@ const MINIMAL_ONBOARDING_STEPS = [
 
 // Business type options for quick setup
 const BUSINESS_TYPES = [
-  { value: 'dealer_single', label: 'Single Dealer', description: 'Individual car dealer' },
-  { value: 'dealer_network', label: 'Dealer Network', description: 'Multiple dealerships' },
-  { value: 'franchise_dealer', label: 'Franchise Dealer', description: 'Brand franchise' },
-  { value: 'multi_brand_dealer', label: 'Multi-Brand Dealer', description: 'Multiple car brands' },
-  { value: 'park_and_sell', label: 'Park & Sell', description: 'Consignment business' },
-  { value: 'auctions', label: 'Auction House', description: 'Vehicle auctions' }
+  { value: 'used', label: 'Used Vehicles', description: 'Deal in pre-owned vehicles' },
+  { value: 'new', label: 'New Vehicles', description: 'Deal in brand new vehicles' },
+  { value: 'service', label: 'Service Center', description: 'Provide automotive services' }
 ];
 
 // Indian states for address selection
@@ -69,7 +66,7 @@ export default function OnboardingWizard() {
   interface ValidationErrors {
     organizationName?: string;
     legalName?: string;
-    businessType?: string;
+    businessTypes?: string;
     contactPhone?: string;
     contactEmail?: string;
     city?: string;
@@ -89,7 +86,7 @@ export default function OnboardingWizard() {
     // Essential organization details only
     organizationName: '',
     legalName: '',
-    businessType: '',
+    businessTypes: [], // Changed to array for multiple selection
     contactPhone: '',
     contactEmail: '',
     city: '',
@@ -198,8 +195,8 @@ export default function OnboardingWizard() {
       stepErrors.legalName = "Legal name is required";
     }
     
-    if (!organizationData.businessType) {
-      stepErrors.businessType = "Please select a business type";
+    if (!organizationData.businessTypes || organizationData.businessTypes.length === 0) {
+      stepErrors.businessTypes = "At least one business type is required";
     }
     
     if (!organizationData.contactPhone.trim()) {
@@ -269,7 +266,7 @@ export default function OnboardingWizard() {
         // Use actual database columns
         business_name: organizationData.organizationName,
         name: organizationData.legalName,           // legal_name is stored as 'name' in schema
-        business_type: organizationData.businessType,
+        business_type: JSON.stringify(organizationData.businessTypes), // Store as JSON array
         email: organizationData.contactEmail,
         phone: organizationData.contactPhone,
         address: organizationData.address,
@@ -380,28 +377,35 @@ export default function OnboardingWizard() {
             </div>
 
             {/* Business Type */}
-            <div className="space-y-2">
-              <Label htmlFor="businessType">Business Type *</Label>
-              <Select 
-                value={organizationData.businessType} 
-                onValueChange={(value) => updateOrganizationData('businessType', value)}
-              >
-                <SelectTrigger className={errors.businessType ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Select business type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUSINESS_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <div>
-                        <div className="font-medium">{type.label}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{type.description}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.businessType && (
-                <p className="text-sm text-red-600">{errors.businessType}</p>
+            <div className="space-y-3">
+              <Label htmlFor="businessTypes">Business Types *</Label>
+              <div className="space-y-3">
+                {BUSINESS_TYPES.map((type) => (
+                  <div key={type.value} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <input
+                      type="checkbox"
+                      id={type.value}
+                      checked={organizationData.businessTypes.includes(type.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          updateOrganizationData('businessTypes', [...organizationData.businessTypes, type.value]);
+                        } else {
+                          updateOrganizationData('businessTypes', organizationData.businessTypes.filter((bt: string) => bt !== type.value));
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <div className="flex-1">
+                      <label htmlFor={type.value} className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer">
+                        {type.label}
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{type.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {errors.businessTypes && (
+                <p className="text-sm text-red-600">{errors.businessTypes}</p>
               )}
             </div>
 

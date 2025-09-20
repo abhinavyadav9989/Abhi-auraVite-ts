@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Loader2, Save, Send } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { InvokeLLM } from '@/api/integrations';
+import { getCategoryRequiredFields } from '@/components/vehicle-safety/VehicleCategoryValidator';
 import PasswordConfirmationModal from "@/components/ui/password-confirmation-modal";
 
 // Import step components
@@ -28,13 +29,12 @@ import FinalReviewStep from '@/components/listing-wizard/FinalReviewStep';
 // In a real application, this would likely be imported from a shared constants/config file
 // or be defined based on an API response. It maps category IDs to whether they require specific custom attributes.
 const CATEGORY_FIELDS = {
-  // Example: 'luxury' category might require specific custom fields, 'commercial' as well.
-  // The value 'true' indicates that this category *can* have associated custom fields.
-  // The actual fields themselves would be managed within CategorySpecificsStep based on selected categories.
-  'Luxury': true,
+  // Categories that have required custom fields as per VehicleCategoryValidator
+  'Two-Wheeler': true,
+  'Three-Wheeler': true,
   'Commercial': true,
   'Electric': true,
-  // Add other categories that might require custom fields
+  'Specialised': true,
 };
 
 const STEPS = [
@@ -152,29 +152,34 @@ export default function AddVehicle() {
       }
 
       const dealerProfile = dealers[0];
+      const editing = searchParams.get('mode') === 'edit';
       
       // Note: We no longer block users without branches - the BranchSelectionStep handles this
       // We keep other verification checks for serious issues
       
       // Check if dealer verification allows listing
       if (!dealerProfile.verification_status || dealerProfile.verification_status === 'rejected') {
-        toast({ 
-          title: "Verification Required", 
-          description: "Complete KYB verification to list vehicles.", 
-          variant: "destructive" 
-        });
-        navigate(createPageUrl('KYBWizard'));
-        return;
+        if (!editing) {
+          toast({ 
+            title: "Verification Required", 
+            description: "Complete KYB verification to list vehicles.", 
+            variant: "destructive" 
+          });
+          navigate(createPageUrl('KYBWizard'));
+          return;
+        }
       }
 
       if (dealerProfile.verification_status === 'suspended') {
-        toast({ 
-          title: "Account Suspended", 
-          description: "Your account is suspended. Contact support.", 
-          variant: "destructive" 
-        });
-        navigate(createPageUrl('Dashboard'));
-        return;
+        if (!editing) {
+          toast({ 
+            title: "Account Suspended", 
+            description: "Your account is suspended. Contact support.", 
+            variant: "destructive" 
+          });
+          navigate(createPageUrl('Dashboard'));
+          return;
+        }
       }
 
       setDealer(dealerProfile);
@@ -205,13 +210,25 @@ export default function AddVehicle() {
         // Prefill existing documents
         let rcDocs: string[] = [];
         let insDocs: string[] = [];
+        let nocDocs: string[] = [];
+        let pucDocs: string[] = [];
         try {
           const docs = await VehicleDocument.filter({ vehicle_id: vehicleId });
           rcDocs = (docs || []).filter((d: any) => d.document_type === 'rc').map((d: any) => d.file_url);
           insDocs = (docs || []).filter((d: any) => d.document_type === 'insurance').map((d: any) => d.file_url);
           setPreloadedDocuments(true);
         } catch {}
+        // Fallbacks from custom_attributes when DB rows are absent
+        const ca = (vehicle as any)?.custom_attributes || {};
+        if (rcDocs.length === 0 && Array.isArray(ca.rc_urls)) rcDocs = ca.rc_urls;
+        if (insDocs.length === 0 && Array.isArray(ca.insurance_urls)) insDocs = ca.insurance_urls;
+        if (Array.isArray(ca.noc_urls)) nocDocs = ca.noc_urls;
+        if (Array.isArray(ca.puc_docs)) pucDocs = ca.puc_docs;
         setVehicleData({ ...vehicle, audio: existingAudio, rc_docs: rcDocs, insurance_docs: insDocs });
+        // Merge NOC/PUC into state if present
+        if (nocDocs.length > 0 || pucDocs.length > 0) {
+          setVehicleData(prev => ({ ...prev, noc_docs: nocDocs, puc_docs: pucDocs }));
+        }
         setPreloadedAssets(true);
       } catch {
         setVehicleData(vehicle);
@@ -352,6 +369,7 @@ export default function AddVehicle() {
         audio,
         rc_docs,
         insurance_docs,
+        noc_docs,
         tyres_ok,
         brakes_ok,
         flood_damage,
@@ -362,6 +380,19 @@ export default function AddVehicle() {
         condition_notes,
         ...dbData
       } = cleanData as any;
+
+      // Move PUC fields and doc url helpers into custom_attributes JSON
+      const mergedCustom: any = { ...(dbData.custom_attributes || {}) };
+      if (typeof dbData.puc_available !== 'undefined') mergedCustom.puc_available = !!dbData.puc_available;
+      if (dbData.puc_valid_until) mergedCustom.puc_valid_until = dbData.puc_valid_until;
+      if (Array.isArray(vehicleData.rc_docs) && vehicleData.rc_docs.length > 0) mergedCustom.rc_urls = vehicleData.rc_docs;
+      if (Array.isArray(vehicleData.insurance_docs) && vehicleData.insurance_docs.length > 0) mergedCustom.insurance_urls = vehicleData.insurance_docs;
+      if (Array.isArray(vehicleData.noc_docs) && vehicleData.noc_docs.length > 0) mergedCustom.noc_urls = vehicleData.noc_docs;
+      if (Array.isArray((vehicleData as any).puc_docs) && (vehicleData as any).puc_docs.length > 0) (mergedCustom as any).puc_docs = (vehicleData as any).puc_docs;
+      if (Object.keys(mergedCustom).length > 0) dbData.custom_attributes = mergedCustom;
+      delete (dbData as any).puc_available;
+      delete (dbData as any).puc_valid_until;
+      delete (dbData as any).puc_docs;
 
       // Normalize service history records
       if (Array.isArray(dbData.service_history)) {
@@ -452,10 +483,11 @@ export default function AddVehicle() {
         }
       }
 
-      // Sync RC/Insurance documents
+      // Sync RC/Insurance/NOC documents
       if (currentVehicleId) {
         const desiredRcs: string[] = (vehicleData.rc_docs || []) as string[];
         const desiredIns: string[] = (vehicleData.insurance_docs || []) as string[];
+        const desiredNocs: string[] = (vehicleData.noc_docs || []) as string[];
         try {
           if (!isEditMode || preloadedDocuments) {
             const existingDocs = await VehicleDocument.filter({ vehicle_id: currentVehicleId });
@@ -466,6 +498,8 @@ export default function AddVehicle() {
             const desiredPairs: Array<{ type: string; url: string }> = [];
             for (const url of desiredRcs) desiredPairs.push({ type: 'rc', url });
             for (const url of desiredIns) desiredPairs.push({ type: 'insurance', url });
+            // NOTE: 'noc' is not an allowed document_type on vehicle_documents in current schema.
+            // We'll keep NOC only inside custom_attributes and not create DB rows for it.
             const desiredKeySet = new Set(desiredPairs.map(p => `${p.type}|${p.url}`));
             const toInsertRows = desiredPairs
               .filter(p => !existingMap.has(`${p.type}|${p.url}`))
@@ -473,7 +507,8 @@ export default function AddVehicle() {
             const toDeleteRows = (existingDocs || [])
               .filter((d: any) => !desiredKeySet.has(`${d.document_type}|${d.file_url}`));
             if (toInsertRows.length > 0) {
-              await VehicleDocument.create(toInsertRows);
+              // Use upsert for bulk insert to avoid 406 from .single()
+              await VehicleDocument.upsert(toInsertRows as any);
             }
             for (const d of toDeleteRows) {
               try { await VehicleDocument.delete(d.id); } catch {}
@@ -483,7 +518,8 @@ export default function AddVehicle() {
             const rows: any[] = [];
             for (const url of desiredRcs) rows.push({ vehicle_id: currentVehicleId, document_type: 'rc', file_url: url });
             for (const url of desiredIns) rows.push({ vehicle_id: currentVehicleId, document_type: 'insurance', file_url: url });
-            if (rows.length > 0) await VehicleDocument.create(rows);
+            // Skip NOC rows due to DB constraint
+            if (rows.length > 0) await VehicleDocument.upsert(rows as any);
           }
         } catch (e) {
           console.error('Failed syncing vehicle documents:', e);
@@ -496,6 +532,7 @@ export default function AddVehicle() {
           vehicle_id: currentVehicleId,
           tyres_ok: !!vehicleData.tyres_ok,
           brakes_ok: !!vehicleData.brakes_ok,
+          paint_ok: !!vehicleData.paint_ok,
           flood_damage: !!vehicleData.flood_damage,
           accident_history: !!vehicleData.accident_history,
           structural_damage: !!vehicleData.structural_damage,
@@ -630,10 +667,15 @@ export default function AddVehicle() {
             )}
             <Button
               onClick={handleNext}
-              disabled={isSubmitting || isLoading || 
-                (STEPS[currentStep].id === 'category_specifics' && 
-                 Object.keys(vehicleData.custom_attributes || {}).length === 0 && 
-                 (vehicleData.vehicle_category || []).some(cat => CATEGORY_FIELDS[cat]))}
+              disabled={(() => {
+                if (isSubmitting || isLoading) return true;
+                if (STEPS[currentStep].id !== 'category_specifics') return false;
+                // Determine if any required fields exist for selected categories
+                const selected = vehicleData.vehicle_category || [];
+                const hasRequired = Object.keys(getCategoryRequiredFields(selected)).length > 0;
+                const hasProvided = Object.keys(vehicleData.custom_attributes || {}).length > 0;
+                return hasRequired && !hasProvided;
+              })()}
               className="min-w-[120px] w-full sm:w-auto"
             >
               {isSubmitting ? (

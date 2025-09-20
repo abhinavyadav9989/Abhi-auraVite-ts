@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Vehicle, VehicleAsset, VehicleDocument, Branch } from '@/api/entities';
+import { Vehicle, VehicleAsset, VehicleDocument, VehicleCondition, Branch } from '@/api/entities';
 import { Dealer } from '@/api/entities';
 import { User } from '@/api/entities';
 import { Transaction } from '@/api/entities';
@@ -26,6 +26,7 @@ import {
 
 // Import components
 import VehicleMediaGallery from '@/components/vehicle-view/VehicleMediaGallery';
+import { getAvailableCategories } from '@/components/vehicle-safety/VehicleCategoryValidator';
 import EMICalculator from '@/components/vehicle-view/EMICalculator';
 import FullScreenGallery from '@/components/vehicle-view/FullScreenGallery';
 import MarketplaceMetrics from '@/components/vehicle-view/MarketplaceMetrics';
@@ -71,6 +72,7 @@ export default function VehicleDetail() {
   // Condition data is now stored directly in the vehicle record
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
   const [docUrls, setDocUrls] = useState<{ rc: string[]; insurance: string[] }>({ rc: [], insurance: [] });
+  const [condition, setCondition] = useState<any | null>(null);
   const [showInspectorPanel, setShowInspectorPanel] = useState(false);
   
   // Permissions & security
@@ -132,15 +134,17 @@ export default function VehicleDetail() {
 
       // Load audio assets and documents
       try {
-        const [assets, documents] = await Promise.all([
+        const [assets, documents, cond] = await Promise.all([
           VehicleAsset.filter({ vehicle_id: vehicleData.id }).catch(() => []),
           VehicleDocument.filter({ vehicle_id: vehicleData.id }).catch(() => []),
+          VehicleCondition.filter({ vehicle_id: vehicleData.id }).catch(() => [])
         ]);
         setAudioUrls((assets || []).filter((a: any) => a.media_type === 'audio').map((a: any) => a.file_url));
         setDocUrls({
           rc: (documents || []).filter((d: any) => d.document_type === 'rc').map((d: any) => d.file_url),
           insurance: (documents || []).filter((d: any) => d.document_type === 'insurance').map((d: any) => d.file_url),
         });
+        if (Array.isArray(cond) && cond.length > 0) setCondition(cond[0]);
       } catch {}
       
       const [dealerData, currentDealerDataArray] = await Promise.all([
@@ -344,7 +348,15 @@ export default function VehicleDetail() {
   const renderCustomAttributes = () => {
     const attributes = safeGet(vehicle, 'custom_attributes', {});
     if (!attributes || Object.keys(attributes).length === 0) return null;
-    const blacklist = new Set(['rc', 'rc_url', 'insurance', 'insurance_url', 'url', 'document_url']);
+    const blacklist = new Set([
+      'rc', 'rc_url', 'rc_urls',
+      'insurance', 'insurance_url', 'insurance_urls',
+      'noc_urls',
+      // Hide compliance/finance toggles from public card
+      'loan_active', 'loan_bank', 'loan_amount', 'noc_available', 'puc_available', 'puc_valid_until',
+      'puc_docs', 'puc_url', 'puc_urls',
+      'url', 'document_url'
+    ]);
     const entries = Object.entries(attributes).filter(([key, value]) => {
       if (blacklist.has(String(key).toLowerCase())) return false;
       if (typeof value === 'string' && /^https?:\/\//i.test(value)) return false;
@@ -355,7 +367,9 @@ export default function VehicleDetail() {
         {entries.map(([key, value]) => (
           <div key={key} className="flex justify-between">
             <span className="text-slate-600">{CATEGORY_FIELD_LABELS[key] || key.replace(/_/g, ' ')}:</span>
-            <span className="font-medium">{String(value ?? '')}</span>
+            <span className="font-medium">{
+              typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '')
+            }</span>
           </div>
         ))}
       </div>
@@ -534,7 +548,12 @@ export default function VehicleDetail() {
                 {(soldInfo) && (
                   <Badge className="bg-purple-100 text-purple-700">SOLD</Badge>
                 )}
-                {vehicleCategories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
+                {(() => {
+                  const valid = new Set(getAvailableCategories());
+                  return vehicleCategories
+                    .filter(cat => typeof cat === 'string' && valid.has(cat))
+                    .map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>);
+                })()}
                 <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-300">
                   <Eye className="w-4 h-4" />
                   <span>{viewCount} views</span>
@@ -545,7 +564,11 @@ export default function VehicleDetail() {
               <Button variant="outline" size="sm" onClick={handleToggleShortlist} className={isInShortlist ? 'text-red-500 border-red-300' : ''}><Heart className={`w-4 h-4 mr-2 ${isInShortlist ? 'fill-current' : ''}`} />{isInShortlist ? 'Saved' : 'Save'}</Button>
               <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)}><Share2 className="w-4 h-4 mr-2" />Share</Button>
               {permissions.canInspect && <Button variant="outline" size="sm" onClick={() => setShowInspectorPanel(true)} className="gap-2"><FileText className="w-4 h-4" />Inspect</Button>}
-              {permissions.canEdit && <Link to={createPageUrl(`EditVehicle?id=${vehicle.id}`)}><Button variant="outline" size="sm" className="gap-2"><Edit className="w-4 h-4" />Edit</Button></Link>}
+              {permissions.canEdit && (
+                <Link to={createPageUrl(`AddVehicle`)+`?id=${vehicle.id}&mode=edit`}>
+                  <Button variant="outline" size="sm" className="gap-2"><Edit className="w-4 h-4" />Edit</Button>
+                </Link>
+              )}
               {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"><Handshake className="w-4 h-4" />Make Offer</Button>}
             </div>
           </div>
@@ -733,25 +756,41 @@ export default function VehicleDetail() {
             <TabsContent value="overview" className="p-4 relative">
               <div className="grid md:grid-cols-1 gap-6">
                 <div><h3 className="text-lg font-semibold mb-4">Description</h3><p className="text-slate-600 leading-relaxed">{vehicle.description || 'No description provided.'}</p></div>
-                {(vehicle?.tyres_ok !== undefined || vehicle?.accident_history !== undefined || vehicle?.condition_rating !== undefined) && (
+                {(vehicle?.tyres_ok !== undefined || vehicle?.accident_history !== undefined || vehicle?.condition_rating !== undefined || condition) && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Condition Summary</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      {vehicle?.tyres_ok !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-600">Tyres OK:</span><span className="font-medium">{vehicle.tyres_ok ? 'Yes' : 'No'}</span></div>
-                      )}
-                      {vehicle?.paint_ok !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-600">Paint OK:</span><span className="font-medium">{vehicle.paint_ok ? 'Yes' : 'No'}</span></div>
-                      )}
-                      {vehicle?.accident_history !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-600">Accident History:</span><span className="font-medium">{vehicle.accident_history ? 'Yes' : 'No'}</span></div>
-                      )}
-                      {vehicle?.service_history_available !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-600">Service History:</span><span className="font-medium">{vehicle.service_history_available ? 'Available' : 'Not Available'}</span></div>
-                      )}
-                      {vehicle?.condition_rating !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-600">Condition Rating:</span><span className="font-medium">{vehicle.condition_rating}/5</span></div>
-                      )}
+						<div className="space-y-2 text-sm">
+                      {(() => {
+                        const tyresOk = vehicle?.tyres_ok ?? condition?.tyres_ok;
+                        return tyresOk !== undefined ? (
+                          <div className="flex justify-between"><span className="text-slate-600">Tyres OK:</span><span className="font-medium">{tyresOk ? 'Yes' : 'No'}</span></div>
+                        ) : null;
+                      })()}
+                      {(() => {
+                        const paintOk = vehicle?.paint_ok ?? condition?.paint_ok;
+                        return paintOk !== undefined ? (
+                          <div className="flex justify-between"><span className="text-slate-600">Paint OK:</span><span className="font-medium">{paintOk ? 'Yes' : 'No'}</span></div>
+                        ) : null;
+                      })()}
+                      {(() => {
+                        const accident = vehicle?.accident_history ?? condition?.accident_history;
+                        return accident !== undefined ? (
+                          <div className="flex justify-between"><span className="text-slate-600">Accident History:</span><span className="font-medium">{accident ? 'Yes' : 'No'}</span></div>
+                        ) : null;
+                      })()}
+						{(() => {
+							const keys = vehicle?.number_of_keys ?? condition?.number_of_keys;
+							return keys !== undefined && keys !== null ? (
+								<div className="flex justify-between"><span className="text-slate-600">Number of Keys:</span><span className="font-medium">{keys}</span></div>
+							) : null;
+						})()}
+						{/* Service History intentionally omitted from Condition Summary per product decision */}
+                      {(() => {
+                        const rating = vehicle?.condition_rating ?? condition?.overall_rating ?? condition?.condition_rating;
+                        return rating !== undefined && rating !== null ? (
+                          <div className="flex justify-between"><span className="text-slate-600">Condition Rating:</span><span className="font-medium">{rating}/5</span></div>
+                        ) : null;
+                      })()}
                     </div>
                     {vehicle?.condition_notes && (
                       <div className="mt-3">
@@ -765,7 +804,7 @@ export default function VehicleDetail() {
             </TabsContent>
 
             <TabsContent value="specs" className="p-4 relative">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div className="space-y-6">
                 <div>
                   <h4 className="font-medium mb-3">Basic Information</h4>
                   <div className="space-y-2 text-sm">
@@ -790,6 +829,47 @@ export default function VehicleDetail() {
                     {(vehicle.rto_location_city || vehicle.rto_location_state) && <div className="flex justify-between"><span className="text-slate-600">RTO Location:</span><span className="font-medium">{vehicle.rto_location_city || ''}{vehicle.rto_location_city && vehicle.rto_location_state ? ', ' : ''}{vehicle.rto_location_state || ''}</span></div>}
                     <div className="flex justify-between"><span className="text-slate-600">Insurance:</span><span className="font-medium">{vehicle.insurance_available ? `Yes${vehicle.insurance_valid_until ? ' (valid until ' + formatDate(vehicle.insurance_valid_until) + ')' : ''}` : 'No'}</span></div>
                     {vehicle.permit_type && <div className="flex justify-between"><span className="text-slate-600">Permit Type:</span><span className="font-medium capitalize">{vehicle.permit_type.replace('_', ' ')}</span></div>}
+                    {/* Mileage */}
+                    {vehicle.mileage !== null && (
+                      <div className="flex justify-between"><span className="text-slate-600">Mileage:</span><span className="font-medium">{vehicle.mileage} km/l</span></div>
+                    )}
+                {(() => {
+                  const ca: any = safeGet(vehicle, 'custom_attributes', {} as any) as any;
+                  const loanBank = ca?.loan_bank as string | undefined;
+                  const loanActive = typeof ca?.loan_active === 'boolean' ? ca.loan_active as boolean : undefined;
+                  const loanAmount = ca?.loan_amount as number | string | undefined;
+                  const nocAvailable = typeof ca?.noc_available === 'boolean' ? ca.noc_available as boolean : undefined;
+                  const pucAvailable = typeof ca?.puc_available === 'boolean' ? ca.puc_available as boolean : (vehicle.puc_valid_until ? true : undefined);
+                  const pucValid = vehicle.puc_valid_until || (typeof ca?.puc_valid_until === 'string' ? ca.puc_valid_until : undefined);
+                  return (
+                    <>
+                      {loanBank && (
+                        <div className="flex justify-between"><span className="text-slate-600">Loan Bank:</span><span className="font-medium">{loanBank}</span></div>
+                      )}
+                      {loanActive !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">Loan Active:</span><span className="font-medium">{loanActive ? 'Yes' : 'No'}</span></div>
+                      )}
+                      {loanAmount !== undefined && loanAmount !== null && loanAmount !== '' && (
+                        <div className="flex justify-between"><span className="text-slate-600">Loan Amount:</span><span className="font-medium">{String(loanAmount)}</span></div>
+                      )}
+                      {nocAvailable !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">NOC Available:</span><span className="font-medium">{nocAvailable ? 'Yes' : 'No'}</span></div>
+                      )}
+                      {pucAvailable !== undefined && (
+                        <div className="flex justify-between"><span className="text-slate-600">PUC Available:</span><span className="font-medium">{pucAvailable ? 'Yes' : 'No'}</span></div>
+                      )}
+                      {pucValid && (
+                        <div className="flex justify-between"><span className="text-slate-600">PUC Valid Until:</span><span className="font-medium">{formatDate(pucValid)}</span></div>
+                      )}
+                    </>
+                  );
+                })()}
+                    {(() => {
+                      const keys = vehicle?.number_of_keys ?? condition?.number_of_keys;
+                      return keys !== undefined && keys !== null ? (
+                        <div className="flex justify-between"><span className="text-slate-600">Number of Keys:</span><span className="font-medium">{keys}</span></div>
+                      ) : null;
+                    })()}
                     {renderCustomAttributes()}
                   </div>
                 </div>
@@ -810,13 +890,21 @@ export default function VehicleDetail() {
                 </div>
               )}
 
-              {(docUrls.rc.length > 0 || docUrls.insurance.length > 0) ? (
+              {(() => {
+                // Fallback to custom_attributes urls if DB rows are empty
+                const ca = safeGet(vehicle, 'custom_attributes', {} as any) as any;
+                const rcUrls = docUrls.rc.length > 0 ? docUrls.rc : (Array.isArray(ca.rc_urls) ? ca.rc_urls : []);
+                const insUrls = docUrls.insurance.length > 0 ? docUrls.insurance : (Array.isArray(ca.insurance_urls) ? ca.insurance_urls : []);
+                // Support both custom_attributes.puc_docs and legacy vehicle.puc_docs
+                const pucUrls = Array.isArray(ca.puc_docs) ? ca.puc_docs : (Array.isArray((vehicle as any).puc_docs) ? (vehicle as any).puc_docs : []);
+                const nocUrls = Array.isArray(ca.noc_urls) ? ca.noc_urls : (Array.isArray((vehicle as any).noc_docs) ? (vehicle as any).noc_docs : []);
+                return (rcUrls.length > 0 || insUrls.length > 0 || pucUrls.length > 0 || nocUrls.length > 0) ? (
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="p-4 border rounded-md dark:border-slate-700">
                     <h4 className="font-medium mb-2">RC Documents</h4>
-                    {docUrls.rc[0] ? (
+                    {rcUrls[0] ? (
                       (() => {
-                        const url = docUrls.rc[0];
+                        const url = rcUrls[0];
                         const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
                         const isPdf = /\.(pdf)$/i.test(url);
                         const isTrusted = url.includes('.supabase.co');
@@ -838,9 +926,9 @@ export default function VehicleDetail() {
                   </div>
                   <div className="p-4 border rounded-md dark:border-slate-700">
                     <h4 className="font-medium mb-2">Insurance Documents</h4>
-                    {docUrls.insurance[0] ? (
+                    {insUrls[0] ? (
                       (() => {
-                        const url = docUrls.insurance[0];
+                        const url = insUrls[0];
                         const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
                         const isPdf = /\.(pdf)$/i.test(url);
                         const isTrusted = url.includes('.supabase.co');
@@ -860,10 +948,51 @@ export default function VehicleDetail() {
                       <div className="text-sm text-slate-500">No Insurance uploaded.</div>
                     )}
                   </div>
+                  <div className="p-4 border rounded-md dark:border-slate-700">
+                    <h4 className="font-medium mb-2">PUC Documents</h4>
+                    {pucUrls[0] ? (
+                      (() => {
+                        const url = pucUrls[0];
+                        const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                        const isPdf = /\.(pdf)$/i.test(url);
+                        const isTrusted = url.includes('.supabase.co');
+                        if (isImage) return <img src={url} alt="PUC" className="w-full max-h-64 object-contain rounded" />;
+                        if (isPdf && isTrusted) return <iframe src={url} className="w-full h-64 border rounded" title="PUC Document" />;
+                        return (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} target="_blank" rel="noreferrer">Open PUC</a>
+                          </Button>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-sm text-slate-500">No PUC uploaded.</div>
+                    )}
+                  </div>
+                  <div className="p-4 border rounded-md dark:border-slate-700">
+                    <h4 className="font-medium mb-2">NOC Documents</h4>
+                    {nocUrls[0] ? (
+                      (() => {
+                        const url = nocUrls[0];
+                        const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                        const isPdf = /\.(pdf)$/i.test(url);
+                        const isTrusted = url.includes('.supabase.co');
+                        if (isImage) return <img src={url} alt="NOC" className="w-full max-h-64 object-contain rounded" />;
+                        if (isPdf && isTrusted) return <iframe src={url} className="w-full h-64 border rounded" title="NOC Document" />;
+                        return (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} target="_blank" rel="noreferrer">Open NOC</a>
+                          </Button>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-sm text-slate-500">No NOC uploaded.</div>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="text-sm text-slate-500">No RC/Insurance documents uploaded.</div>
-              )}
+                <div className="text-sm text-slate-500">No documents uploaded.</div>
+              );
+              })()}
             </TabsContent>
             <TabsContent value="history" className="p-4 relative">{renderServiceHistory()}</TabsContent>
             

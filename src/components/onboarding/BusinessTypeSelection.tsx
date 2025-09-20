@@ -4,9 +4,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Sparkles, Car, Repeat } from 'lucide-react';
 
 const BUSINESS_TYPES = [
-  { id: 'new', title: 'New Vehicles', icon: Sparkles, description: 'Primarily deal in brand new vehicles.' },
-  { id: 'used', title: 'Used Vehicles', icon: Car, description: 'Primarily deal in pre-owned vehicles.' },
-  { id: 'both', title: 'Both New & Used', icon: Repeat, description: 'Deal in both new and pre-owned markets.' },
+  { id: 'used', title: 'Used Vehicles', icon: Car, description: 'Deal in pre-owned vehicles.' },
+  { id: 'new', title: 'New Vehicles', icon: Sparkles, description: 'Deal in brand new vehicles.' },
+  { id: 'service', title: 'Service Center', icon: Repeat, description: 'Provide automotive services.' },
 ];
 
 export default function BusinessTypeSelection({ data, updateData }) {

@@ -55,6 +55,7 @@ export default function KYBWizard() {
   const [dealerId, setDealerId] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [rejectionNotes, setRejectionNotes] = useState(null); // ONB-16: For rejected fields
+  const [isSuspended, setIsSuspended] = useState(false);
 
   // Form data
   const [businessData, setBusinessData] = useState({
@@ -105,7 +106,18 @@ export default function KYBWizard() {
             setRejectionNotes(dealer.verification_notes || "Please review your information and re-submit.");
         }
 
-        if (dealer.verification_status === 'draft' || dealer.verification_status === 'rejected' || dealer.verification_status === 'documents_submitted') {
+        // Treat suspended as resubmission required; force to Documents step
+        if (dealer.verification_status === 'suspended' || dealer.verification_status_new === 'suspended') {
+          setIsSuspended(true);
+          setCurrentStep(1); // Documents step
+          if (dealer.verification_notes) {
+            setRejectionNotes(dealer.verification_notes);
+          }
+        }
+
+        const needsResubmit = dealer.verification_status === 'suspended' || dealer.verification_status_new === 'suspended';
+
+        if (dealer.verification_status === 'draft' || dealer.verification_status === 'rejected' || dealer.verification_status === 'documents_submitted' || needsResubmit) {
           // Restore draft data
           setBusinessData(prev => ({
             ...prev,
@@ -118,13 +130,31 @@ export default function KYBWizard() {
             state: dealer.state || ''
           }));
           // Subscription choice is not part of KYC anymore
-          // Restore documents if present
+          // Restore documents if present; fallback to dealer_documents
           if (dealer.draft_data?.documents) {
             setDocuments(dealer.draft_data.documents);
+          } else {
+            try {
+              const rows = await DealerDocument.filter({ dealer_id: dealer.id });
+              const docMap = (rows || []).reduce((acc: any, d: any) => {
+                acc[d.document_type] = {
+                  url: d.file_url,
+                  name: d.file_name,
+                  size: d.file_size,
+                  uploaded_at: (d as any).updated_at || (d as any).created_at
+                };
+                return acc;
+              }, {} as Record<string, any>);
+              if (Object.keys(docMap).length > 0) {
+                setDocuments(docMap);
+              }
+            } catch (e) {
+              // ignore fetch errors; user can re-upload
+            }
           }
 
           // Restore current step if not rejected
-          if (dealer.verification_status !== 'rejected' && dealer.draft_data?.current_step !== undefined) {
+          if (dealer.verification_status !== 'rejected' && dealer.verification_status !== 'suspended' && dealer.draft_data?.current_step !== undefined) {
             setCurrentStep(dealer.draft_data.current_step);
           }
         }

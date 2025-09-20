@@ -112,7 +112,7 @@ export default function Marketplace() {
           currentDealerData = dealerProfiles[0];
           setCurrentDealer(currentDealerData);
           
-          // Check if user is verified (either verification_status or verification_status_new)
+          // Check user verification states
           const isVerified = currentDealerData.verification_status === 'verified' || currentDealerData.verification_status_new === 'verified';
           const isUnderReview = currentDealerData.verification_status === 'documents_submitted' || currentDealerData.verification_status_new === 'documents_submitted';
           const isUnverified = !isVerified && !isUnderReview;
@@ -292,27 +292,35 @@ export default function Marketplace() {
                 </div>
                 <div>
                   <h3 className="font-medium text-amber-900">
-                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
-                      ? 'Verification Under Review' 
-                      : 'Complete KYB Verification'
+                    {currentDealer.verification_status === 'suspended' || currentDealer.verification_status_new === 'suspended'
+                      ? 'Verification Suspended'
+                      : (currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
+                        ? 'Verification Under Review' 
+                        : 'Please Complete Verification')
                     }
                   </h3>
                   <p className="text-sm text-amber-700">
-                    {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
-                      ? 'Your business verification is being reviewed. You can still browse vehicles but pricing is hidden.'
-                      : 'Vehicle prices and dealer details are hidden until you complete KYB verification'
+                    {currentDealer.verification_status === 'suspended' || currentDealer.verification_status_new === 'suspended'
+                      ? 'Your verification was suspended. Please re-submit documents to proceed.'
+                      : (currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
+                        ? 'Your business verification is being reviewed. You can still browse vehicles but pricing is hidden.'
+                        : 'Complete your KYB verification to access marketplace prices and dealer details.')
                     }
                   </p>
                 </div>
               </div>
-              <Link to={currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
-                ? createPageUrl("Profile") 
-                : createPageUrl("OnboardingWizard")
+              <Link to={currentDealer.verification_status === 'suspended' || currentDealer.verification_status_new === 'suspended'
+                ? createPageUrl('KYBWizard')
+                : (currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted' 
+                    ? createPageUrl("Profile") 
+                    : createPageUrl("OnboardingWizard"))
               }>
                 <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                  {currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
-                    ? 'View Profile'
-                    : 'Complete KYB'
+                  {currentDealer.verification_status === 'suspended' || currentDealer.verification_status_new === 'suspended'
+                    ? 'Resubmit Documents'
+                    : (currentDealer.verification_status === 'documents_submitted' || currentDealer.verification_status_new === 'documents_submitted'
+                      ? 'View Details'
+                      : 'Start Verification')
                   }
                 </Button>
               </Link>

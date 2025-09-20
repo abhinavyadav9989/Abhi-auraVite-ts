@@ -133,9 +133,9 @@ export const onboardingAPI = {
   // Get business modes
   getBusinessModes: () => {
     return [
-      { id: 'new_vehicles', label: 'New Vehicles' },
-      { id: 'used_vehicles', label: 'Used Vehicles' },
-      { id: 'both', label: 'Both New & Used' }
+      { id: 'used', label: 'Used Vehicles', description: 'Deal in pre-owned vehicles' },
+      { id: 'new', label: 'New Vehicles', description: 'Deal in brand new vehicles' },
+      { id: 'service', label: 'Service Center', description: 'Provide automotive services' }
     ];
   },
 

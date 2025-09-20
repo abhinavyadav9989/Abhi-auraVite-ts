@@ -245,9 +245,19 @@ export default function Dashboard() {
     const status1 = dealer.verification_status;
     const status2 = dealer.verification_status_new;
     
+    // Suspended requires resubmission
+    if (status1 === 'suspended' || status2 === 'suspended') {
+      return 'suspended';
+    }
+
     // If either is verified, consider as verified
     if (status1 === 'verified' || status2 === 'verified') {
       return 'verified';
+    }
+    
+    // If either has documents submitted, consider as documents_submitted
+    if (status1 === 'documents_submitted' || status2 === 'documents_submitted') {
+      return 'documents_submitted';
     }
     
     // If either is pending, consider as pending
@@ -271,9 +281,55 @@ export default function Dashboard() {
     // Show if onboarding not completed
     if (!dealer.onboarding_completed) return true;
     
-    // Show if verification is pending
+    // Show if verification is pending or documents submitted
     const actualStatus = getActualVerificationStatus(dealer);
-    return actualStatus === 'pending';
+    return actualStatus === 'pending' || actualStatus === 'documents_submitted' || actualStatus === 'suspended';
+  };
+
+  // Determine verification banner message and state
+  const getVerificationBannerState = (dealer) => {
+    if (!dealer) return null;
+    
+    // If onboarding not completed
+    if (!dealer.onboarding_completed) {
+      return {
+        title: 'Complete Onboarding',
+        message: 'Complete your onboarding process to unlock full platform features.',
+        action: 'Continue Onboarding',
+        link: '/onboarding'
+      };
+    }
+    
+    // Check if documents have been submitted
+    const hasDocumentsSubmitted = dealer.verification_status === 'documents_submitted' || 
+                                  dealer.verification_status_new === 'documents_submitted';
+    
+    // Suspended -> ask to resubmit documents
+    if (dealer.verification_status === 'suspended' || dealer.verification_status_new === 'suspended') {
+      return {
+        title: 'Verification Suspended',
+        message: 'Your verification was suspended. Please re-submit required documents to continue.',
+        action: 'Resubmit Documents',
+        link: createPageUrl('KYBWizard')
+      };
+    }
+
+    if (hasDocumentsSubmitted) {
+      return {
+        title: 'Verification Under Review',
+        message: 'Your business verification is being reviewed. You can still add vehicles to your inventory.',
+        action: 'View Details',
+        link: '/profile'
+      };
+    } else {
+      // Documents not submitted yet - need to complete verification
+      return {
+        title: 'Please Complete Verification',
+        message: 'Complete your KYB verification to access marketplace prices and dealer details.',
+        action: 'Start Verification',
+        link: createPageUrl('KYBWizard')
+      };
+    }
   };
 
   // If dealer profile is not loaded and it's still loading, show loading spinner
@@ -316,36 +372,45 @@ export default function Dashboard() {
       <OfflineBanner isOnline={isOnline} />
       
       {/* Verification Banner - Show for users who haven't completed onboarding or have pending verification */}
-      {dealer && shouldShowVerificationBanner(dealer) && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+      {dealer && shouldShowVerificationBanner(dealer) && (() => {
+        const bannerState = getVerificationBannerState(dealer);
+        if (!bannerState) return null;
+        
+        // Determine banner color based on state
+        const isUnderReview = bannerState.title === 'Verification Under Review';
+        const bgColor = isUnderReview ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200';
+        const iconColor = isUnderReview ? 'text-blue-400' : 'text-yellow-400';
+        const textColor = isUnderReview ? 'text-blue-800' : 'text-yellow-800';
+        const hoverColor = isUnderReview ? 'hover:text-blue-900' : 'hover:text-yellow-900';
+        
+        return (
+          <div className={`${bgColor} border-b px-4 py-3`}>
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className={`h-5 w-5 ${iconColor}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className={`text-sm font-medium ${textColor}`}>
+                    {bannerState.title}
+                  </h3>
+                  <p className={`text-sm ${textColor.replace('800', '700')}`}>
+                    {bannerState.message}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-yellow-800">
-                  {!dealer.onboarding_completed ? 'Complete Onboarding' : 'Verification Under Review'}
-                </h3>
-                <p className="text-sm text-yellow-700">
-                  {!dealer.onboarding_completed 
-                    ? 'Complete your onboarding process to unlock full platform features.'
-                    : 'Your business verification is being reviewed. You can still add vehicles to your inventory.'
-                  }
-                </p>
-              </div>
+              <button
+                onClick={() => navigate(bannerState.link)}
+                className={`text-sm font-medium ${textColor} ${hoverColor} underline`}
+              >
+                {bannerState.action}
+              </button>
             </div>
-            <button
-              onClick={() => navigate(!dealer.onboarding_completed ? '/onboarding' : '/profile')}
-              className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
-            >
-              {!dealer.onboarding_completed ? 'Continue Onboarding' : 'View Details'}
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
       
       <div className={`min-h-screen bg-slate-50 dark:bg-[#0b1220] ${!isOnline ? 'opacity-75' : ''}`}>
         

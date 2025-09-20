@@ -58,6 +58,7 @@ export default function VehicleCard({
     year: vehicle?.year || 'N/A',
     asking_price: vehicle?.asking_price || 0,
     kilometers: vehicle?.kilometers || 0,
+    mileage: vehicle?.mileage || null,
     fuel_type: vehicle?.fuel_type || 'N/A',
     transmission: vehicle?.transmission || 'N/A',
     // Use RTO location first, fallback to vehicle location (same logic as VehicleDetail page)
@@ -291,6 +292,12 @@ export default function VehicleCard({
                 <Settings2 className="w-4 h-4" />
                 <span>{vehicleData.kilometers > 0 ? `${Math.floor(vehicleData.kilometers / 1000)}k km` : '0k km'}</span>
               </div>
+              {vehicleData.mileage !== null && (
+                <div className="flex items-center gap-1">
+                  <Zap className="w-4 h-4" />
+                  <span>{vehicleData.mileage} km/l</span>
+                </div>
+              )}
             </div>
 
             {/* Location and Dealer Info */}
