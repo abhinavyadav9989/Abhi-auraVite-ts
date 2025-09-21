@@ -72,14 +72,18 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
       
       // Notify seller about new deal/offer
       try {
+        console.log(`🎉 Creating deal notification - Seller: ${vehicle.dealer_id}, Buyer: ${currentDealer.id}`);
         await NotificationService.createNewDealNotification(
-          vehicle.dealer_id, // recipient (seller)
-          currentDealer.id,  // sender (buyer)
+          vehicle.dealer_id, // seller (recipient)
+          currentDealer.id,  // buyer (sender)
           newTransaction.id,
           `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-          currentDealer?.business_name || 'Buyer'
+          currentDealer?.business_name || 'Buyer'  // buyer name
         );
-      } catch (e) { console.warn('Notification create failed', e); }
+        console.log(`✅ Deal notification created successfully`);
+      } catch (e) { 
+        console.warn('Notification create failed', e); 
+      }
 
       toast({
         title: 'Offer Sent!',

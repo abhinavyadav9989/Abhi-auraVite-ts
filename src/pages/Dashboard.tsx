@@ -384,8 +384,8 @@ export default function Dashboard() {
         const hoverColor = isUnderReview ? 'hover:text-blue-900' : 'hover:text-yellow-900';
         
         return (
-          <div className={`${bgColor} border-b px-4 py-3`}>
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className={`${bgColor} border-b mt-12 md:mt-14 lg:mt-12`}>
+            <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-3">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
                   <svg className={`h-5 w-5 ${iconColor}`} viewBox="0 0 20 20" fill="currentColor">

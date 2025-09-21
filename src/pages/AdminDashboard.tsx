@@ -162,12 +162,21 @@ export default function AdminDashboard() {
       try {
         if (action === 'approve') {
           const fresh = await Dealer.get(dealerId);
-          const ownerUserId = (fresh as any)?.owner_user_id;
-          if (ownerUserId) {
-            try { await NotificationService.createKybVerifiedNotification(ownerUserId, (fresh as any)?.business_name || (fresh as any)?.name); } catch {}
+          const dealerName = (fresh as any)?.business_name || (fresh as any)?.name;
+          
+          console.log(`🎉 Creating KYB verified notification for dealer: ${dealerId}`);
+          if (dealerId) {
+            try { 
+              await NotificationService.createKybVerifiedNotification(dealerId, dealerName);
+              console.log(`✅ KYB verified notification created successfully`);
+            } catch (notificationError) {
+              console.warn('KYB verified notification creation failed:', notificationError);
+            }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to create KYB verified notification:', e);
+      }
       loadAdminData(); // Refresh data
     } catch (error) {
       toast({ title: 'Error', description: `Failed to ${action} KYB`, variant: 'destructive' });

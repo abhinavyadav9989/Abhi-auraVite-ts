@@ -26,6 +26,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dealerId, setDealerId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -33,9 +34,14 @@ export default function NotificationBell() {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.email) return;
+    loadDealerId();
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!dealerId) return;
     loadNotifications();
-    const unsubscribe = setupRealtimeSubscription(user.id);
+    const unsubscribe = setupRealtimeSubscription(dealerId);
     // Gentle polling fallback to catch any missed realtime events
     const interval = setInterval(() => {
       loadNotifications();
@@ -44,18 +50,39 @@ export default function NotificationBell() {
       try { unsubscribe && unsubscribe(); } catch {}
       clearInterval(interval);
     };
-  }, [user?.id]);
+  }, [dealerId]);
+
+  const loadDealerId = async () => {
+    try {
+      const { Dealer } = await import('@/api/entityAdapters');
+      const dealerProfiles = await Dealer.filter({ created_by: user.email });
+      
+      if (dealerProfiles && dealerProfiles.length > 0) {
+        const currentDealerId = dealerProfiles[0].id;
+        console.log(`🔔 NotificationBell - Using dealer ID: ${currentDealerId}`);
+        setDealerId(currentDealerId);
+      } else {
+        console.log(`⏳ NotificationBell - No dealer profile found for: ${user.email}`);
+      }
+    } catch (error) {
+      console.error('Error loading dealer ID for notifications:', error);
+    }
+  };
 
   const loadNotifications = async () => {
+    if (!dealerId) return;
+    
     try {
+      console.log(`🔔 Loading notifications for dealer ID: ${dealerId}`);
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user?.id || '')
+        .eq('user_id', dealerId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
+      console.log(`📊 Loaded ${data?.length || 0} notifications for dealer: ${dealerId}`);
       setNotifications(data || []);
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -64,45 +91,76 @@ export default function NotificationBell() {
     }
   };
 
-  const setupRealtimeSubscription = (currentUserId: string) => {
-    const subscription = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${currentUserId}`
-        },
-        (payload) => {
-          console.log('New notification received:', payload);
-          // Add new notification to the top of the list
-          setNotifications(prev => [payload.new as Notification, ...prev.slice(0, 9)]);
-          try {
-            const n = payload.new as Notification;
-            toast({ title: n.title, description: n.message });
-          } catch {}
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${currentUserId}`
-        },
-        (payload) => {
-          setNotifications(prev => prev.map(n => n.id === (payload.new as any)?.id ? (payload.new as any) : n));
-        }
-      )
-      .subscribe((status) => {
-        console.log('Notifications realtime status:', status);
-      });
+      const setupRealtimeSubscription = (currentDealerId: string) => {
+        console.log(`🔔 Setting up realtime subscription for dealer ID: ${currentDealerId}`);
+        
+        // Create a unique channel name to avoid conflicts
+        const channelName = `notifications-${currentDealerId}-${Date.now()}`;
+        
+        const subscription = supabase
+          .channel(channelName)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${currentDealerId}`
+            },
+            (payload) => {
+              console.log('🔔 New notification received:', payload);
+              // Add new notification to the top of the list
+              setNotifications(prev => [payload.new as Notification, ...prev.slice(0, 9)]);
+              try {
+                const n = payload.new as Notification;
+                toast({ title: n.title, description: n.message });
+              } catch {}
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${currentDealerId}`
+            },
+            (payload) => {
+              console.log('🔔 Notification updated:', payload);
+              setNotifications(prev => prev.map(n => n.id === (payload.new as any)?.id ? (payload.new as any) : n));
+            }
+          )
+          .subscribe((status, err) => {
+            console.log('🔔 Notifications realtime status:', status);
+            if (err) {
+              console.error('🔔 Realtime subscription error:', err);
+              // Check for specific binding mismatch error
+              if (err.message && err.message.includes('mismatch between server and client bindings')) {
+                console.error('❌ Supabase realtime binding mismatch - this is a known issue with certain Supabase versions');
+                console.log('🔄 Disabling realtime permanently for this session, using polling fallback');
+                // Don't retry realtime for this session
+                return;
+              }
+              // For other errors, disable realtime and rely on polling
+              console.log('⚠️ Disabling realtime due to error, using polling fallback');
+            }
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Realtime subscription active for notifications');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error('❌ Realtime channel error - switching to polling mode');
+              // Don't retry, just rely on the existing polling interval
+            }
+          });
 
-    return () => subscription.unsubscribe();
-  };
+        return () => {
+          console.log(`🔔 Unsubscribing from channel: ${channelName}`);
+          try {
+            subscription.unsubscribe();
+          } catch (error) {
+            console.warn('Error unsubscribing from realtime channel:', error);
+          }
+        };
+      };
 
   const markAsRead = async (notificationId: string) => {
     try {

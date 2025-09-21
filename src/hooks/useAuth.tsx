@@ -57,12 +57,36 @@ export function useAuth() {
 
         // First-login welcome: create once per device or if not present in DB
         try {
-          if (event === 'SIGNED_IN' && session?.user?.id) {
+          if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user?.id) {
             const storageKey = `aura_welcome_shown_${session.user.id}`;
             const hasShown = localStorage.getItem(storageKey) === '1';
+            
+            console.log(`🔔 Welcome notification check - Event: ${event}, HasShown: ${hasShown}`);
+            
             if (!hasShown) {
-              // Try to create a welcome notification; ignore RLS/dup errors
-              try { await NotificationService.createWelcomeNotification(session.user.id, session.user.user_metadata?.full_name); } catch {}
+              // Get dealer ID for the authenticated user
+              try {
+                const { Dealer } = await import('@/api/entityAdapters');
+                const { NotificationService } = await import('@/services/notificationService');
+                
+                console.log(`🔍 Looking for dealer profile for: ${session.user.email}`);
+                const dealerProfiles = await Dealer.filter({ created_by: session.user.email });
+                
+                console.log(`📊 Dealer profiles found: ${dealerProfiles?.length || 0}`);
+                
+                if (dealerProfiles && dealerProfiles.length > 0) {
+                  const dealerId = dealerProfiles[0].id;
+                  const dealerName = dealerProfiles[0].business_name || dealerProfiles[0].name;
+                  
+                  console.log(`🎉 Creating welcome notification for dealer: ${dealerId} (${dealerName})`);
+                  await NotificationService.createWelcomeNotification(dealerId, dealerName);
+                  console.log(`✅ Welcome notification created successfully`);
+                } else {
+                  console.log(`⏳ No dealer profile found yet, will try again later`);
+                }
+              } catch (notificationError) {
+                console.warn('Welcome notification creation failed:', notificationError);
+              }
               localStorage.setItem(storageKey, '1');
             }
           }

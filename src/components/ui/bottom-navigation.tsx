@@ -10,7 +10,8 @@ import {
   Users,
   Grid3X3,
   List,
-  CreditCard
+  CreditCard,
+  Newspaper
 } from 'lucide-react';
 
 interface BottomNavItem {
@@ -31,31 +32,31 @@ const navigationItems: BottomNavItem[] = [
     id: 'home',
     label: 'Home',
     icon: Grid3X3,
-    href: '/dashboard'
+    href: '/Dashboard'
   },
   {
     id: 'inventory',
     label: 'Inventory',
     icon: Car,
-    href: '/inventory'
+    href: '/Inventory'
   },
   {
-    id: 'market',
-    label: 'Market',
+    id: 'feeds',
+    label: 'Feeds',
+    icon: Newspaper,
+    href: '/Feeds'
+  },
+  {
+    id: 'marketplace',
+    label: 'Marketplace',
     icon: ShoppingCart,
-    href: '/marketplace'
+    href: '/Marketplace'
   },
   {
     id: 'deals',
     label: 'Deals',
     icon: Handshake,
-    href: '/deals'
-  },
-  {
-    id: 'bank',
-    label: 'Bank',
-    icon: CreditCard,
-    href: '/bank'
+    href: '/Deals'
   }
 ];
 
@@ -79,8 +80,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ className, i
     !isMobileMenuOpen;
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return location.pathname === '/' || location.pathname === '/dashboard';
+    if (href === '/Dashboard') {
+      return location.pathname === '/' || location.pathname === '/Dashboard';
     }
     return location.pathname.startsWith(href);
   };

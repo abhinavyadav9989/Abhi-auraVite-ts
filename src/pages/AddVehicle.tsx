@@ -557,12 +557,33 @@ export default function AddVehicle() {
       try {
         if (wasFirstVehicle) {
           const { data: auth } = await supabase.auth.getUser();
-          const authUserId = auth.user?.id;
-          if (authUserId) {
-            try { await NotificationService.createFirstVehicleNotification(authUserId, `${vehicleData?.year || ''} ${vehicleData?.make || ''} ${vehicleData?.model || ''}`.trim()); } catch {}
+          const authUser = auth.user;
+          if (authUser?.email) {
+            // Get dealer ID for the authenticated user
+            try {
+              const { Dealer } = await import('@/api/entityAdapters');
+              const { NotificationService } = await import('@/services/notificationService');
+              
+              const dealerProfiles = await Dealer.filter({ created_by: authUser.email });
+              
+              if (dealerProfiles && dealerProfiles.length > 0) {
+                const dealerId = dealerProfiles[0].id;
+                const vehicleTitle = `${vehicleData?.year || ''} ${vehicleData?.make || ''} ${vehicleData?.model || ''}`.trim();
+                
+                console.log(`🎉 Creating first vehicle notification for dealer: ${dealerId}`);
+                await NotificationService.createFirstVehicleNotification(dealerId, vehicleTitle);
+                console.log(`✅ First vehicle notification created successfully`);
+              } else {
+                console.log(`⏳ No dealer profile found for first vehicle notification`);
+              }
+            } catch (notificationError) {
+              console.warn('First vehicle notification creation failed:', notificationError);
+            }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.warn('First vehicle notification setup failed:', e);
+      }
     } catch (error) {
       console.error('Error submitting listing:', error);
       toast({ 

@@ -95,15 +95,22 @@ export default function AdminKYBVerification() {
 
       toast({ title: toastTitle, description: notes });
 
-      // Fire KYB approved notification for dealer owner if available
+      // Fire KYB approved notification for dealer if available
       try {
         if (status === 'verified') {
           // Dealer state may or may not be loaded; fetch fresh to be safe
           const fresh = dealerId ? await Dealer.get(dealerId) : null;
-          const ownerUserId = (fresh as any)?.owner_user_id || (dealer as any)?.owner_user_id;
+          const notificationDealerId = dealerId || (fresh as any)?.id || (dealer as any)?.id;
           const dealerName = (fresh as any)?.business_name || (fresh as any)?.name || (dealer as any)?.business_name || (dealer as any)?.name;
-          if (ownerUserId) {
-            try { await NotificationService.createKybVerifiedNotification(ownerUserId, dealerName); } catch {}
+          
+          console.log(`🎉 Creating KYB verified notification for dealer: ${notificationDealerId}`);
+          if (notificationDealerId) {
+            try { 
+              await NotificationService.createKybVerifiedNotification(notificationDealerId, dealerName);
+              console.log(`✅ KYB verified notification created successfully`);
+            } catch (notificationError) {
+              console.warn('KYB verified notification creation failed:', notificationError);
+            }
           }
         }
       } catch (e) {

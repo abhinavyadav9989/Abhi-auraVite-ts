@@ -24,6 +24,19 @@ export interface CreateNotificationData {
 export class NotificationService {
   static async createNotification(data: CreateNotificationData) {
     try {
+      console.log('Creating notification with data:', data);
+      
+      // Validate that user_id is a valid UUID (dealer.id format)
+      if (!data.user_id || typeof data.user_id !== 'string') {
+        throw new Error('user_id must be a valid string');
+      }
+      
+      // Validate UUID format (dealer.id is UUID)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(data.user_id)) {
+        throw new Error(`Invalid dealer_id format: ${data.user_id}. Expected UUID format.`);
+      }
+
       // Important: do not call .select() here. The sender may not have SELECT
       // permission on the inserted row (recipient-only), which would cause 403.
       // We use return=minimal to avoid a follow-up read.
@@ -31,7 +44,12 @@ export class NotificationService {
         .from('notifications')
         .insert([data]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating notification:', error);
+        throw error;
+      }
+      
+      console.log('Notification created successfully');
       return { ok: true } as any;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -40,9 +58,10 @@ export class NotificationService {
   }
 
   // Convenience helpers
-  static async createWelcomeNotification(userId: string, dealerName?: string) {
+  static async createWelcomeNotification(dealerId: string, dealerName?: string) {
+    console.log(`🔔 NotificationService.createWelcomeNotification called with dealerId: ${dealerId}, dealerName: ${dealerName}`);
     return this.createNotification({
-      user_id: userId,
+      user_id: dealerId, // This is actually the dealer ID, not auth user ID
       type: 'welcome',
       title: 'Welcome to Aura',
       message: `Hello${dealerName ? `, ${dealerName}` : ''}! Welcome to Aura.`,
@@ -50,9 +69,9 @@ export class NotificationService {
     });
   }
 
-  static async createKybVerifiedNotification(userId: string, dealerName?: string) {
+  static async createKybVerifiedNotification(dealerId: string, dealerName?: string) {
     return this.createNotification({
-      user_id: userId,
+      user_id: dealerId, // This is actually the dealer ID, not auth user ID
       type: 'kyb_verified',
       title: 'Verification Approved',
       message: `Congratulations${dealerName ? `, ${dealerName}` : ''}! Your verification is approved.`,
@@ -60,9 +79,9 @@ export class NotificationService {
     });
   }
 
-  static async createFirstVehicleNotification(userId: string, vehicleTitle?: string) {
+  static async createFirstVehicleNotification(dealerId: string, vehicleTitle?: string) {
     return this.createNotification({
-      user_id: userId,
+      user_id: dealerId, // This is actually the dealer ID, not auth user ID
       type: 'first_vehicle',
       title: 'First Vehicle Added',
       message: `Congrats! Your first vehicle${vehicleTitle ? ` (${vehicleTitle})` : ''} is added.`,
@@ -96,20 +115,21 @@ export class NotificationService {
   }
 
   static async createNewDealNotification(
-    buyerId: string,
-    sellerId: string,
+    sellerId: string,    // recipient (seller who gets the notification)
+    buyerId: string,     // sender (buyer who made the offer)
     dealId: string,
     vehicleTitle: string,
-    sellerName: string
+    buyerName: string    // name of the buyer who made the offer
   ) {
+    console.log(`🔔 Creating new deal notification for seller: ${sellerId}, from buyer: ${buyerId}`);
     return this.createNotification({
-      user_id: buyerId,
+      user_id: sellerId,  // seller gets the notification
       type: 'new_deal',
       title: 'New Deal Created',
-      message: `New deal from ${sellerName} for ${vehicleTitle}`,
+      message: `New deal from ${buyerName} for ${vehicleTitle}`,
       deal_id: dealId,
-      related_user_id: sellerId,
-      metadata: { vehicleTitle, sellerName }
+      related_user_id: buyerId,  // buyer is the related user
+      metadata: { vehicleTitle, buyerName }
     });
   }
 
