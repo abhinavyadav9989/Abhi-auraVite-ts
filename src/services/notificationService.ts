@@ -159,7 +159,7 @@ export class NotificationService {
   ) {
     const statusMessages = {
       'accepted': 'Deal accepted',
-      'rejected': 'Deal rejected',
+      'offer_rejected': 'Offer rejected',
       'payment_pending': 'Payment pending',
       'paid': 'Payment completed',
       'completed': 'Deal completed',

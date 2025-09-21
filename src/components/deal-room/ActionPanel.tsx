@@ -118,11 +118,11 @@ export default function ActionPanel({
       try {
         const recipientId = userRole === 'buyer' ? transaction.seller_id : transaction.buyer_id;
         const actorName = currentDealer?.business_name || 'Dealer';
-        if (recipientId && newStatus === 'accepted') {
+        if (recipientId && (newStatus === 'accepted' || newStatus === 'offer_rejected')) {
           NotificationService.createStatusChangeNotification(
             recipientId,
             transaction.id,
-            'accepted',
+            newStatus,
             actorName
           ).catch(() => {});
         }
@@ -216,7 +216,7 @@ export default function ActionPanel({
               <Button 
                 variant="outline" 
                 className="w-full text-red-600 hover:text-red-700" 
-                onClick={() => handleAction('rejected', {}, "Offer rejected.")}
+                onClick={() => handleAction('offer_rejected', {}, "Offer rejected.")}
               >
                 Reject Offer
               </Button>
@@ -261,7 +261,7 @@ export default function ActionPanel({
             <Button 
               variant="outline" 
               className="w-full text-red-600 hover:text-red-700" 
-              onClick={() => handleAction('rejected', {}, "Counter offer rejected.")}
+              onClick={() => handleAction('offer_rejected', {}, "Counter offer rejected.")}
             >
               Reject
             </Button>
