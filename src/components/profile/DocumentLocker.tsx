@@ -161,7 +161,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center overflow-x-hidden">
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
               Document Locker
@@ -178,7 +178,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 overflow-x-hidden">
           {documentTypes.map(docTypeInfo => {
             const doc = documents.find(d => d.document_type === docTypeInfo.value);
             const statusConfig = doc ? getStatusConfig(doc.status) : null;
@@ -186,7 +186,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
 
             return (
               <div key={docTypeInfo.value} className="p-4 border rounded-lg space-y-3">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-3">
                   <div>
                     <h3 className="font-medium text-slate-900 dark:text-white">{docTypeInfo.label}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -203,7 +203,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
 
                 {doc && (
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       {doc.file_type?.startsWith('image/') ? (
                         <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
                           <span className="text-xs text-blue-600">IMG</span>
@@ -212,7 +212,7 @@ export default function DocumentLocker({ documents = [], dealer, userRole, onDoc
                         <FileText className="w-5 h-5 text-slate-500"/>
                       )}
                       <div className="truncate">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{doc.file_name}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate max-w-[52vw] md:max-w-[32rem]">{doc.file_name}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {((doc.file_size || 0) / 1024).toFixed(1)} KB
                           {doc.file_type && (

@@ -842,7 +842,7 @@ export default function Profile() {
   const StatusIcon = verificationStatus?.icon || Clock;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen overflow-x-hidden">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header Section */}

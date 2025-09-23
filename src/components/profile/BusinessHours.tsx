@@ -29,7 +29,7 @@ export default function BusinessHours({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-x-hidden">
         <div className="space-y-4">
           {DAYS_OF_WEEK.map((day, index) => {
             const dayHours = businessHours.find(h => h.day_of_week === index);
@@ -38,7 +38,7 @@ export default function BusinessHours({
             const closeTime = dayHours?.close_time || '19:00';
 
             return (
-              <div key={day} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={day} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-20">
                     <span className="font-medium">{day}</span>
@@ -51,7 +51,7 @@ export default function BusinessHours({
                   )}
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                   {isOpen ? (
                     <>
                       {canEdit ? (
