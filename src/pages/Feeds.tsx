@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Image as ImageIcon, Video, Loader2, Send, MoreHorizontal, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Image as ImageIcon, Video, Loader2, Send, MoreHorizontal, Heart, MessageCircle, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 type FeedMedia = {
@@ -38,12 +38,17 @@ export default function Feeds() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [isSharing, setIsSharing] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
 
   const loadPosts = async () => {
     setLoading(true);
@@ -91,6 +96,8 @@ export default function Feeds() {
         ...p,
         dealer: p.dealer_id ? dealerMap[p.dealer_id] || null : null,
         feeds_media: mediaByPost[p.id] || [],
+        // Vehicle-aware: prefer direct vehicle_id on post; else null
+        vehicle_id: (p as any).vehicle_id || null,
       }));
 
       // If my own posts still lack dealer (older posts), hydrate with my dealer best-effort
@@ -105,6 +112,33 @@ export default function Feeds() {
         : p
       );
       setPosts(hydratedWithMine);
+
+      // Load likes/comments in parallel for shown posts
+      try {
+        const { data: likeRows } = await supabase
+          .from('feeds_likes')
+          .select('post_id,dealer_id')
+          .in('post_id', postIds);
+        const { data: commentRows } = await supabase
+          .from('feeds_comments')
+          .select('post_id')
+          .in('post_id', postIds);
+        const likeCountMap: Record<string, number> = {};
+        const likedMap: Record<string, boolean> = {};
+        (likeRows || []).forEach((r: any) => {
+          likeCountMap[r.post_id] = (likeCountMap[r.post_id] || 0) + 1;
+          if (r.dealer_id && myDealer?.id && r.dealer_id === myDealer.id) {
+            likedMap[r.post_id] = true;
+          }
+        });
+        const commentCountMap: Record<string, number> = {};
+        (commentRows || []).forEach((r: any) => {
+          commentCountMap[r.post_id] = (commentCountMap[r.post_id] || 0) + 1;
+        });
+        setLikeCounts(likeCountMap);
+        setCommentCounts(commentCountMap);
+        setLikedByMe(likedMap);
+      } catch {}
     } catch (e) {
       console.error('Failed loading posts', e);
       toast({ title: 'Failed to load posts', variant: 'destructive' });
@@ -114,6 +148,16 @@ export default function Feeds() {
   };
 
   useEffect(() => { loadPosts(); }, [activeTab]);
+  // Realtime for new posts/likes/comments
+  useEffect(() => {
+    const channel = supabase.channel('feeds_realtime');
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_posts' }, () => loadPosts());
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_likes' }, () => loadPosts());
+    channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feeds_likes' }, () => loadPosts());
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_comments' }, () => loadPosts());
+    channel.subscribe();
+    return () => { try { supabase.removeChannel(channel); } catch {} };
+  }, []);
   useEffect(() => {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
@@ -147,6 +191,45 @@ export default function Feeds() {
   };
 
   const canShare = composerText.trim().length > 0 || files.length > 0;
+
+  const toggleLike = async (postId: string) => {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.email) throw new Error('Not authenticated');
+      const myDealers = await DealerEntity.filter({ created_by: auth.user.email });
+      const myDealer = myDealers && myDealers[0];
+      if (!myDealer?.id) throw new Error('No dealer profile');
+      const liked = !!likedByMe[postId];
+      if (liked) {
+        await supabase.from('feeds_likes').delete().eq('post_id', postId).eq('dealer_id', myDealer.id);
+        setLikedByMe(prev => ({ ...prev, [postId]: false }));
+        setLikeCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] || 1) - 1) }));
+      } else {
+        await supabase.from('feeds_likes').insert({ post_id: postId, dealer_id: myDealer.id });
+        setLikedByMe(prev => ({ ...prev, [postId]: true }));
+        setLikeCounts(prev => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+      }
+    } catch (e) {
+      console.error('Like toggle failed', e);
+    }
+  };
+
+  const addComment = async (postId: string) => {
+    const text = (commentDrafts[postId] || '').trim();
+    if (!text) return;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.email) throw new Error('Not authenticated');
+      const myDealers = await DealerEntity.filter({ created_by: auth.user.email });
+      const myDealer = myDealers && myDealers[0];
+      if (!myDealer?.id) throw new Error('No dealer profile');
+      await supabase.from('feeds_comments').insert({ post_id: postId, dealer_id: myDealer.id, comment: text });
+      setCommentDrafts(prev => ({ ...prev, [postId]: '' }));
+      setCommentCounts(prev => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+    } catch (e) {
+      console.error('Add comment failed', e);
+    }
+  };
 
   const sharePost = async () => {
     if (!canShare || isSharing) return;
@@ -315,6 +398,15 @@ export default function Feeds() {
               setEditingPostId={setEditingPostId}
               editText={editText}
               setEditText={setEditText}
+              likeCounts={likeCounts}
+              commentCounts={commentCounts}
+              likedByMe={likedByMe}
+              onToggleLike={toggleLike}
+              carouselIndex={carouselIndex}
+              setCarouselIndex={setCarouselIndex}
+              commentDrafts={commentDrafts}
+              setCommentDrafts={setCommentDrafts}
+              onAddComment={addComment}
               onSaveEdit={async (id, text) => {
                 try {
                   await supabase.from('feeds_posts').update({ content: text }).eq('id', id);
@@ -345,6 +437,15 @@ export default function Feeds() {
               setEditingPostId={setEditingPostId}
               editText={editText}
               setEditText={setEditText}
+              likeCounts={likeCounts}
+              commentCounts={commentCounts}
+              likedByMe={likedByMe}
+              onToggleLike={toggleLike}
+              carouselIndex={carouselIndex}
+              setCarouselIndex={setCarouselIndex}
+              commentDrafts={commentDrafts}
+              setCommentDrafts={setCommentDrafts}
+              onAddComment={addComment}
               onSaveEdit={async (id, text) => {
                 try {
                   await supabase.from('feeds_posts').update({ content: text }).eq('id', id);
@@ -370,7 +471,7 @@ export default function Feeds() {
   );
 }
 
-function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, editingPostId, setEditingPostId, editText, setEditText, onSaveEdit, onDelete }: {
+function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, editingPostId, setEditingPostId, editText, setEditText, likeCounts, commentCounts, likedByMe, onToggleLike, carouselIndex, setCarouselIndex, commentDrafts, setCommentDrafts, onAddComment, onSaveEdit, onDelete }: {
   posts: FeedPost[];
   loading: boolean;
   currentUserId: string | null;
@@ -380,6 +481,15 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
   setEditingPostId: (id: string | null) => void;
   editText: string;
   setEditText: (t: string) => void;
+  likeCounts: Record<string, number>;
+  commentCounts: Record<string, number>;
+  likedByMe: Record<string, boolean>;
+  onToggleLike: (postId: string) => void;
+  carouselIndex: Record<string, number>;
+  setCarouselIndex: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  commentDrafts: Record<string, string>;
+  setCommentDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onAddComment: (postId: string) => void;
   onSaveEdit: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
@@ -434,10 +544,12 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
             {/* Post body below header so it aligns with card padding (no avatar offset) */}
             <div className="mt-2 w-full px-0">
                   {/* Media first - square like Instagram */}
-                  {Array.isArray(p.feeds_media) && p.feeds_media.length > 0 && (
-                    <div className="mt-2 w-full aspect-square overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                  {Array.isArray((p as any).feeds_media) && (p as any).feeds_media.length > 0 && (
+                    <div className="mt-2 w-full aspect-square overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60 relative">
                       {(() => {
-                        const m = [...p.feeds_media].sort((a,b) => (a.sort_order||0)-(b.sort_order||0))[0];
+                        const sorted = [...(p as any).feeds_media].sort((a,b) => (a.sort_order||0)-(b.sort_order||0));
+                        const idx = (carouselIndex[p.id] ?? 0) % sorted.length;
+                        const m = sorted[idx];
                         return m.media_type === 'video' ? (
                           <video controls className="w-full h-full object-cover">
                             <source src={m.file_url} />
@@ -446,17 +558,46 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                           <img src={m.file_url} alt="post" className="w-full h-full object-cover" />
                         );
                       })()}
+                      {(p as any).feeds_media.length > 1 && (
+                        <>
+                          <button className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full p-1" onClick={() => setCarouselIndex(prev => ({ ...prev, [p.id]: Math.max(0, ((prev[p.id] ?? 0) - 1 + (p as any).feeds_media.length) % (p as any).feeds_media.length) }))}>
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full p-1" onClick={() => setCarouselIndex(prev => ({ ...prev, [p.id]: ((prev[p.id] ?? 0) + 1) % (p as any).feeds_media.length }))}>
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                            {(p as any).feeds_media.map((_: any, i: number) => (
+                              <div key={i} className={`w-1.5 h-1.5 rounded-full ${((carouselIndex[p.id] ?? 0) === i) ? 'bg-white' : 'bg-white/50'}`} />
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {/* Action bar */}
                   <div className="mt-3 flex items-center gap-5 text-slate-700 dark:text-slate-300">
-                    <button className="hover:opacity-80" aria-label="Like"><Heart className="w-5 h-5" /></button>
+                    <button className={`hover:opacity-80 ${likedByMe[p.id] ? 'text-red-600' : ''}`} aria-label="Like" onClick={() => onToggleLike(p.id)}>
+                      <Heart className="w-5 h-5" />
+                    </button>
                     <button className="hover:opacity-80" aria-label="Comment"><MessageCircle className="w-5 h-5" /></button>
+                    {/* View Vehicle button when post is linked to a vehicle */}
+                    {Boolean((p as any).vehicle_id) && (
+                      <a href={(() => {
+                        // Lazy import to avoid circular deps
+                        try { return (require('@/utils') as any).createPageUrl(`VehicleDetail?id=${(p as any).vehicle_id}`); } catch { return `/VehicleDetail?id=${(p as any).vehicle_id}`; }
+                      })()} className="ml-auto">
+                        <Button size="sm" variant="outline" className="gap-2">
+                          View Vehicle
+                        </Button>
+                      </a>
+                    )}
                   </div>
 
                   {/* Likes count */}
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">0 likes</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{likeCounts[p.id] || 0} likes</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{commentCounts[p.id] || 0} comments</div>
 
                   {/* Caption (business name bold + text) */}
                   {editingPostId === p.id ? (
@@ -476,8 +617,16 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     )
                   )}
 
-                  {/* View comments link */}
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">View all 0 comments</div>
+                  {/* Comments composer */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <Input
+                      placeholder="Write a comment..."
+                      value={commentDrafts[p.id] || ''}
+                      onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={() => onAddComment(p.id)}>Post</Button>
+                  </div>
 
                   {/* Timestamp */}
                   <div className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">{formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}</div>

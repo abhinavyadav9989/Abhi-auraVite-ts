@@ -146,6 +146,7 @@ export default function Profile() {
   
   const [documents, setDocuments] = useState([]);
   const [businessHours, setBusinessHours] = useState([]);
+  const [mainBranch, setMainBranch] = useState<any>(null);
   const [reviews, setReviews] = useState([]);
   const [vehicles, setVehicles] = useState([]);
 
@@ -358,13 +359,28 @@ export default function Profile() {
         });
 
         // Load related data
-        await Promise.all([
+        const [_, __, ___, ____, _____] = await Promise.all([
           loadDocuments(dealerData.id),
           loadBusinessHours(dealerData.id),
           loadReviews(dealerData.id),
           loadVehicles(dealerData.id),
           loadBankDetails(dealerData.id)
         ]);
+
+        // Load main (default) branch for open/closed status
+        try {
+          const { data: defaultBranch } = await supabase
+            .from('branches')
+            .select('*')
+            .eq('dealer_id', dealerData.id)
+            .eq('is_default', true)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (defaultBranch) setMainBranch(defaultBranch);
+        } catch (e) {
+          console.warn('Failed to load default branch:', e);
+        }
       } else {
         // No dealer profile found, redirect to onboarding
         navigate(createPageUrl('OnboardingPath'));
@@ -668,7 +684,7 @@ export default function Profile() {
     }
   };
 
-  // PF-02: Upload logo/banner
+  // PF-02: Upload logo/banner (persist to Supabase Storage and save URL in dealers table)
   const handleFileUpload = async (file, type) => {
     // Add more robust check for file object
     if (!file || typeof file !== 'object' || !file.size || !dealer?.id) {
@@ -684,13 +700,32 @@ export default function Profile() {
 
     try {
       setUploadingDoc(type);
-      // Mock file upload - in real app would use UploadFile integration
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      const mockUrl = URL.createObjectURL(file);
+      // Upload to storage and get a public URL
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const filePath = `${dealer.id}/${type}_${Date.now()}.${fileExt}`;
       
-      const updateData = type === 'logo' ? { logo_url: mockUrl } : { banner_url: mockUrl };
+      // Try preferred existing buckets, fall back to 'public' if not available
+      let publicUrl: string | null = null;
+      const tryBuckets = ['uploads', 'feed-media', 'public'];
+      let lastError: any = null;
+      for (const bucket of tryBuckets) {
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+          if (uploadError) throw uploadError;
+          const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+          publicUrl = data.publicUrl;
+          break;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (!publicUrl) throw lastError || new Error('Upload failed');
+
+      const updateData = type === 'logo' ? { logo_url: publicUrl } : { banner_url: publicUrl };
       await Dealer.update(dealer.id, updateData);
-      
+
       setDealer({ ...dealer, ...updateData });
       toast({ title: "Success", description: `${type.charAt(0).toUpperCase() + type.slice(1)} uploaded successfully!` });
     } catch (error) {
@@ -719,19 +754,46 @@ export default function Profile() {
     }
   };
 
-  // PF-18: Check if currently open
+  // PF-18: Check if currently open based on Main (default) branch first
   const isCurrentlyOpen = () => {
     const now = new Date();
     const currentDay = now.getDay();
     const currentTime = format(now, 'HH:mm');
-    
+
+    // 0) Prefer main branch working_hours if present
+    const mb = mainBranch as any;
+    if (mb && mb.working_hours && typeof mb.working_hours === 'object') {
+      const today = mb.working_hours[String(currentDay)] || mb.working_hours[currentDay];
+      if (today && today.isOpen) {
+        const openTime = parse(today.openTime, 'HH:mm', new Date());
+        const closeTime = parse(today.closeTime, 'HH:mm', new Date());
+        const currentDateTime = parse(currentTime, 'HH:mm', new Date());
+        return isWithinInterval(currentDateTime, { start: openTime, end: closeTime });
+      }
+      if (today && today.isOpen === false) {
+        return false;
+      }
+    }
+
+    // 1) Prefer dealer.business_hours JSONB when available
+    const bh = dealer?.business_hours as any;
+    if (bh && typeof bh === 'object') {
+      const today = bh[String(currentDay)] || bh[currentDay];
+      if (today && today.isOpen) {
+        const openTime = parse(today.openTime, 'HH:mm', new Date());
+        const closeTime = parse(today.closeTime, 'HH:mm', new Date());
+        const currentDateTime = parse(currentTime, 'HH:mm', new Date());
+        return isWithinInterval(currentDateTime, { start: openTime, end: closeTime });
+      }
+    }
+
+    // 2) Fallback to dealer_hours table state already loaded
     const todayHours = businessHours.find(h => h.day_of_week === currentDay);
     if (!todayHours || !todayHours.is_open) return false;
-    
+
     const openTime = parse(todayHours.open_time, 'HH:mm', new Date());
     const closeTime = parse(todayHours.close_time, 'HH:mm', new Date());
     const currentDateTime = parse(currentTime, 'HH:mm', new Date());
-    
     return isWithinInterval(currentDateTime, { start: openTime, end: closeTime });
   };
 

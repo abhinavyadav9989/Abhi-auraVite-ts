@@ -444,6 +444,70 @@ export default function AddVehicle() {
 
       // Sync engine audio assets: insert new and delete removed
       if (currentVehicleId) {
+        // Best-effort: create a feed post for this vehicle
+        try {
+          const { supabase } = await import('@/api/supabaseClient');
+          const vehicleTitle = `${finalPayload.year || ''} ${finalPayload.make || ''} ${finalPayload.model || ''}`.trim() || (finalPayload.registration_number || 'New Vehicle');
+          const priceValue = (finalPayload.price && typeof finalPayload.price === 'number') ? finalPayload.price : null;
+          const imageUrls: string[] = Array.isArray(finalPayload.images) ? finalPayload.images.filter(Boolean) : [];
+          // Resolve current auth user to stamp user_id
+          let userId: string | null = null;
+          try { const { data: { user } } = await supabase.auth.getUser(); userId = user?.id || null; } catch {}
+
+          // Insert post into feeds_posts (your schema). Include vehicle_id when available in DB
+          const tryInsertPost = async () => {
+            const basePayload: any = {
+              content: `${vehicleTitle}${priceValue ? ` · ₹${priceValue}` : ''}`,
+              user_id: userId,
+              dealer_id: dealer.id,
+              media_count: imageUrls.length,
+              visibility: 'public',
+              location_city: dealer.city || null,
+              location_state: dealer.state || null
+            };
+
+            // 1) Try with vehicle_id column (recommended schema)
+            try {
+              const { data, error } = await supabase
+                .from('feeds_posts')
+                .insert([{ ...basePayload, vehicle_id: currentVehicleId }])
+                .select('*')
+                .single();
+              if (!error && data) return { table: 'feeds_posts', post: data } as any;
+            } catch {}
+
+            // 2) Try without vehicle_id column (current schema); button will hide in UI when missing
+            const { data, error } = await supabase
+              .from('feeds_posts')
+              .insert([basePayload])
+              .select('*')
+              .single();
+            if (!error && data) return { table: 'feeds_posts', post: data } as any;
+
+            throw new Error('feeds_posts insert failed');
+          };
+
+          const { table: postTable, post } = await tryInsertPost();
+
+          // Insert media rows for images if corresponding media table exists
+          if (imageUrls.length > 0) {
+            const mediaTableCandidates = ['feeds_media', 'feed_media'];
+            for (const mt of mediaTableCandidates) {
+              try {
+                const rows = imageUrls.map((url, idx) => ({ post_id: post.id, media_type: 'image', file_url: url, sort_order: idx }));
+                const { error } = await supabase.from(mt).insert(rows);
+                if (!error) break;
+              } catch {}
+            }
+            // If post has images[] column and no media table, ensure images are saved
+            try {
+              await supabase.from(postTable).update({ images: imageUrls }).eq('id', post.id);
+            } catch {}
+          }
+        } catch (e) {
+          console.warn('Feed post creation skipped:', e);
+        }
+
         try {
           const desiredUrls: string[] = (vehicleData.audio || []) as string[];
           if (!isEditMode || preloadedAssets) {
