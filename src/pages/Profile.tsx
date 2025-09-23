@@ -3,7 +3,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Dealer } from "@/api/entities";
 import { DealerDocument } from "@/api/entities";
 import { DealerHours } from "@/api/entities";
-import { DealerReview } from "@/api/entities";
+import { DealerRating } from "@/api/entities";
 import { Vehicle } from "@/api/entities";
 import { User } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -505,8 +505,40 @@ export default function Profile() {
 
   const loadReviews = async (dealerId) => {
     try {
-      const reviewData = await DealerReview.filter({ dealer_id: dealerId });
-      setReviews(reviewData || []);
+      // Fetch ratings where this dealer is the rated party
+      const ratings = await DealerRating.filter({ rated_dealer_id: dealerId });
+
+      if (!ratings || ratings.length === 0) {
+        setReviews([]);
+        return;
+      }
+
+      // Map to UI-friendly review objects expected by ReviewsSection/PublicProfileShare
+      // Also enrich with rater dealer's business_name when possible
+      const raterIds = Array.from(new Set(ratings.map(r => r.rater_dealer_id).filter(Boolean)));
+      const raterMap = {} as Record<string, any>;
+      await Promise.all(
+        raterIds.map(async (rid) => {
+          try {
+            const d = await Dealer.get(rid);
+            if (d && d.id) raterMap[d.id] = d;
+          } catch {}
+        })
+      );
+
+      const mapped = ratings.map(r => ({
+        id: r.id,
+        rating: r.overall ?? 0,
+        reviewer_name: raterMap[r.rater_dealer_id]?.business_name || 'Dealer',
+        review_text: r.comment || '',
+        created_date: r.created_at,
+        // Optional fields used by UI; keep undefined if not available
+        dealer_response: undefined,
+        responded_at: undefined,
+        is_verified: true
+      }));
+
+      setReviews(mapped);
     } catch (error) {
       console.error("Error loading reviews:", error);
       setReviews([]);
