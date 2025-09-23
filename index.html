@@ -9,6 +9,52 @@
     <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aura - Future of Automobile Industry</title>
+    <style id="gt-global-hide">
+      .goog-te-banner-frame.skiptranslate { display: none !important; }
+      .goog-te-banner-frame { display: none !important; visibility: hidden !important; height: 0 !important; }
+      .goog-te-gadget, .goog-logo-link, #goog-gt-tt { display: none !important; }
+      body { top: 0 !important; }
+    </style>
+    <script>
+      // Extra safety: hide banner early and continuously for a short window
+      (function(){
+        var tries = 0; var max = 200; // ~20s
+        function hide(){
+          try {
+            var frame = document.querySelector('iframe.goog-te-banner-frame');
+            if (frame && frame.style) { frame.style.display = 'none'; frame.style.visibility = 'hidden'; frame.style.height = '0px'; }
+            var tip = document.getElementById('goog-gt-tt'); if (tip) tip.style.display = 'none';
+            document.body && (document.body.style.top = '0px');
+          } catch(e) {}
+          if (++tries < max) setTimeout(hide, 100);
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', hide);
+        } else { hide(); }
+
+        // Persistent watcher: remove any reinjected banner/balloon nodes
+        try {
+          var removeInjected = function(){
+            document.querySelectorAll('iframe.goog-te-banner-frame, .goog-te-banner-frame, .goog-te-balloon-frame, #goog-gt-tt').forEach(function(el){
+              try {
+                if (el.tagName === 'IFRAME' || el.id === 'goog-gt-tt' || el.className.indexOf('goog-te') > -1) {
+                  el.style.display = 'none';
+                  if (el.parentNode) el.parentNode.removeChild(el);
+                }
+              } catch(_){}
+            });
+            if (document.body && document.body.style && document.body.style.top) document.body.style.top = '0px';
+          };
+          var obs = new MutationObserver(removeInjected);
+          obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+        } catch(_){ }
+      })();
+    </script>
+    <script>
+      window.__gt_ready = false;
+      window.googleTranslateElementInit = function() { window.__gt_ready = true; };
+    </script>
+    <script id="google-translate-script" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>
   </head>
   <body>
     <div id="root"></div>

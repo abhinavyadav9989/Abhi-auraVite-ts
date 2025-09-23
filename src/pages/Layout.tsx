@@ -17,6 +17,7 @@ import {
   CreditCard, Newspaper
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import LanguageTranslator from "@/components/LanguageTranslator";
 import { NotificationService } from '@/services/notificationService';
 import BottomNavigation from "@/components/ui/bottom-navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -233,6 +234,7 @@ export default function Layout({ children, currentPageName }) {
                 <span className="font-bold text-slate-900 dark:text-white">Aura</span>
               </Link>
               <div className="flex items-center gap-2">
+                <LanguageTranslator />
                 <NotificationBell />
                 <ThemeToggle />
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
@@ -276,6 +278,7 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Theme toggle and notifications floating on desktop */}
         <div className="hidden lg:flex fixed top-4 right-4 z-40 items-center gap-2">
+          <LanguageTranslator />
           <NotificationBell />
           <ThemeToggle />
         </div>

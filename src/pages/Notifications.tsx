@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Bell, Check, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Notification {
   id: string;
@@ -18,30 +19,50 @@ interface Notification {
   deal_id?: string;
   is_read: boolean;
   created_at: string;
-  metadata: any;
+  metadata: unknown;
 }
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [dealerId, setDealerId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
-    loadNotifications();
-    setupRealtimeSubscription();
-  }, []);
+    if (!user?.email) return;
+    (async () => {
+      try {
+        const { Dealer } = await import('@/api/entityAdapters');
+        const dealerProfiles = await Dealer.filter({ created_by: user.email });
+        if (dealerProfiles && dealerProfiles.length > 0) {
+          setDealerId(dealerProfiles[0].id as string);
+        }
+      } catch (error) {
+        console.error('Error loading dealer ID for notifications page:', error);
+      }
+    })();
+  }, [user?.email]);
 
-  const loadNotifications = async () => {
+  useEffect(() => {
+    if (!dealerId) return;
+    loadNotifications(dealerId);
+    const unsubscribe = setupRealtimeSubscription(dealerId);
+    return () => {
+      try { unsubscribe && unsubscribe(); } catch {}
+    };
+  }, [dealerId]);
+
+  const loadNotifications = async (currentDealerId: string) => {
     try {
-      const { data: auth } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', auth.user?.id || '')
+        .eq('user_id', currentDealerId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -53,18 +74,16 @@ export default function Notifications() {
     }
   };
 
-  const setupRealtimeSubscription = async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user?.id) return () => {};
+  const setupRealtimeSubscription = (currentDealerId: string) => {
     const subscription = supabase
-      .channel('notifications-center')
+      .channel(`notifications-center-${currentDealerId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${auth.user.id}`
+          filter: `user_id=eq.${currentDealerId}`
         },
         (payload) => {
           console.log('Notification update received:', payload);
@@ -72,11 +91,11 @@ export default function Notifications() {
             setNotifications(prev => [payload.new as Notification, ...prev]);
             try { const n = payload.new as Notification; toast({ title: n.title, description: n.message }); } catch {}
           } else if (payload.eventType === 'UPDATE') {
-            setNotifications(prev => 
-              prev.map(n => n.id === payload.new.id ? payload.new as Notification : n)
+            setNotifications(prev =>
+              prev.map(n => n.id === (payload.new as any).id ? payload.new as Notification : n)
             );
           } else if (payload.eventType === 'DELETE') {
-            setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
+            setNotifications(prev => prev.filter(n => n.id !== (payload.old as any).id));
           }
         }
       )
