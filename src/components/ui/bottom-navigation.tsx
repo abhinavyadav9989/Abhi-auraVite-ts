@@ -130,26 +130,18 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ className, i
   return (
     <nav className={cn(
       'fixed bottom-0 left-0 right-0 z-50 lg:hidden',
-      'px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2',
       className
     )}>
       <div
         className={cn(
-          'relative max-w-md mx-auto rounded-2xl overflow-hidden',
+          'relative w-full rounded-none overflow-hidden',
           'bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl',
-          'border border-slate-200/60 dark:border-slate-800/60',
-          'shadow-lg shadow-black/5 dark:shadow-black/20'
+          'border-t border-slate-200/60 dark:border-slate-800/60',
+          'shadow-lg shadow-black/5 dark:shadow-black/20',
+          'pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)]'
         )}
       >
-        {/* Floating indicator circle (only on the 5 primary tabs) */}
-        {activeIndex >= 0 && measured && (
-          <motion.div
-            className="pointer-events-none absolute top-0 -translate-y-1/2 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-300 ring-2 ring-blue-600/90 dark:ring-blue-400/90 shadow-md"
-            initial={false}
-            animate={{ x: Math.max(0, Math.min(Math.max(0, (containerWidth || 0) - 40), indicatorLeft - 20)) }}
-            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-          />
-        )}
+        {/* Removed blue circular active indicator for a cleaner look */}
 
         <div ref={containerRef} className="relative grid grid-cols-5">
           {navigationItems.map((item, idx) => {
