@@ -49,6 +49,8 @@ export default function Feeds() {
   const [editText, setEditText] = useState<string>('');
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
+  const [openCommentsForPostId, setOpenCommentsForPostId] = useState<string | null>(null);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, { id: string; post_id: string; user_id: string | null; dealer_id: string | null; content: string; created_at: string; display_name?: string; display_avatar?: string | null }[]>>({});
 
   const loadPosts = async () => {
     setLoading(true);
@@ -117,7 +119,7 @@ export default function Feeds() {
       try {
         const { data: likeRows } = await supabase
           .from('feeds_likes')
-          .select('post_id,dealer_id')
+          .select('post_id,dealer_id,user_id')
           .in('post_id', postIds);
         const { data: commentRows } = await supabase
           .from('feeds_comments')
@@ -127,9 +129,9 @@ export default function Feeds() {
         const likedMap: Record<string, boolean> = {};
         (likeRows || []).forEach((r: any) => {
           likeCountMap[r.post_id] = (likeCountMap[r.post_id] || 0) + 1;
-          if (r.dealer_id && myDealer?.id && r.dealer_id === myDealer.id) {
-            likedMap[r.post_id] = true;
-          }
+          const likedByDealer = Boolean(r.dealer_id && myDealer?.id && r.dealer_id === myDealer.id);
+          const likedByUser = Boolean(r.user_id && r.user_id === myId);
+          if (likedByDealer || likedByUser) likedMap[r.post_id] = true;
         });
         const commentCountMap: Record<string, number> = {};
         (commentRows || []).forEach((r: any) => {
@@ -154,7 +156,18 @@ export default function Feeds() {
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_posts' }, () => loadPosts());
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_likes' }, () => loadPosts());
     channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feeds_likes' }, () => loadPosts());
-    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_comments' }, () => loadPosts());
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feeds_comments' }, (payload) => {
+      try {
+        const row: any = payload.new;
+        setCommentCounts(prev => ({ ...prev, [row.post_id]: (prev[row.post_id] || 0) + 1 }));
+        if (openCommentsForPostId === row.post_id) {
+          setCommentsByPost(prev => ({
+            ...prev,
+            [row.post_id]: [...(prev[row.post_id] || []), row]
+          }));
+        }
+      } catch {}
+    });
     channel.subscribe();
     return () => { try { supabase.removeChannel(channel); } catch {} };
   }, []);
@@ -192,6 +205,45 @@ export default function Feeds() {
 
   const canShare = composerText.trim().length > 0 || files.length > 0;
 
+  const toggleComments = async (postId: string) => {
+    try {
+      if (openCommentsForPostId === postId) {
+        setOpenCommentsForPostId(null);
+        return;
+      }
+      setOpenCommentsForPostId(postId);
+      if (!commentsByPost[postId]) {
+        const { data } = await supabase
+          .from('feeds_comments')
+          .select('id, post_id, user_id, dealer_id, content, created_at')
+          .eq('post_id', postId)
+          .order('created_at', { ascending: true })
+          .limit(50);
+        const rows = (data as any[]) || [];
+        // Hydrate commenter display names from dealers; fallback to "You" if current user
+        const dealerIds = Array.from(new Set(rows.map(r => r.dealer_id).filter(Boolean)));
+        let dealerMap: Record<string, { business_name: string | null; name: string | null; logo_url: string | null }> = {};
+        if (dealerIds.length > 0) {
+          const { data: dealers } = await supabase
+            .from('dealers')
+            .select('id,business_name,name,logo_url')
+            .in('id', dealerIds as string[]);
+          (dealers || []).forEach((d: any) => { dealerMap[d.id] = { business_name: d.business_name, name: d.name, logo_url: d.logo_url || null }; });
+        }
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id || '';
+        const withNames = rows.map(r => ({
+          ...r,
+          display_name: r.dealer_id && dealerMap[r.dealer_id]
+            ? (dealerMap[r.dealer_id].business_name || dealerMap[r.dealer_id].name || 'User')
+            : (r.user_id === uid ? 'You' : 'User'),
+          display_avatar: r.dealer_id && dealerMap[r.dealer_id] ? dealerMap[r.dealer_id].logo_url || null : null
+        }));
+        setCommentsByPost(prev => ({ ...prev, [postId]: withNames }));
+      }
+    } catch {}
+  };
+
   const toggleLike = async (postId: string) => {
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -201,11 +253,24 @@ export default function Feeds() {
       if (!myDealer?.id) throw new Error('No dealer profile');
       const liked = !!likedByMe[postId];
       if (liked) {
-        await supabase.from('feeds_likes').delete().eq('post_id', postId).eq('dealer_id', myDealer.id);
+        // Delete by either dealer_id or user_id so legacy rows are covered
+        const { data: auth2 } = await supabase.auth.getUser();
+        const userId = auth2.user?.id || '';
+        await supabase
+          .from('feeds_likes')
+          .delete()
+          .eq('post_id', postId)
+          .or(`dealer_id.eq.${myDealer.id},user_id.eq.${userId}`);
         setLikedByMe(prev => ({ ...prev, [postId]: false }));
         setLikeCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] || 1) - 1) }));
       } else {
-        await supabase.from('feeds_likes').insert({ post_id: postId, dealer_id: myDealer.id });
+        // Use upsert to avoid 409 conflicts on unique(post_id, dealer_id)
+        await supabase
+          .from('feeds_likes')
+          .upsert(
+            { post_id: postId, dealer_id: myDealer.id, user_id: (await supabase.auth.getUser()).data.user?.id || null },
+            { onConflict: 'post_id,dealer_id', ignoreDuplicates: true }
+          );
         setLikedByMe(prev => ({ ...prev, [postId]: true }));
         setLikeCounts(prev => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
       }
@@ -223,9 +288,24 @@ export default function Feeds() {
       const myDealers = await DealerEntity.filter({ created_by: auth.user.email });
       const myDealer = myDealers && myDealers[0];
       if (!myDealer?.id) throw new Error('No dealer profile');
-      await supabase.from('feeds_comments').insert({ post_id: postId, dealer_id: myDealer.id, comment: text });
+      await supabase
+        .from('feeds_comments')
+        .insert({ post_id: postId, dealer_id: myDealer.id, user_id: auth.user.id, content: text });
       setCommentDrafts(prev => ({ ...prev, [postId]: '' }));
       setCommentCounts(prev => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+      // Optimistic append if panel is open and comments loaded
+      if (openCommentsForPostId === postId) {
+        const optimistic = {
+          id: `tmp_${Date.now()}`,
+          post_id: postId,
+          user_id: auth.user.id,
+          dealer_id: myDealer.id,
+          content: text,
+          created_at: new Date().toISOString(),
+          display_name: 'You',
+        } as any;
+        setCommentsByPost(prev => ({ ...prev, [postId]: [...(prev[postId] || []), optimistic] }));
+      }
     } catch (e) {
       console.error('Add comment failed', e);
     }
@@ -331,11 +411,11 @@ export default function Feeds() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-[6px]">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Composer */}
         <Card className="rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-md">
-          <CardContent className="p-4">
+          <CardContent className="p-[6px]">
             <div className="flex items-start gap-3">
               
               <div className="flex-1">
@@ -407,6 +487,9 @@ export default function Feeds() {
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               onAddComment={addComment}
+              openCommentsForPostId={openCommentsForPostId}
+              commentsByPost={commentsByPost}
+              toggleComments={toggleComments}
               onSaveEdit={async (id, text) => {
                 try {
                   await supabase.from('feeds_posts').update({ content: text }).eq('id', id);
@@ -446,6 +529,9 @@ export default function Feeds() {
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               onAddComment={addComment}
+              openCommentsForPostId={openCommentsForPostId}
+              commentsByPost={commentsByPost}
+              toggleComments={toggleComments}
               onSaveEdit={async (id, text) => {
                 try {
                   await supabase.from('feeds_posts').update({ content: text }).eq('id', id);
@@ -471,7 +557,7 @@ export default function Feeds() {
   );
 }
 
-function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, editingPostId, setEditingPostId, editText, setEditText, likeCounts, commentCounts, likedByMe, onToggleLike, carouselIndex, setCarouselIndex, commentDrafts, setCommentDrafts, onAddComment, onSaveEdit, onDelete }: {
+function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, editingPostId, setEditingPostId, editText, setEditText, likeCounts, commentCounts, likedByMe, onToggleLike, carouselIndex, setCarouselIndex, commentDrafts, setCommentDrafts, onAddComment, openCommentsForPostId, commentsByPost, toggleComments, onSaveEdit, onDelete }: {
   posts: FeedPost[];
   loading: boolean;
   currentUserId: string | null;
@@ -490,6 +576,9 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
   commentDrafts: Record<string, string>;
   setCommentDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onAddComment: (postId: string) => void;
+  openCommentsForPostId: string | null;
+  commentsByPost: Record<string, { id: string; post_id: string; user_id: string | null; dealer_id: string | null; content: string; created_at: string }[]>;
+  toggleComments: (postId: string) => void;
   onSaveEdit: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
@@ -509,7 +598,7 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
     <div className="space-y-4">
       {posts.map((p) => (
         <Card key={p.id} className="rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60">
-          <CardContent className="p-4">
+          <CardContent className="p-[6px]">
             <div className="flex items-start gap-3">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={p.dealer?.logo_url || ''} />
@@ -581,7 +670,12 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     <button className={`hover:opacity-80 ${likedByMe[p.id] ? 'text-red-600' : ''}`} aria-label="Like" onClick={() => onToggleLike(p.id)}>
                       <Heart className="w-5 h-5" />
                     </button>
-                    <button className="hover:opacity-80" aria-label="Comment"><MessageCircle className="w-5 h-5" /></button>
+                    <button className="relative hover:opacity-80" aria-label="Comment" onClick={() => toggleComments(p.id)}>
+                      <MessageCircle className="w-5 h-5" />
+                      <span className="absolute -top-1 -right-2 text-[10px] rounded-full px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                        {commentCounts[p.id] || 0}
+                      </span>
+                    </button>
                     {/* View Vehicle button when post is linked to a vehicle */}
                     {Boolean((p as any).vehicle_id) && (
                       <a href={(() => {
@@ -595,9 +689,42 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     )}
                   </div>
 
-                  {/* Likes count */}
+                  {/* Likes & comments counts */}
                   <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{likeCounts[p.id] || 0} likes</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">{commentCounts[p.id] || 0} comments</div>
+
+                  {/* Comments panel - only when opened for this post */}
+                  {openCommentsForPostId === p.id && (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {(commentsByPost[p.id] || []).map((c: { id: string; post_id: string; user_id: string | null; dealer_id: string | null; content: string; created_at: string; display_name?: string; display_avatar?: string | null }) => (
+                          <div key={c.id} className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
+                            <Avatar className="h-6 w-6 mt-0.5">
+                              <AvatarImage src={c.display_avatar || ''} />
+                              <AvatarFallback>{(c.display_name || 'U').slice(0,1)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <span className="font-semibold mr-2">{c.display_name || 'User'}</span>
+                              <span>{c.content}</span>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </div>
+                        ))}
+                        {(!commentsByPost[p.id] || commentsByPost[p.id].length === 0) && (
+                          <div className="text-xs text-slate-500">No comments yet. Be the first!</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Write a comment..."
+                          value={commentDrafts[p.id] || ''}
+                          onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={() => onAddComment(p.id)}>Post</Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Caption (business name bold + text) */}
                   {editingPostId === p.id ? (
@@ -617,16 +744,7 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     )
                   )}
 
-                  {/* Comments composer */}
-                  <div className="mt-3 flex items-center gap-2">
-                    <Input
-                      placeholder="Write a comment..."
-                      value={commentDrafts[p.id] || ''}
-                      onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                      className="flex-1"
-                    />
-                    <Button size="sm" onClick={() => onAddComment(p.id)}>Post</Button>
-                  </div>
+                  {/* Composer moved inside conditional panel */}
 
                   {/* Timestamp */}
                   <div className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">{formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}</div>
