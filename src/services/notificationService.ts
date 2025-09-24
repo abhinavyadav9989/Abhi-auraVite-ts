@@ -60,6 +60,23 @@ export class NotificationService {
   // Convenience helpers
   static async createWelcomeNotification(dealerId: string, dealerName?: string) {
     console.log(`🔔 NotificationService.createWelcomeNotification called with dealerId: ${dealerId}, dealerName: ${dealerName}`);
+    try {
+      // Idempotency guard: if a welcome exists, skip creating a new one
+      const { data: existing, error: readError } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', dealerId)
+        .eq('type', 'welcome')
+        .limit(1);
+
+      if (!readError && Array.isArray(existing) && existing.length > 0) {
+        console.log('Welcome notification already exists. Skipping duplicate.');
+        return { ok: true, skipped: true } as any;
+      }
+    } catch (e) {
+      console.warn('Welcome existence check failed; proceeding to create once.', e);
+    }
+
     return this.createNotification({
       user_id: dealerId, // This is actually the dealer ID, not auth user ID
       type: 'welcome',

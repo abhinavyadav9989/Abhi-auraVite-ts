@@ -613,7 +613,6 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                     >
                       {p.dealer?.business_name || p.dealer?.name || 'Business'}
                     </a>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}</div>
                   </div>
                   <div className="relative">
                     <button className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" onClick={() => setMenuOpenId(menuOpenId === p.id ? null : p.id)}>

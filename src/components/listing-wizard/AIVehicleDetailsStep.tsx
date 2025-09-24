@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { INDIAN_STATES } from '@/constants/indianStates';
 
 const ALL_CATEGORIES = [
     { id: 'two-wheeler', label: 'Two-Wheeler' },
@@ -153,7 +154,14 @@ export default function AIVehicleDetailsStep({ data, updateData }) {
         </div>
         <div>
           <Label className="dark:text-slate-200">RTO State</Label>
-          <Input value={data.rto_location_state || ''} onChange={e => handleUpdate('rto_location_state', e.target.value)} />
+          <Select value={data.rto_location_state || ''} onValueChange={v => handleUpdate('rto_location_state', v)}>
+            <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
+            <SelectContent>
+              {INDIAN_STATES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label className="dark:text-slate-200">Insurance Available</Label>

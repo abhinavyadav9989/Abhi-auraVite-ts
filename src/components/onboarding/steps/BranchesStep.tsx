@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { INDIAN_STATES } from '@/constants/indianStates';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, Clock } from 'lucide-react';
 
@@ -182,12 +183,16 @@ const BranchesStep: React.FC<BranchesStepProps> = ({
 
                 <div className="space-y-2">
                   <Label htmlFor={`branch-state-${index}`}>State</Label>
-                  <Input
-                    id={`branch-state-${index}`}
-                    value={branch.state}
-                    onChange={(e) => updateBranch(index, 'state', e.target.value)}
-                    placeholder="Enter state"
-                  />
+                  <Select value={branch.state} onValueChange={(v) => updateBranch(index, 'state', v)}>
+                    <SelectTrigger id={`branch-state-${index}`}>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

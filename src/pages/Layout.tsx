@@ -31,8 +31,7 @@ const navigationItems = [
   { title: "Leaderboard", url: createPageUrl("Leaderboard"), icon: TrendingUp },
   { title: "My Deals", url: createPageUrl("Deals"), icon: Handshake },
   { title: "Shortlists", url: createPageUrl("Shortlists"), icon: Heart },
-  { title: "Analytics", url: createPageUrl("InventoryAnalytics"), icon: BarChart2 },
-  { title: "Market Trends", url: createPageUrl("MarketTrends"), icon: TrendingUp },
+  // Removed per request
   { title: "Bank", url: createPageUrl("Bank"), icon: CreditCard },
 ];
 

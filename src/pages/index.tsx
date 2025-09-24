@@ -25,9 +25,7 @@ import AdminUsers from "./AdminUsers";
 import DisputeResolution from "./DisputeResolution";
 import PaymentCheckout from "./PaymentCheckout";
 
-import InventoryAnalytics from "./InventoryAnalytics";
-
-import MarketTrends from "./MarketTrends";
+// Removed InventoryAnalytics and MarketTrends
 
 import PublicVehicleView from "./PublicVehicleView";
 
@@ -103,9 +101,8 @@ const PAGES = {
     
     DisputeResolution: DisputeResolution,
     
-    InventoryAnalytics: InventoryAnalytics,
-    
-    MarketTrends: MarketTrends,
+    // InventoryAnalytics: removed
+    // MarketTrends: removed
     
     Bank: Bank,
     
@@ -201,9 +198,7 @@ function PagesContent() {
                 
                 <Route path="/DisputeResolution" element={<DisputeResolution />} />
                 
-                <Route path="/InventoryAnalytics" element={<InventoryAnalytics />} />
-                
-                <Route path="/MarketTrends" element={<MarketTrends />} />
+                {/* Removed routes for InventoryAnalytics and MarketTrends */}
                 <Route path="/Leaderboard" element={<Leaderboard />} />
                 <Route path="/Bank" element={<Bank />} />
                 

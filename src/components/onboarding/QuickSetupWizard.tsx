@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { INDIAN_STATES } from "@/constants/indianStates";
 import { CheckCircle, Clock, ArrowRight, SkipForward, Zap, Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -319,19 +320,7 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="city">City *</Label>
-                <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mumbai">Mumbai</SelectItem>
-                    <SelectItem value="delhi">Delhi</SelectItem>
-                    <SelectItem value="bangalore">Bangalore</SelectItem>
-                    <SelectItem value="chennai">Chennai</SelectItem>
-                    <SelectItem value="kolkata">Kolkata</SelectItem>
-                    <SelectItem value="pune">Pune</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input id="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="Enter city" />
               </div>
               
               <div className="space-y-2">
@@ -341,11 +330,9 @@ export default function QuickSetupWizard({ onComplete, onSkip }) {
                     <SelectValue placeholder="Select state" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="maharashtra">Maharashtra</SelectItem>
-                    <SelectItem value="delhi">Delhi</SelectItem>
-                    <SelectItem value="karnataka">Karnataka</SelectItem>
-                    <SelectItem value="tamil-nadu">Tamil Nadu</SelectItem>
-                    <SelectItem value="west-bengal">West Bengal</SelectItem>
+                    {INDIAN_STATES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

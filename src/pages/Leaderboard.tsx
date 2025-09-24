@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { INDIAN_STATES } from '@/constants/indianStates';
 import { useSearchParams } from 'react-router-dom';
 
 type LeaderMetric = 'overall' | 'rating' | 'reviews' | 'sold' | 'purchased';
@@ -22,14 +23,8 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Load list of states from dealers for filters
-    (async () => {
-      try {
-        const { data } = await supabase.from('dealers').select('state').not('state', 'is', null);
-        const s = Array.from(new Set((data || []).map((d: any) => d.state).filter(Boolean))).sort();
-        setStates(s);
-      } catch {}
-    })();
+    // Use canonical India states for filter to prevent typos
+    setStates(INDIAN_STATES);
   }, []);
 
   useEffect(() => {
@@ -186,12 +181,14 @@ function PublicProfileEmbed() {
     (async () => {
       try {
         let dealerId = searchParams.get('dealerId');
+        let currentDealer: any = null;
         if (!dealerId) {
           // Fallback to current user's dealer
           try {
             const me = await UserEntity.me();
             const list = await DealerEntity.filter({ created_by: me.email });
             dealerId = list?.[0]?.id || null;
+            if (list && list[0]) currentDealer = list[0];
           } catch {}
         }
         if (!dealerId) return;
@@ -200,6 +197,7 @@ function PublicProfileEmbed() {
         const d = await DealerEntity.get(dealerId);
         console.log('Leaderboard - Dealer data from entity:', d);
         console.log('Leaderboard - Banner URL from entity:', d?.banner_url);
+        if (!currentDealer) currentDealer = d;
         
         // If banner_url is missing, try direct Supabase query to get all fields
         if (!d?.banner_url) {
@@ -214,6 +212,7 @@ function PublicProfileEmbed() {
               console.log('Leaderboard - Direct dealer data:', directData);
               console.log('Leaderboard - Direct banner URL:', directData?.banner_url);
               setDealer(directData);
+              currentDealer = directData;
             } else {
               console.error('Leaderboard - Direct query error:', error);
               setDealer(d);
@@ -221,9 +220,11 @@ function PublicProfileEmbed() {
           } catch (directError) {
             console.error('Leaderboard - Direct query exception:', directError);
             setDealer(d);
+            currentDealer = d;
           }
         } else {
           setDealer(d);
+          currentDealer = d;
         }
 
         // Ratings KPIs
@@ -260,6 +261,74 @@ function PublicProfileEmbed() {
           const amount_spent = (boughtTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
           
           setKpis((prev: any) => ({ ...prev, sold, purchased, amount_received, amount_spent }));
+        } catch {}
+
+        // Compute India and State ranks using the same scoring as the leaderboard
+        try {
+          // Load basic dealer list
+          const { data: dealers } = await supabase
+            .from('dealers')
+            .select('id,business_name,name,logo_url,state');
+
+          const dealerMap = new Map<string, any>();
+          (dealers || []).forEach((d: any) =>
+            dealerMap.set(d.id, {
+              ...d,
+              rating: 0,
+              reviews: 0,
+              sold: 0,
+              purchased: 0,
+            })
+          );
+
+          // Ratings aggregation
+          try {
+            const ratings = await DealerRatingEntity.filter({});
+            ratings.forEach((r: any) => {
+              const row = dealerMap.get(r.rated_dealer_id);
+              if (row) {
+                row.reviews += 1;
+                row.rating_sum = (row.rating_sum || 0) + (r.overall || 0);
+              }
+            });
+            dealerMap.forEach((row) => {
+              row.rating = row.reviews > 0 ? (row.rating_sum || 0) / row.reviews : 0;
+            });
+          } catch {}
+
+          // Transactions aggregation for sold/purchased
+          try {
+            const { data: transactions } = await supabase
+              .from('transactions')
+              .select('seller_id,buyer_id,status')
+              .in('status', ['completed', 'accepted']);
+
+            (transactions || []).forEach((t: any) => {
+              const seller = dealerMap.get(t.seller_id);
+              if (seller) seller.sold += 1;
+              const buyer = dealerMap.get(t.buyer_id);
+              if (buyer) buyer.purchased += 1;
+            });
+          } catch {}
+
+          const score = (r: any) => (r.rating * 10) + r.reviews + (r.sold * 2) + r.purchased;
+
+          // All India rank
+          const listAll = Array.from(dealerMap.values()).sort((a, b) => score(b) - score(a));
+          const indiaIndex = listAll.findIndex((r: any) => r.id === dealerId);
+
+          // State rank (based on dealer's state). Use local currentDealer to avoid state update race.
+          const dealerState = ((currentDealer?.state) || '').toLowerCase();
+          const listState = Array.from(dealerMap.values())
+            .filter((r: any) => (r.state || '').toLowerCase() === dealerState)
+            .sort((a, b) => score(b) - score(a));
+          const stateIndex = listState.findIndex((r: any) => r.id === dealerId);
+
+          setKpis((prev: any) => ({
+            ...prev,
+            rank_india: indiaIndex >= 0 ? indiaIndex + 1 : 0,
+            rank_state: stateIndex >= 0 ? stateIndex + 1 : 0,
+          }));
         } catch {}
 
         // Feeds posts thumbnails
