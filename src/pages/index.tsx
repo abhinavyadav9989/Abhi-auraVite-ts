@@ -70,6 +70,7 @@ import BusinessVerification from "./BusinessVerification";
 import Bank from "./Bank";
 import Notifications from "./Notifications";
 import Feeds from "./Feeds";
+import Leaderboard from "./Leaderboard";
 
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -203,6 +204,7 @@ function PagesContent() {
                 <Route path="/InventoryAnalytics" element={<InventoryAnalytics />} />
                 
                 <Route path="/MarketTrends" element={<MarketTrends />} />
+                <Route path="/Leaderboard" element={<Leaderboard />} />
                 <Route path="/Bank" element={<Bank />} />
                 
                 <Route path="/PublicVehicleView" element={<PublicVehicleView />} />

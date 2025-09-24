@@ -607,7 +607,12 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{p.dealer?.business_name || p.dealer?.name || 'Business'}</div>
+                    <a 
+                      href={`/Leaderboard?dealerId=${p.dealer?.id}`}
+                      className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                    >
+                      {p.dealer?.business_name || p.dealer?.name || 'Business'}
+                    </a>
                     <div className="text-xs text-slate-500 dark:text-slate-400">{formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}</div>
                   </div>
                   <div className="relative">
@@ -738,7 +743,12 @@ function FeedList({ posts, loading, currentUserId, menuOpenId, setMenuOpenId, ed
                   ) : (
                     p.content && (
                       <div className="mt-2 text-slate-900 dark:text-slate-100 text-sm md:text-base">
-                        <span className="font-semibold mr-2">{p.dealer?.business_name || p.dealer?.name || 'Business'}</span>
+                        <a 
+                          href={`/Leaderboard?dealerId=${p.dealer?.id}`}
+                          className="font-semibold mr-2 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                        >
+                          {p.dealer?.business_name || p.dealer?.name || 'Business'}
+                        </a>
                         <span className="whitespace-pre-wrap">{p.content}</span>
                       </div>
                     )

@@ -212,7 +212,7 @@ export default function LanguageTranslator() {
             <Globe2 className="w-5 h-5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden">
+        <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden z-[60]">
           <div className="px-4 pt-3 pb-2">
             <div className="flex items-center gap-2 text-slate-200">
               <Globe2 className="w-4 h-4" />

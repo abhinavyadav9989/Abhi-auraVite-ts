@@ -336,27 +336,37 @@ export default function ProfileOverview({
                 )}
               </div>
               {canEdit && (
-                <label className="cursor-pointer">
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-sm"
-                    disabled={uploadingDoc === 'banner'}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadingDoc === 'banner' ? 'Uploading...' : 'Upload Banner'}
-                  </Button>
+                <div>
                   <input
                     type="file"
                     accept="image/jpeg,image/png"
                     className="hidden"
+                    id="banner-upload"
                     onChange={(e) => {
+                      console.log('Banner upload - File input changed:', e.target.files);
                       const file = e.target.files?.[0];
                       if (file && onFileUpload) {
+                        console.log('Banner upload - Calling onFileUpload with file:', file.name, file.size);
                         onFileUpload(file, 'banner');
+                      } else {
+                        console.log('Banner upload - No file or onFileUpload function not available');
                       }
                     }}
                   />
-                </label>
+                  <label htmlFor="banner-upload" className="cursor-pointer">
+                    <Button 
+                      variant="outline" 
+                      className="w-full text-sm"
+                      disabled={uploadingDoc === 'banner'}
+                      asChild
+                    >
+                      <span>
+                        <Upload className="w-4 h-4 mr-2" />
+                        {uploadingDoc === 'banner' ? 'Uploading...' : 'Upload Banner'}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               )}
             </div>
           </CardContent>

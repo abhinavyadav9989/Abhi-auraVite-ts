@@ -28,6 +28,7 @@ const navigationItems = [
   { title: "My Inventory", url: createPageUrl("Inventory"), icon: Package },
   { title: "Marketplace", url: createPageUrl("Marketplace"), icon: Search },
   { title: "Feeds", url: createPageUrl("Feeds"), icon: Newspaper },
+  { title: "Leaderboard", url: createPageUrl("Leaderboard"), icon: TrendingUp },
   { title: "My Deals", url: createPageUrl("Deals"), icon: Handshake },
   { title: "Shortlists", url: createPageUrl("Shortlists"), icon: Heart },
   { title: "Analytics", url: createPageUrl("InventoryAnalytics"), icon: BarChart2 },
@@ -277,7 +278,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Theme toggle and notifications floating on desktop */}
-        <div className="hidden lg:flex fixed top-4 right-4 z-40 items-center gap-2">
+        <div className="hidden lg:flex fixed top-4 right-4 z-50 items-center gap-2">
           <LanguageTranslator />
           <NotificationBell />
           <ThemeToggle />
