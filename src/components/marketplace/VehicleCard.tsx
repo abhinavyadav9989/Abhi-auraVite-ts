@@ -32,6 +32,7 @@ type VehicleCardProps = {
   isUserVerified: boolean;
   isUnderReview?: boolean;
   soldInfo?: { buyer_name?: string } | null;
+  dealStatus?: { text: string; action: string; dealId: string | null };
 };
 
 export default function VehicleCard({
@@ -44,6 +45,7 @@ export default function VehicleCard({
   isUserVerified = false,
   isUnderReview = false,
   soldInfo = null,
+  dealStatus = { text: 'Make Offer', action: 'create', dealId: null },
 }: VehicleCardProps) {
   const [isInShortlist, setIsInShortlist] = useState(false);
   const [isShortlisting, setIsShortlisting] = useState(false);
@@ -346,15 +348,26 @@ export default function VehicleCard({
           ) : isUserVerified ? (
             <Button 
               size="sm" 
-              className={`flex-1 text-white ${
-                vehicleData.vehicle_type === 'commercial' 
-                  ? 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-600' 
-                  : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600'
+              className={`flex-1 ${
+                dealStatus.action === 'disabled' 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : dealStatus.action === 'navigate'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : vehicleData.vehicle_type === 'commercial' 
+                      ? 'bg-yellow-600 hover:bg-yellow-700 text-white dark:bg-yellow-700 dark:hover:bg-yellow-600' 
+                      : 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
               }`}
-              onClick={handleMakeOfferClick}
-              title="Make an offer on this vehicle"
+              onClick={dealStatus.action === 'disabled' ? undefined : handleMakeOfferClick}
+              disabled={dealStatus.action === 'disabled'}
+              title={
+                dealStatus.action === 'disabled' 
+                  ? 'This vehicle has been sold'
+                  : dealStatus.action === 'navigate'
+                    ? 'View your existing deal'
+                    : 'Make an offer on this vehicle'
+              }
             >
-              Make Offer
+              {dealStatus.text}
             </Button>
           ) : (
             <Button 

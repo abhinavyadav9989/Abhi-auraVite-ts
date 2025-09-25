@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Vehicle } from "@/api/entities";
 import { Dealer } from "@/api/entities";
 import { User } from "@/api/entities";
+import { Transaction } from "@/api/entities";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -48,6 +49,7 @@ export default function Marketplace() {
   const [currentDealer, setCurrentDealer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [soldByVehicleId, setSoldByVehicleId] = useState<Record<string, { buyer_name?: string }>>({});
+  const [userDeals, setUserDeals] = useState<any[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [compareList, setCompareList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -165,6 +167,17 @@ export default function Marketplace() {
       });
       setDealers(dealersMap);
 
+      // Load user deals for button state management
+      if (currentDealerData) {
+        try {
+          const deals = await Transaction.filter({ buyer_id: currentDealerData.id });
+          setUserDeals(deals || []);
+        } catch (error) {
+          console.error('Error loading user deals:', error);
+          setUserDeals([]);
+        }
+      }
+
       // Enrich sold info using canonical vehicle.sold_to_dealer_id (avoids RLS on transactions)
       try {
         const buyerIds = [...new Set(vehicles.map((v:any) => v?.sold_to_dealer_id).filter(Boolean))];
@@ -266,7 +279,43 @@ export default function Marketplace() {
     });
   };
 
+  // Get deal status for a vehicle
+  const getDealStatus = (vehicleId: string) => {
+    const myDeal = userDeals.find(deal => 
+      deal.vehicle_id === vehicleId && 
+      deal.buyer_id === currentDealer?.id &&
+      !['cancelled', 'rejected', 'failed', 'completed'].includes(deal.status)
+    );
+    
+    if (!myDeal) {
+      return { text: 'Make Offer', action: 'create', dealId: null };
+    }
+    
+    switch (myDeal.status) {
+      case 'offer_made':
+      case 'negotiating':
+      case 'payment_pending':
+      case 'accepted':
+        return { text: 'Made Deal', action: 'navigate', dealId: myDeal.id };
+        
+      case 'completed':
+        return { text: 'Sold', action: 'disabled', dealId: myDeal.id };
+        
+      default:
+        return { text: 'Make Offer', action: 'create', dealId: null };
+    }
+  };
+
   const handleMakeOffer = (vehicle) => {
+    const dealStatus = getDealStatus(vehicle.id);
+    
+    if (dealStatus.action === 'navigate') {
+      // Navigate to existing deal room
+      window.location.href = createPageUrl('DealRoom') + `?id=${dealStatus.dealId}`;
+      return;
+    }
+    
+    // Create new deal
     setSelectedVehicle(vehicle);
     setShowOfferModal(true);
   };
@@ -607,6 +656,7 @@ export default function Marketplace() {
                       isUserVerified={isUserVerified}
                       isUnderReview={isUnderReview}
                       soldInfo={soldByVehicleId[vehicle.id]}
+                      dealStatus={getDealStatus(vehicle.id)}
                     />
                   ))}
                 </motion.div>
@@ -631,6 +681,7 @@ export default function Marketplace() {
                       isUserVerified={isUserVerified}
                       isUnderReview={isUnderReview}
                       soldInfo={soldByVehicleId[vehicle.id]}
+                      dealStatus={getDealStatus(vehicle.id)}
                     />
                   ))}
                 </motion.div>

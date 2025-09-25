@@ -26,7 +26,8 @@ export default function VehicleListCard({
   onMakeOffer,
   isUserVerified,
   isUnderReview,
-  soldInfo
+  soldInfo,
+  dealStatus = { text: 'Make Offer', action: 'create', dealId: null }
 }) {
   const formatPrice = (price: number | null | undefined) => {
     if (!price) return 'Price on request';
@@ -168,9 +169,23 @@ export default function VehicleListCard({
               <Button
                 onClick={() => onMakeOffer(vehicle)}
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
+                className={`${
+                  dealStatus.action === 'disabled' 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : dealStatus.action === 'navigate'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
+                }`}
+                disabled={dealStatus.action === 'disabled'}
+                title={
+                  dealStatus.action === 'disabled' 
+                    ? 'This vehicle has been sold'
+                    : dealStatus.action === 'navigate'
+                      ? 'View your existing deal'
+                      : 'Make an offer on this vehicle'
+                }
               >
-                Make Offer
+                {dealStatus.text}
               </Button>
             )}
             

@@ -54,6 +54,26 @@ export default function OfferModal({ vehicle, dealer, currentDealer, onClose }) 
     setIsSubmitting(true);
     
     try {
+      // Check if user already has a deal for this vehicle
+      const existingDeals = await Transaction.filter({ 
+        vehicle_id: vehicle.id, 
+        buyer_id: currentDealer.id 
+      });
+      
+      const activeDeal = existingDeals?.find(deal => 
+        !['cancelled', 'rejected', 'failed', 'completed'].includes(deal.status)
+      );
+      
+      if (activeDeal) {
+        toast({
+          title: 'Deal Already Exists',
+          description: 'You already have an active deal for this vehicle.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const newTransaction = await Transaction.create({
         vehicle_id: vehicle.id,
         seller_id: vehicle.dealer_id,

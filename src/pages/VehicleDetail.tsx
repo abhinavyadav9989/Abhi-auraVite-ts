@@ -98,6 +98,9 @@ export default function VehicleDetail() {
   
   // Analytics & engagement
   const [viewCount, setViewCount] = useState(0);
+  
+  // Deal status for button management
+  const [dealStatus, setDealStatus] = useState({ text: 'Make Offer', action: 'create', dealId: null });
   const [marketData, setMarketData] = useState(null);
   const [relatedVehicles, setRelatedVehicles] = useState([]);
   const [dealHistory, setDealHistory] = useState([]);
@@ -223,6 +226,41 @@ export default function VehicleDetail() {
         canInspect: canInspect
       });
 
+      // Load user deal status for button management
+      if (currentDealerData && canMakeOffer) {
+        try {
+          const userDeals = await Transaction.filter({ 
+            vehicle_id: vehicleData.id, 
+            buyer_id: currentDealerData.id 
+          });
+          
+          const activeDeal = userDeals?.find(deal => 
+            !['cancelled', 'rejected', 'failed', 'completed'].includes(deal.status)
+          );
+          
+          if (activeDeal) {
+            switch (activeDeal.status) {
+              case 'offer_made':
+              case 'negotiating':
+              case 'payment_pending':
+              case 'accepted':
+                setDealStatus({ text: 'Made Deal', action: 'navigate', dealId: activeDeal.id });
+                break;
+              case 'completed':
+                setDealStatus({ text: 'Sold', action: 'disabled', dealId: activeDeal.id });
+                break;
+              default:
+                setDealStatus({ text: 'Make Offer', action: 'create', dealId: null });
+            }
+          } else {
+            setDealStatus({ text: 'Make Offer', action: 'create', dealId: null });
+          }
+        } catch (error) {
+          console.error('Error loading deal status:', error);
+          setDealStatus({ text: 'Make Offer', action: 'create', dealId: null });
+        }
+      }
+
       await Promise.all([
         loadMarketData(vehicleData),
         loadRelatedVehicles(vehicleData),
@@ -328,6 +366,17 @@ export default function VehicleDetail() {
       console.error("Failed to update shortlist:", error);
       toast({ title: "Error", description: "Could not update shortlist.", variant: "destructive" });
     }
+  };
+
+  const handleDealAction = () => {
+    if (dealStatus.action === 'navigate') {
+      // Navigate to existing deal room
+      window.location.href = createPageUrl('DealRoom') + `?id=${dealStatus.dealId}`;
+    } else if (dealStatus.action === 'create') {
+      // Create new deal
+      setShowOfferModal(true);
+    }
+    // 'disabled' action does nothing
   };
 
   const handleInspectionComplete = (inspectionData) => {
@@ -569,7 +618,29 @@ export default function VehicleDetail() {
                   <Button variant="outline" size="sm" className="gap-2"><Edit className="w-4 h-4" />Edit</Button>
                 </Link>
               )}
-              {permissions.canMakeOffer && <Button onClick={() => setShowOfferModal(true)} className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"><Handshake className="w-4 h-4" />Make Offer</Button>}
+              {permissions.canMakeOffer && (
+                <Button 
+                  onClick={handleDealAction}
+                  disabled={dealStatus.action === 'disabled'}
+                  className={`gap-2 ${
+                    dealStatus.action === 'disabled' 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : dealStatus.action === 'navigate'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
+                  }`}
+                  title={
+                    dealStatus.action === 'disabled' 
+                      ? 'This vehicle has been sold'
+                      : dealStatus.action === 'navigate'
+                        ? 'View your existing deal'
+                        : 'Make an offer on this vehicle'
+                  }
+                >
+                  <Handshake className="w-4 h-4" />
+                  {dealStatus.text}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -667,12 +738,25 @@ export default function VehicleDetail() {
                   ) : (
                     permissions.canMakeOffer && isUserVerified && (
                       <Button 
-                        onClick={() => setShowOfferModal(true)} 
-                        className="w-full gap-2"
-                        title="Make an offer on this vehicle"
+                        onClick={handleDealAction}
+                        disabled={dealStatus.action === 'disabled'}
+                        className={`w-full gap-2 ${
+                          dealStatus.action === 'disabled' 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : dealStatus.action === 'navigate'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
+                        title={
+                          dealStatus.action === 'disabled' 
+                            ? 'This vehicle has been sold'
+                            : dealStatus.action === 'navigate'
+                              ? 'View your existing deal'
+                              : 'Make an offer on this vehicle'
+                        }
                       >
                         <Handshake className="w-4 h-4" />
-                        Make Offer
+                        {dealStatus.text}
                       </Button>
                     )
                   )}

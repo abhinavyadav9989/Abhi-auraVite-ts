@@ -53,26 +53,46 @@ export default function Leaderboard() {
 
         // Load transaction data for sold/purchased counts and amounts
         try {
-          const { data: transactions } = await supabase
+          const { data: transactions, error } = await supabase
             .from('transactions')
-            .select('seller_id, buyer_id, amount, status')
-            .in('status', ['completed', 'accepted']);
-          
-          (transactions || []).forEach((t: any) => {
-            // Count sold vehicles and amount received
-            const seller = dealerMap.get(t.seller_id);
-            if (seller) {
-              seller.sold += 1;
-              seller.amount_received += t.amount || 0;
-            }
-            
-            // Count purchased vehicles and amount spent
-            const buyer = dealerMap.get(t.buyer_id);
-            if (buyer) {
-              buyer.purchased += 1;
-              buyer.amount_spent += t.amount || 0;
-            }
-          });
+            .select('seller_id, buyer_id, amount, amount_paid')
+            .not('amount_paid', 'is', null)
+            .gt('amount_paid', 0);
+
+          if (!error && transactions) {
+            (transactions || []).forEach((t: any) => {
+              const seller = dealerMap.get(t.seller_id);
+              if (seller) {
+                seller.sold += 1;
+                seller.amount_received += t.amount_paid || 0;
+              }
+              const buyer = dealerMap.get(t.buyer_id);
+              if (buyer) {
+                buyer.purchased += 1;
+                buyer.amount_spent += t.amount_paid || 0;
+              }
+            });
+          } else {
+            // Likely blocked by RLS. Fall back to updating ONLY the current user's dealer counts
+            try {
+              const me = await UserEntity.me();
+              const myDealers = await DealerEntity.filter({ created_by: me.email });
+              const myDealerId = myDealers?.[0]?.id;
+              if (myDealerId) {
+                const [{ data: soldTxs }, { data: boughtTxs }] = await Promise.all([
+                  supabase.from('transactions').select('amount_paid').eq('seller_id', myDealerId).not('amount_paid', 'is', null).gt('amount_paid', 0),
+                  supabase.from('transactions').select('amount_paid').eq('buyer_id', myDealerId).not('amount_paid', 'is', null).gt('amount_paid', 0)
+                ]);
+                const mine = dealerMap.get(myDealerId);
+                if (mine) {
+                  mine.sold = (soldTxs || []).length;
+                  mine.purchased = (boughtTxs || []).length;
+                  mine.amount_received = (soldTxs || []).reduce((s: number, t: any) => s + (t.amount_paid || 0), 0);
+                  mine.amount_spent = (boughtTxs || []).reduce((s: number, t: any) => s + (t.amount_paid || 0), 0);
+                }
+              }
+            } catch {}
+          }
         } catch {}
 
         let list = Array.from(dealerMap.values());
@@ -245,20 +265,22 @@ function PublicProfileEmbed() {
         try {
           const { data: soldTxs } = await supabase
             .from('transactions')
-            .select('amount')
+            .select('amount_paid')
             .eq('seller_id', dealerId)
-            .in('status', ['completed', 'accepted']);
+            .not('amount_paid', 'is', null)
+            .gt('amount_paid', 0);
           
           const { data: boughtTxs } = await supabase
             .from('transactions')
-            .select('amount')
+            .select('amount_paid')
             .eq('buyer_id', dealerId)
-            .in('status', ['completed', 'accepted']);
+            .not('amount_paid', 'is', null)
+            .gt('amount_paid', 0);
           
           const sold = (soldTxs || []).length;
           const purchased = (boughtTxs || []).length;
-          const amount_received = (soldTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-          const amount_spent = (boughtTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+          const amount_received = (soldTxs || []).reduce((sum: number, t: any) => sum + (t.amount_paid || 0), 0);
+          const amount_spent = (boughtTxs || []).reduce((sum: number, t: any) => sum + (t.amount_paid || 0), 0);
           
           setKpis((prev: any) => ({ ...prev, sold, purchased, amount_received, amount_spent }));
         } catch {}
@@ -300,8 +322,9 @@ function PublicProfileEmbed() {
           try {
             const { data: transactions } = await supabase
               .from('transactions')
-              .select('seller_id,buyer_id,status')
-              .in('status', ['completed', 'accepted']);
+              .select('seller_id,buyer_id,amount_paid')
+              .not('amount_paid', 'is', null)
+              .gt('amount_paid', 0);
 
             (transactions || []).forEach((t: any) => {
               const seller = dealerMap.get(t.seller_id);
