@@ -7,16 +7,39 @@ import { UploadFile } from '@/api/integrations';
 import { DealerDocument } from '@/api/entities';
 import { toast } from 'sonner';
 
+interface UploadedCheque {
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  uploadedAt: string;
+  url: string;
+  storagePath: string;
+  dbRecord: unknown;
+}
+
+interface BankDetails {
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  cancelledCheque: UploadedCheque | null;
+}
+
+interface OnboardingData {
+  bankDetails?: BankDetails;
+  [key: string]: unknown;
+}
+
 interface BankDetailsStepProps {
-  data: any;
-  updateData: (data: any) => void;
-  onNext: (data: any) => void;
+  data: OnboardingData;
+  updateData: (data: OnboardingData) => void;
+  onNext: (data: BankDetails) => void;
   onBack: () => void;
   onSkip: () => void;
   isSaving: boolean;
   currentStep: number;
   totalSteps: number;
-  dealer?: any; // Add dealer prop to access registration data
+  dealer?: { id?: string };
 }
 
 const BankDetailsStep: React.FC<BankDetailsStepProps> = ({
@@ -27,7 +50,7 @@ const BankDetailsStep: React.FC<BankDetailsStepProps> = ({
   isSaving,
   dealer
 }) => {
-  const [bankData, setBankData] = React.useState(data.bankDetails || {
+  const [bankData, setBankData] = React.useState<BankDetails>(data.bankDetails || {
     accountHolderName: '',
     accountNumber: '',
     ifscCode: '',
@@ -42,7 +65,7 @@ const BankDetailsStep: React.FC<BankDetailsStepProps> = ({
     }
   }, [data.bankDetails]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof BankDetails, value: string) => {
     const newBankData = { ...bankData, [field]: value };
     setBankData(newBankData);
     updateData({ ...data, bankDetails: newBankData });
@@ -113,9 +136,10 @@ const BankDetailsStep: React.FC<BankDetailsStepProps> = ({
       } else {
         throw new Error("Upload failed to return a URL.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload failed:', error);
-      toast.error(`Failed to upload ${file.name}: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to upload ${file.name}: ${message}`);
     }
   };
 
