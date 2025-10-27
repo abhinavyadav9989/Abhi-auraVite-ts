@@ -1,0 +1,51 @@
+## UI Primitives Index
+
+Exports under `@/components/ui/*`:
+
+- Accordion: `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent`
+- Alert: `Alert`, `AlertTitle`, `AlertDescription`
+- Alert Dialog: see `alert-dialog.tsx`
+- Aspect Ratio: `AspectRatio`
+- Avatar: `Avatar`, `AvatarImage`, `AvatarFallback`
+- Badge: `Badge`, `badgeVariants`
+- Breadcrumb: see `breadcrumb.tsx`
+- Button: `Button`, `buttonVariants`
+- Calendar: `Calendar`
+- Card: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`
+- Carousel: `Carousel`, `CarouselContent`, `CarouselItem`, `CarouselPrevious`, `CarouselNext`
+- Checkbox: `Checkbox`
+- Collapsible: `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent`
+- Command: see `command.tsx`
+- Context Menu: see `context-menu.tsx`
+- Dialog: see `dialog.tsx`
+- Drawer: see `drawer.tsx`
+- Dropdown Menu: see `dropdown-menu.tsx`
+- Form: see `form.tsx`
+- Hover Card: `HoverCard`, `HoverCardTrigger`, `HoverCardContent`
+- Input: `Input`
+- Input OTP: `InputOTP`, `InputOTPGroup`, `InputOTPSlot`, `InputOTPSeparator`
+- Label: `Label`
+- Menubar: see `menubar.tsx`
+- Navigation Menu: see `navigation-menu.tsx`
+- Pagination: see `pagination.tsx`
+- Popover: `Popover`, `PopoverTrigger`, `PopoverContent`, `PopoverAnchor`
+- Progress: `Progress`
+- Radio Group: `RadioGroup`, `RadioGroupItem`
+- Resizable: `ResizablePanelGroup`, `ResizablePanel`, `ResizableHandle`
+- Scroll Area: `ScrollArea`, `ScrollBar`
+- Select: see `select.tsx`
+- Separator: `Separator`
+- Sheet: see `sheet.tsx`
+- Sidebar: `useSidebar`, `SidebarProvider`, `Sidebar`, `SidebarBody`, `DesktopSidebar`, `MobileSidebar`, `SidebarLink`
+- Skeleton: `Skeleton`
+- Slider: `Slider`
+- Sonner: `Toaster`
+- Switch: `Switch`
+- Table: see `table.tsx`
+- Tabs: `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`
+- Textarea: `Textarea`
+- Toast: see [Toast primitives](./Toast.md)
+- Toaster: see [Toaster](./Toaster.md)
+- Toggle: `Toggle`, `toggleVariants`
+- Toggle Group: `ToggleGroup`, `ToggleGroupItem`
+- Tooltip: see [Tooltip](./Tooltip.md)
